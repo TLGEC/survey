@@ -1,9 +1,9 @@
 body{margin:0;background:#f5f7f3;color:#0b1f18;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:18px}
-header{background:linear-gradient(135deg,#ffffff 0%,#f7faf4 45%,#eef6e8 100%);color:#0b1f18;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:3;border-bottom:1px solid #d9e2da}
-.brandWrap{display:flex;gap:14px;align-items:center}.brandLogo{width:78px;height:78px;object-fit:contain;background:white;border-radius:18px;padding:6px;box-shadow:0 5px 18px rgba(6,40,25,.10)}.brandText small{color:#5f6e66;font-weight:850;letter-spacing:.2px}h1{margin:2px 0 0;font-size:36px;line-height:1;color:#0b1f18}.brandText p{margin:6px 0 0;color:#3d5248;font-weight:750}
+header{background:linear-gradient(135deg,#ffffff 0%,#f7faf4 45%,#eef6e8 100%);color:#0b1f18;padding:10px 14px 8px;display:flex;justify-content:flex-start;align-items:center;border-bottom:1px solid #d9e2da}
+.brandWrap{display:flex;gap:14px;align-items:center}.brandLogo{width:48px;height:48px;object-fit:contain;background:white;border-radius:18px;padding:6px;box-shadow:0 5px 18px rgba(6,40,25,.10)}.brandText small{color:#5f6e66;font-weight:850;letter-spacing:.2px;font-size:12px}h1{margin:1px 0 0;font-size:26px;line-height:1;color:#0b1f18}.brandText p{margin:3px 0 0;color:#3d5248;font-weight:700;font-size:13px}
 button{font:inherit;border:0;border-radius:22px;padding:14px 18px;font-weight:850}
-header button{background:#0b7a46;color:white;border:1px solid #0b7a46;box-shadow:0 4px 14px rgba(11,122,70,.18)}
-nav{display:flex;gap:10px;overflow-x:auto;background:#edf2eb;padding:14px 12px;position:sticky;top:112px;z-index:2;border-bottom:1px solid #d9e2da}
+header button{display:none}
+nav{display:flex;gap:8px;overflow-x:auto;background:#edf2eb;padding:10px 10px;position:sticky;top:0;z-index:2;border-bottom:1px solid #d9e2da}
 nav button{background:white;border:1px solid #d9e2da;white-space:nowrap;color:#0b1f18}
 nav button.on,.primary{background:#79ac20!important;color:white!important;border-color:#79ac20!important}
 main{max-width:820px;margin:auto;padding:0 12px 24px}
@@ -27,7 +27,17 @@ pre{background:#062819;color:#effff4;border-radius:20px;padding:18px;white-space
 @media(max-width:640px){body{font-size:17px}nav{top:110px}h1{font-size:34px}.two{grid-template-columns:1fr}}
 
 @media(max-width:640px){
-  .brandLogo{width:62px;height:62px}
+  .brandLogo{width:44px;height:44px}
   .brandText h1,h1{font-size:32px}
   .brandText p{font-size:15px}
+}
+
+.secondary{width:100%;margin:8px 0;background:#eef3ef!important;color:#0b1f18!important;border:1px solid #d9e2da!important}
+@media(max-width:640px){
+  header{padding:8px 12px 7px}
+  .brandLogo{width:42px!important;height:42px!important;padding:4px}
+  .brandText h1,h1{font-size:24px!important}
+  .brandText small{font-size:11px}
+  .brandText p{font-size:12px}
+  nav{top:0!important;padding:9px 10px}
 }
