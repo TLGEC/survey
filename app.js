@@ -1,77 +1,34 @@
-const fields = [
-  "customerName","address","phone","email","surveyDate","wants","why","decisionMakers","competitors","budget","timing",
-  "systemType","priority","recommendation","agreed","roofNotes","dimensions","obstructions","batteryLocation","inverterLocation",
-  "meterNotes","cableRoute","access","usage","objections","nextAction","followUpDate","confidence","internalNotes",
-  "checkRoofPhotos","checkMeter","checkCU","checkBattery","checkCable","checkDims","checkTariff","checkDecision","checkNext","checkTranscript"
-];
-
-const KEY = "tlgec-survey-sync-v2";
-const ATTACH_KEY = "tlgec-survey-attachments-v2";
-
-function el(id){ return document.getElementById(id); }
-
-function today(){
-  return new Date().toISOString().slice(0,10);
-}
-
-function getData(){
-  const data = {};
-  for (const id of fields) {
-    const node = el(id);
-    if (!node) continue;
-    data[id] = node.type === "checkbox" ? node.checked : node.value;
-  }
-  data.exportedAt = new Date().toISOString();
-  return data;
-}
-
-function setData(data){
-  for (const id of fields) {
-    const node = el(id);
-    if (!node || data[id] === undefined) continue;
-    if (node.type === "checkbox") node.checked = !!data[id];
-    else node.value = data[id] || "";
-  }
-}
-
-function save(){
-  localStorage.setItem(KEY, JSON.stringify(getData()));
-  const status = el("saveStatus");
-  if (status) status.textContent = "Saved locally " + new Date().toLocaleTimeString();
-  updateOutputs();
-}
-
-function load(){
-  const saved = localStorage.getItem(KEY);
-  if (saved) {
-    try { setData(JSON.parse(saved)); } catch(e){}
-  } else {
-    if (el("surveyDate")) el("surveyDate").value = today();
-  }
-}
-
-function cleanName(name){
-  return (name || "survey").replace(/[^a-z0-9]+/gi,"_").replace(/^_+|_+$/g,"");
-}
-
-function alignmentScript(data){
-  const name = data.customerName || "[customer]";
-  const wants = data.wants || "[main objective]";
-  const rec = data.recommendation || "[recommended solution]";
-  const priority = data.priority || "[main priority]";
-  return `Just so I am clear, the main thing you want from this is ${wants}.
-
-Based on what I have seen today, my initial recommendation is likely to be ${rec}.
-
-The decision is whether we design this around ${priority}, or whether there is another priority you want me to focus on.
-
-When I send the proposal, I will show the recommendation clearly. If the layout, battery size and numbers make sense, is this something you would be looking to move forward with?`;
-}
-
-function promptText(){
-  const d = getData();
-  const attachments = loadAttachments();
-  return `Survey pack for ${d.customerName || "[Customer]"}.
+const KEY='tlgec_survey_v5';
+let selectedFiles=[];
+const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','wants','whyNow','roof','dims','shade','batteryLoc','invLoc','meter','cable','access','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','miles','panelModel','panelCount','solarPrice','solarPerPanel','tigoPrice','birdPrice','batteryBrand','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','scaffoldPrice','zappiPrice','manualDiscount','commercialNote','acceptedName','acceptanceNote','nextAction','followUp','confidence','gut'];
+const checks=['heatPump','highEvening','backupNeeded','solar','battery','ev','tigo','bird','pw3','gateway','dcExp','sigGateway'];
+function $(x){return document.getElementById(x)}
+function today(){return new Date().toISOString().slice(0,10)}
+function money(n){return '£'+Number(n||0).toLocaleString('en-GB',{maximumFractionDigits:0})}
+function panelParts(){let [name,watt,dim,weight]=($('panelModel').value||'AIKO 540W|540||').split('|');return {name,watt:+watt,dim,weight}}
+function kWp(){let p=panelParts();return ((+($('panelCount').value||0)*p.watt)/1000).toFixed(2)}
+function scope(){return [ $('solar').checked?'Solar':null,$('battery').checked?'Battery':null,$('ev').checked?'EV':null].filter(Boolean).join(', ')}
+function flags(){return [ $('heatPump').checked?'Heat pump':null,$('highEvening').checked?'High evening use':null,$('backupNeeded').checked?'Backup wanted':null].filter(Boolean).join(', ')}
+function sigStorage(){return (+$('sig6Qty').value||0)*6.02+(+$('sig10Qty').value||0)*9.04}
+function sigUsable(){return (+$('sig6Qty').value||0)*5.84+(+$('sig10Qty').value||0)*8.76}
+function getData(){let d={};ids.forEach(i=>d[i]=$(i)?.value||'');checks.forEach(i=>d[i]=$(i)?.checked||false);d.scope=scope();d.flags=flags();d.files=selectedFiles.map(f=>f.name);d.batteryGuide=$('batteryGuide').textContent;d.quote=quote();d.present=$('presentSummary').innerText||'';d.acceptance=$('acceptanceStamp').innerText||'';return d}
+function save(){localStorage.setItem(KEY,JSON.stringify(getData()));render()}
+function load(){let raw=localStorage.getItem(KEY);if(raw){try{let d=JSON.parse(raw);ids.forEach(i=>{if($(i))$(i).value=d[i]||''});checks.forEach(i=>{if($(i))$(i).checked=!!d[i]}); if(d.acceptance)$('acceptanceStamp').innerText=d.acceptance;}catch(e){}}if(!$('surveyDate').value)$('surveyDate').value=today();if(!$('nextAction').value)$('nextAction').value='Send formal quote';render();refreshPresent()}
+function syncUsage(changed){let a=parseFloat($('annualKwh').value||0), d=parseFloat($('dailyKwh').value||0);if(changed==='annual' && a>0)$('dailyKwh').value=(a/365).toFixed(1);if(changed==='daily' && d>0)$('annualKwh').value=Math.round(d*365)}
+function recommendBattery(){let k=parseFloat($('annualKwh').value||0), daily=parseFloat($('dailyKwh').value||0), hp=$('heatPump').checked, ev=$('ev').checked, backup=$('backupNeeded').checked;let txt='Enter annual or daily usage to guide battery sizing.';if(k||daily){if(!daily)daily=k/365;if(!k)k=daily*365;let rec='';if(daily<10)rec='Sigenergy 6.0 or Sigenergy 10.0.';else if(daily<18)rec='Sigenergy 10.0 as the clean default, or Powerwall 3 if Tesla/backup route is preferred.';else if(daily<28)rec='Powerwall 3 or 2 x Sigenergy 10.0.';else rec='Powerwall 3 + DC Expansion, or a larger Sigenergy stack.';if(ev||hp)rec+=' EV/heat pump usage may justify stepping up storage once the load profile is reviewed.';if(backup)rec+=' Backup requirement pushes the design toward a Gateway/backup-capable route.';txt=`Guide: ${rec} Average use is about ${daily.toFixed(1)} kWh/day (${Math.round(k)} kWh/year).`;}$('batteryGuide').textContent=txt;save()}
+function quote(){let solarManual=+$('solarPrice').value||0;let solarAuto=(+$('panelCount').value||0)*(+$('solarPerPanel').value||125);let solar=solarManual||solarAuto;let tigo=$('tigo').checked?(+$('panelCount').value||0)*(+$('tigoPrice').value||30):0;let bird=$('bird').checked?(+$('birdPrice').value||0):0;let battery=0, batteryText='None';if($('batteryBrand').value==='Tesla'){batteryText='Tesla'; if($('pw3').checked)battery+=+$('pw3Price').value||0; if($('gateway').checked)battery+=+$('gatewayPrice').value||0; if($('dcExp').checked)battery+=+$('dcPrice').value||0; battery-=+$('teslaDiscounts').value||0;}if($('batteryBrand').value==='Sigenergy'){let ctrl=$('sigController').value.split('|');let ctrlPrice=+$('sigControllerOverride').value||(+ctrl[0]||0);batteryText=`Sigenergy ${ctrl[1]||''}`;battery+=ctrlPrice; if($('sigGateway').checked)battery+=+$('sigGatewayPrice').value||0; battery+=(+$('sig6Qty').value||0)*(+$('sig6Price').value||0); battery+=(+$('sig10Qty').value||0)*(+$('sig10Price').value||0);}let scaff=(+$('scaffoldLifts').value||0)*(+$('scaffoldPrice').value||975);let ev=$('ev').checked?(+$('zappiPrice').value||0):0;let discount=+$('manualDiscount').value||0;let total=solar+tigo+bird+battery+scaff+ev-discount;return {solar,tigo,bird,battery,batteryText,scaff,ev,discount,total,kWp:kWp(),panel:panelParts(),sigNominal:sigStorage().toFixed(2),sigUsable:sigUsable().toFixed(2)}}
+function calculate(){let q=quote();$('quoteTotal').innerHTML=`<b>Total: ${money(q.total)}</b><br>Solar ${money(q.solar)} | Tigo ${money(q.tigo)} | Battery ${money(q.battery)} | Scaffold ${money(q.scaff)} | EV ${money(q.ev)} | Discount -${money(q.discount)}<br>${$('panelCount').value||0} x ${q.panel.name}, ${q.kWp} kWp`;refreshPresent();save()}
+function refreshPresent(){let q=quote(), p=panelParts();let batteryLine='No battery selected';if($('batteryBrand').value==='Tesla')batteryLine=`Tesla: ${$('pw3').checked?'Powerwall 3 ':''}${$('gateway').checked?'+ Gateway ':''}${$('dcExp').checked?'+ DC Expansion ':''}`.trim();if($('batteryBrand').value==='Sigenergy')batteryLine=`Sigenergy: ${$('sig6Qty').value||0} x BAT 6.0, ${$('sig10Qty').value||0} x BAT 10.0, ${q.sigNominal} kWh nominal (${q.sigUsable} kWh usable), controller ${$('sigController').value.split('|')[1]}`;$('presentSummary').innerHTML=`<b>Recommended route for ${$('customerName').value||'customer'}</b><br><br>
+Solar: ${$('solar').checked?`${$('panelCount').value||0} x ${p.name}, ${q.kWp} kWp`:'No'}<br>
+Panel details: ${p.dim}, ${p.weight}<br>
+Tigo optimisation: ${$('tigo').checked?'Included at £'+($('tigoPrice').value||30)+' per panel':'Not included'}<br>
+Bird protection: ${$('bird').checked?'Included':'Not included'}<br>
+Battery: ${batteryLine}<br>
+EV charger: ${$('ev').checked?'Zappi included':'No'}<br>
+Scaffold: ${$('scaffoldLifts').value||0} lift(s)<br><br>
+<b>Proposal position: ${money(q.total)}</b><br><br>
+Next step: proceed to formal quote for review and e-signing.`;render()}
+function prompt(){let d=getData(), q=d.quote;return `Survey pack for ${d.customerName||'[Customer]'}.
 
 Use the notes, photos and any SRT transcripts to create:
 1. Survey summary
@@ -87,212 +44,69 @@ Phone: ${d.phone}
 Email: ${d.email}
 Survey date: ${d.surveyDate}
 
+System scope: ${d.scope}
 What they want: ${d.wants}
-Why now: ${d.why}
+Why now: ${d.whyNow}
 Decision makers: ${d.decisionMakers}
 Competitors: ${d.competitors}
-System direction: ${d.systemType}
-Customer priority: ${d.priority}
-Likely recommendation: ${d.recommendation}
-Budget / price sensitivity: ${d.budget}
-Timing: ${d.timing}
-Objections / concerns: ${d.objections}
-Agreed before leaving: ${d.agreed}
 
-Roof notes: ${d.roofNotes}
-Dimensions / references: ${d.dimensions}
-Obstructions / shading: ${d.obstructions}
-Battery location: ${d.batteryLocation}
-Inverter/controller location: ${d.inverterLocation}
-Meter/CU/incoming supply: ${d.meterNotes}
-Cable route: ${d.cableRoute}
+Roof notes: ${d.roof}
+Dimensions: ${d.dims}
+Obstructions / shading: ${d.shade}
+Battery location: ${d.batteryLoc}
+Inverter/controller location: ${d.invLoc}
+Meter/CU/supply: ${d.meter}
+Cable route: ${d.cable}
 Access/scaffold: ${d.access}
-Usage/tariff/bill notes: ${d.usage}
+
+Annual kWh: ${d.annualKwh}
+Daily average kWh: ${d.dailyKwh}
+Current tariff: ${d.tariff}
+Day/peak p/kWh: ${d.peak}
+Off-peak p/kWh: ${d.offpeak}
+Annual spend: ${d.annualSpend}
+EV miles/year: ${d.miles}
+Usage flags: ${d.flags}
+Battery guide: ${d.batteryGuide}
+
+Quote builder:
+Panel: ${q.panel.name}
+Panel count: ${d.panelCount}
+Solar £/panel: ${d.solarPerPanel}
+Solar price used: ${money(q.solar)}
+System size: ${q.kWp} kWp
+Tigo: ${d.tigo?'Yes at £'+d.tigoPrice+' per panel':'No'}
+Battery: ${q.batteryText}
+Sig storage: ${q.sigNominal} kWh nominal / ${q.sigUsable} kWh usable
+Scaffold: ${d.scaffoldLifts} lift(s)
+EV: ${d.ev?'Zappi':'No'}
+Commercial note: ${d.commercialNote}
+Calculated proposal position: ${money(q.total)}
+
+Customer proposal summary:
+${d.present}
+
+Acceptance:
+${d.acceptance}
 
 Next action: ${d.nextAction}
-Follow-up date: ${d.followUpDate}
+Follow-up date: ${d.followUp}
 Confidence: ${d.confidence}
-Internal gut feel: ${d.internalNotes}
-
-Attachments in this device export: ${attachments.map(a => a.name).join(", ") || "None"}`;
-}
-
-function updateOutputs(){
-  const d = getData();
-  const box = el("alignmentText");
-  if (box) box.textContent = alignmentScript(d);
-  const prev = el("promptPreview");
-  if (prev) prev.textContent = promptText();
-}
-
-function download(filename, content, type="text/plain"){
-  const blob = content instanceof Blob ? content : new Blob([content], {type});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
-function loadAttachments(){
-  try { return JSON.parse(localStorage.getItem(ATTACH_KEY) || "[]"); } catch(e){ return []; }
-}
-
-function saveAttachments(list){
-  localStorage.setItem(ATTACH_KEY, JSON.stringify(list));
-  renderAttachments();
-  updateOutputs();
-}
-
-function fileToDataURL(file){
-  return new Promise((resolve,reject)=>{
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
-}
-
-function imageToCompressedDataURL(file, maxSide=1600, quality=0.78){
-  return new Promise((resolve,reject)=>{
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      let {width, height} = img;
-      const scale = Math.min(1, maxSide / Math.max(width, height));
-      width = Math.round(width * scale);
-      height = Math.round(height * scale);
-      const canvas = document.createElement("canvas");
-      canvas.width = width; canvas.height = height;
-      canvas.getContext("2d").drawImage(img,0,0,width,height);
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/jpeg", quality));
-    };
-    img.onerror = reject;
-    img.src = url;
-  });
-}
-
-async function addFiles(files, kind){
-  const existing = loadAttachments();
-  for (const file of files) {
-    if (kind === "photo" && file.type.startsWith("image/")) {
-      const dataUrl = await imageToCompressedDataURL(file);
-      existing.push({id: crypto.randomUUID(), name:file.name, type:"image/jpeg", kind:"photo", dataUrl, addedAt:new Date().toISOString()});
-    } else {
-      const dataUrl = await fileToDataURL(file);
-      existing.push({id: crypto.randomUUID(), name:file.name, type:file.type || "application/octet-stream", kind:"doc", dataUrl, addedAt:new Date().toISOString()});
-    }
-  }
-  saveAttachments(existing);
-}
-
-function removeAttachment(id){
-  saveAttachments(loadAttachments().filter(a => a.id !== id));
-}
-
-function renderAttachments(){
-  const wrap = el("attachments");
-  if (!wrap) return;
-  const list = loadAttachments();
-  wrap.innerHTML = "";
-  if (!list.length) {
-    wrap.innerHTML = `<p class="hint">No local files added yet.</p>`;
-    return;
-  }
-  for (const item of list) {
-    const div = document.createElement("div");
-    div.className = "attachment";
-    if (item.kind === "photo") div.innerHTML = `<img src="${item.dataUrl}" alt=""><div class="meta">${item.name}</div>`;
-    else div.innerHTML = `<div class="meta"><strong>${item.name}</strong><br>${item.type}</div>`;
-    const btn = document.createElement("button");
-    btn.textContent = "Remove";
-    btn.onclick = () => removeAttachment(item.id);
-    div.appendChild(btn);
-    wrap.appendChild(div);
-  }
-}
-
-function htmlPack(){
-  const d = getData();
-  const list = loadAttachments();
-  const esc = s => String(s || "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const rows = Object.entries(d).map(([k,v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join("");
-  const imgs = list.map(a => a.kind === "photo" ? `<figure><img src="${a.dataUrl}"><figcaption>${esc(a.name)}</figcaption></figure>` : `<p><strong>Attachment:</strong> ${esc(a.name)} (${esc(a.type)})</p>`).join("");
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(d.customerName)} survey pack</title><style>body{font-family:Arial;margin:24px;line-height:1.45}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}th{width:240px;background:#f4f4f4}img{max-width:100%;border:1px solid #ddd;border-radius:8px}figure{break-inside:avoid;margin:18px 0}pre{white-space:pre-wrap;background:#111;color:#eee;padding:16px;border-radius:8px}</style></head><body><h1>TLGEC Survey Pack: ${esc(d.customerName)}</h1><table>${rows}</table><h2>ChatGPT prompt</h2><pre>${esc(promptText())}</pre><h2>Photos / attachments</h2>${imgs}</body></html>`;
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  load();
-  renderAttachments();
-  updateOutputs();
-
-  for (const id of fields) {
-    const node = el(id);
-    if (node) node.addEventListener("input", save);
-    if (node && node.type === "checkbox") node.addEventListener("change", save);
-  }
-
-  document.querySelectorAll("[data-jump]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const target = el(btn.dataset.jump);
-      if (target) target.scrollIntoView({behavior:"smooth", block:"start"});
-    });
-  });
-
-  document.querySelectorAll(".chips").forEach(group => {
-    group.querySelectorAll("button").forEach(btn => {
-      btn.addEventListener("click", e => {
-        e.preventDefault();
-        const target = el(group.dataset.target);
-        if (!target) return;
-        const val = btn.textContent.trim();
-        target.value = target.value ? `${target.value}, ${val}` : val;
-        save();
-      });
-    });
-  });
-
-  document.querySelectorAll("[data-copy='alignment']").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      await navigator.clipboard.writeText(alignmentScript(getData()));
-      alert("Alignment script copied");
-    });
-  });
-
-  el("photoInput")?.addEventListener("change", e => addFiles([...e.target.files], "photo"));
-  el("docInput")?.addEventListener("change", e => addFiles([...e.target.files], "doc"));
-
-  el("copyPromptBtn")?.addEventListener("click", async () => {
-    await navigator.clipboard.writeText(promptText());
-    alert("ChatGPT prompt copied");
-  });
-  el("copyPromptBtn2")?.addEventListener("click", async () => {
-    await navigator.clipboard.writeText(promptText());
-    alert("ChatGPT prompt copied");
-  });
-
-  el("downloadTxtBtn")?.addEventListener("click", () => {
-    download(`${cleanName(getData().customerName)}_survey_notes.txt`, promptText());
-  });
-  el("downloadJsonBtn")?.addEventListener("click", () => {
-    download(`${cleanName(getData().customerName)}_survey_data.json`, JSON.stringify({data:getData(),attachments:loadAttachments().map(a => ({name:a.name,type:a.type,kind:a.kind,addedAt:a.addedAt}))}, null, 2), "application/json");
-  });
-  el("downloadHtmlBtn")?.addEventListener("click", () => {
-    download(`${cleanName(getData().customerName)}_survey_pack.html`, htmlPack(), "text/html");
-  });
-
-  el("resetBtn")?.addEventListener("click", () => {
-    if (!confirm("Clear this survey from this device?")) return;
-    localStorage.removeItem(KEY);
-    localStorage.removeItem(ATTACH_KEY);
-    location.reload();
-  });
-
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js");
-  }
+Internal gut feel: ${d.gut}
+Attachments: ${d.files.length?d.files.join(', '):'None'}`}
+function render(){$('out').textContent=prompt()}
+function download(name,text,type='text/plain'){let b=new Blob([text],{type});let u=URL.createObjectURL(b);let a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u)}
+function safeName(){return ($('customerName').value||'survey').replace(/[^a-z0-9]+/gi,'_')}
+document.addEventListener('DOMContentLoaded',()=>{load();
+document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');save()}));
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
+document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
+$('batteryGuideBtn').onclick=recommendBattery;$('calcQuote').onclick=calculate;$('refreshPresent').onclick=refreshPresent;
+$('stampAccept').onclick=()=>{let stamp=`${$('acceptedName').value||'Customer'} agreed to proceed to formal quote on ${new Date().toLocaleString()}. ${$('acceptanceNote').value||''}`;$('acceptanceStamp').innerText=stamp;save()};
+$('copy').onclick=async()=>{await navigator.clipboard.writeText(prompt());alert('Prompt copied')};
+$('txt').onclick=()=>download(safeName()+'_survey_notes.txt',prompt());
+$('json').onclick=()=>download(safeName()+'_survey_data.json',JSON.stringify(getData(),null,2),'application/json');
+$('reset').onclick=()=>{if(confirm('Clear local survey?')){localStorage.removeItem(KEY);location.reload()}};
+$('filesInput').onchange=e=>{selectedFiles=Array.from(e.target.files||[]);$('preview').innerHTML='';selectedFiles.forEach(f=>{if(f.type.startsWith('image/')){let img=document.createElement('img');img.src=URL.createObjectURL(f);$('preview').appendChild(img)}});$('fileNames').textContent=selectedFiles.map(f=>f.name).join('\n');save()};
+if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.js');
 });
