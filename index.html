@@ -2,46 +2,83 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#111827" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1f17" />
   <title>TLGEC Survey Sync</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header>
+  <header class="topbar">
     <div>
-      <h1>TLGEC Survey Sync</h1>
-      <p>Offline survey notes for James Cooling</p>
+      <div class="brand">The Little Green Energy Company</div>
+      <h1>Survey Sync</h1>
+      <p id="saveStatus">Offline-ready survey capture</p>
     </div>
-    <button id="resetBtn" class="secondary">Reset</button>
+    <button id="resetBtn" class="ghost">Reset</button>
   </header>
 
+  <nav class="tabs" aria-label="Sections">
+    <button data-jump="customer" class="tab active">Customer</button>
+    <button data-jump="agree" class="tab">Agree</button>
+    <button data-jump="site" class="tab">Site</button>
+    <button data-jump="files" class="tab">Photos</button>
+    <button data-jump="export" class="tab">Output</button>
+  </nav>
+
   <main>
-    <section class="card">
-      <h2>1. Customer</h2>
-      <label>Customer name <input id="customerName" /></label>
-      <label>Address <textarea id="address"></textarea></label>
-      <div class="grid">
-        <label>Phone <input id="phone" /></label>
-        <label>Email <input id="email" /></label>
+    <section id="customer" class="card hero">
+      <div class="badge">Survey record</div>
+      <h2>1. Customer and objective</h2>
+
+      <div class="grid two">
+        <label>Customer name
+          <input id="customerName" placeholder="e.g. Simon Cox" autocomplete="name" />
+        </label>
+        <label>Survey date
+          <input id="surveyDate" type="date" />
+        </label>
       </div>
-      <label>Survey date <input id="surveyDate" type="date" /></label>
+
+      <label>Address
+        <textarea id="address" placeholder="Property address"></textarea>
+      </label>
+
+      <div class="grid two">
+        <label>Phone
+          <input id="phone" inputmode="tel" autocomplete="tel" />
+        </label>
+        <label>Email
+          <input id="email" type="email" autocomplete="email" />
+        </label>
+      </div>
+
+      <label>What do they want?
+        <div class="chips" data-target="wants">
+          <button>Lower bills</button><button>Battery storage</button><button>Backup</button><button>EV charging</button><button>Future heat pump</button><button>Energy independence</button>
+        </div>
+        <textarea id="wants" placeholder="Main customer objectives. Use mic button on your phone keyboard or Chrome voice input."></textarea>
+      </label>
+
+      <label>Why now?
+        <textarea id="why" placeholder="Trigger: high bills, new EV, moving tariff, power cuts, old system, works planned..."></textarea>
+      </label>
+
+      <div class="grid two">
+        <label>Decision makers
+          <input id="decisionMakers" placeholder="Who needs to agree?" />
+        </label>
+        <label>Competitors
+          <input id="competitors" placeholder="Other quotes?" />
+        </label>
+      </div>
     </section>
 
-    <section class="card">
-      <h2>2. What they want</h2>
-      <label>Main objective <textarea id="wants" placeholder="Lower bills, battery backup, EV charging, future heat pump..."></textarea></label>
-      <label>Why now? <textarea id="why"></textarea></label>
-      <label>Decision makers <input id="decisionMakers" /></label>
-      <label>Competitors mentioned <input id="competitors" /></label>
-      <label>Budget / price sensitivity <textarea id="budget"></textarea></label>
-      <label>Timing <textarea id="timing"></textarea></label>
-    </section>
+    <section id="agree" class="card">
+      <div class="badge">On-site agreement</div>
+      <h2>2. Recommend and test commitment</h2>
 
-    <section class="card">
-      <h2>3. Proposed solution</h2>
-      <label>System type
+      <label>System direction
         <select id="systemType">
           <option>Solar + battery</option>
           <option>Solar only</option>
@@ -49,71 +86,176 @@
           <option>Powerwall 3</option>
           <option>Sigenergy</option>
           <option>EV charger</option>
-          <option>Other</option>
+          <option>Staged plan</option>
+          <option>Needs review</option>
         </select>
       </label>
-      <label>Likely recommendation <textarea id="recommendation"></textarea></label>
-      <label>What was agreed before leaving? <textarea id="agreed"></textarea></label>
+
+      <label>Customer priority
+        <div class="chips" data-target="priority">
+          <button>Best value</button><button>Maximum savings</button><button>Backup resilience</button><button>Lowest upfront</button><button>Future-proofing</button><button>Looks/design</button>
+        </div>
+        <input id="priority" placeholder="Main priority" />
+      </label>
+
+      <label>Likely recommendation
+        <textarea id="recommendation" placeholder="e.g. 14 x AIKO 495W + Sigenergy 10kWh, or PW3 + expansion..."></textarea>
+      </label>
+
+      <div class="customerPanel">
+        <h3>Customer-facing alignment script</h3>
+        <p>Use this with the customer before leaving site:</p>
+        <button class="copySmall" data-copy="alignment">Copy script</button>
+        <div id="alignmentText" class="scriptBox"></div>
+      </div>
+
+      <label>What was agreed before leaving?
+        <textarea id="agreed" placeholder="Proposal by Monday, follow-up Tuesday, customer wants option A/B, etc."></textarea>
+      </label>
+
+      <div class="grid two">
+        <label>Budget / price sensitivity
+          <input id="budget" placeholder="Budget feel or concern" />
+        </label>
+        <label>Timing
+          <input id="timing" placeholder="When do they want it?" />
+        </label>
+      </div>
+
+      <label>Objections / concerns
+        <div class="chips" data-target="objections">
+          <button>Price</button><button>Payback</button><button>Partner decision</button><button>Competitor quote</button><button>Roof fit</button><button>Battery size</button><button>Backup/Gateway</button>
+        </div>
+        <textarea id="objections" placeholder="Anything that could stop the sale"></textarea>
+      </label>
+    </section>
+
+    <section id="site" class="card">
+      <div class="badge">Technical notes</div>
+      <h2>3. Site notes</h2>
+
+      <label>Roof notes
+        <textarea id="roofNotes" placeholder="Roof areas, pitch, azimuth, tile type, condition, old panels..."></textarea>
+      </label>
+
+      <label>Dimensions / reference measurements
+        <textarea id="dimensions" placeholder="Roof width, slope length, obstruction positions, reference measurements..."></textarea>
+      </label>
+
+      <label>Obstructions and shading
+        <textarea id="obstructions" placeholder="Chimneys, roof windows, dormers, trees, vents..."></textarea>
+      </label>
+
+      <div class="grid two">
+        <label>Battery location
+          <textarea id="batteryLocation"></textarea>
+        </label>
+        <label>Inverter/controller location
+          <textarea id="inverterLocation"></textarea>
+        </label>
+      </div>
+
+      <label>Meter / consumer unit / incoming supply
+        <textarea id="meterNotes" placeholder="Single/three phase, CU position, gateway expectations, DNO concerns..."></textarea>
+      </label>
+
+      <label>Cable route
+        <textarea id="cableRoute" placeholder="Route from array to inverter/battery/meter, garage routes, Cat6, customer-provided ducting..."></textarea>
+      </label>
+
+      <label>Access / scaffolding
+        <textarea id="access" placeholder="Scaffold lifts, access restrictions, flat roof, conservatory, parking, neighbour access..."></textarea>
+      </label>
+
+      <label>Usage / tariff / bill notes
+        <textarea id="usage" placeholder="Annual kWh, tariff, EV mileage, heat pump, Octopus Go/IOG..."></textarea>
+      </label>
     </section>
 
     <section class="card">
-      <h2>4. Site notes</h2>
-      <label>Roof notes <textarea id="roofNotes"></textarea></label>
-      <label>Dimensions / references <textarea id="dimensions"></textarea></label>
-      <label>Obstructions / shading <textarea id="obstructions"></textarea></label>
-      <label>Battery location <textarea id="batteryLocation"></textarea></label>
-      <label>Inverter / controller location <textarea id="inverterLocation"></textarea></label>
-      <label>Meter / consumer unit / incoming supply <textarea id="meterNotes"></textarea></label>
-      <label>Cable route <textarea id="cableRoute"></textarea></label>
-      <label>Access / scaffolding <textarea id="access"></textarea></label>
-      <label>Tariff / usage / bill notes <textarea id="usage"></textarea></label>
-    </section>
-
-    <section class="card">
-      <h2>5. Survey checklist</h2>
+      <div class="badge">Fast checklist</div>
+      <h2>4. Essential captures</h2>
       <div class="checks">
-        <label><input type="checkbox" id="checkRoofPhotos" /> Roof photos</label>
-        <label><input type="checkbox" id="checkMeter" /> Meter photo</label>
+        <label><input type="checkbox" id="checkRoofPhotos" /> Roof photos/video</label>
+        <label><input type="checkbox" id="checkMeter" /> Meter/incoming supply photo</label>
         <label><input type="checkbox" id="checkCU" /> Consumer unit photo</label>
-        <label><input type="checkbox" id="checkBattery" /> Battery location photo</label>
-        <label><input type="checkbox" id="checkCable" /> Cable route photo</label>
-        <label><input type="checkbox" id="checkDims" /> Dimensions captured</label>
-        <label><input type="checkbox" id="checkTariff" /> Tariff / bill captured</label>
+        <label><input type="checkbox" id="checkBattery" /> Battery/inverter location photo</label>
+        <label><input type="checkbox" id="checkCable" /> Cable route captured</label>
+        <label><input type="checkbox" id="checkDims" /> Dimensions/reference captured</label>
+        <label><input type="checkbox" id="checkTariff" /> Bill/tariff captured</label>
         <label><input type="checkbox" id="checkDecision" /> Decision maker confirmed</label>
-        <label><input type="checkbox" id="checkNext" /> Next step agreed</label>
+        <label><input type="checkbox" id="checkNext" /> Next action agreed</label>
         <label><input type="checkbox" id="checkTranscript" /> Video/SRT transcript captured</label>
       </div>
     </section>
 
-    <section class="card">
-      <h2>6. Close and next action</h2>
-      <label>Objections / concerns <textarea id="objections"></textarea></label>
-      <label>Next action <input id="nextAction" placeholder="Send proposal, revise quote, call Tuesday..." /></label>
-      <label>Follow-up date <input id="followUpDate" type="date" /></label>
-      <label>Confidence
-        <select id="confidence">
-          <option>High</option>
-          <option selected>Medium</option>
-          <option>Low</option>
-          <option>Needs review</option>
-        </select>
-      </label>
-      <label>Internal notes / gut feel <textarea id="internalNotes"></textarea></label>
+    <section id="files" class="card">
+      <div class="badge">Local files</div>
+      <h2>5. Photos and transcripts</h2>
+      <p class="hint">Photos and SRT/TXT files are stored on this device only. Keep large videos in SharePoint and upload SRT transcripts instead.</p>
+
+      <div class="fileActions">
+        <label class="fileBtn">Take/add photos
+          <input id="photoInput" type="file" accept="image/*" multiple capture="environment" />
+        </label>
+        <label class="fileBtn alt">Add SRT/TXT/PDF
+          <input id="docInput" type="file" accept=".srt,.txt,.pdf" multiple />
+        </label>
+      </div>
+
+      <div id="attachments" class="attachments"></div>
     </section>
 
-    <section class="card">
-      <h2>7. Export for ChatGPT</h2>
-      <p class="small">Typed notes save on this phone. When back online, copy the prompt or export the notes file and upload it to ChatGPT with photos/SRT files.</p>
-      <button id="copyPromptBtn">Copy ChatGPT prompt</button>
-      <button id="downloadTxtBtn" class="secondary">Download notes TXT</button>
-      <button id="downloadJsonBtn" class="secondary">Download JSON</button>
-      <textarea id="promptPreview" readonly></textarea>
+    <section id="export" class="card">
+      <div class="badge">Output</div>
+      <h2>6. Export for ChatGPT and monday</h2>
+
+      <label>Next action
+        <select id="nextAction">
+          <option>Send proposal</option>
+          <option>Revise quote</option>
+          <option>Prepare PandaDoc</option>
+          <option>Call customer</option>
+          <option>Await customer decision</option>
+          <option>Book technical survey</option>
+          <option>Park / nurture</option>
+        </select>
+      </label>
+
+      <div class="grid two">
+        <label>Follow-up date
+          <input id="followUpDate" type="date" />
+        </label>
+        <label>Confidence
+          <select id="confidence">
+            <option>High</option>
+            <option selected>Medium</option>
+            <option>Low</option>
+            <option>Needs review</option>
+          </select>
+        </label>
+      </div>
+
+      <label>Internal gut feel
+        <textarea id="internalNotes" placeholder="What you think is really going on"></textarea>
+      </label>
+
+      <div class="outputBtns">
+        <button id="copyPromptBtn">Copy ChatGPT prompt</button>
+        <button id="downloadTxtBtn" class="secondary">Download notes TXT</button>
+        <button id="downloadJsonBtn" class="secondary">Download JSON</button>
+        <button id="downloadHtmlBtn" class="secondary">Download pack HTML</button>
+      </div>
+
+      <h3>Preview output</h3>
+      <pre id="promptPreview"></pre>
     </section>
   </main>
 
-  <footer>
-    <span id="saveStatus">Saved locally</span>
-  </footer>
+  <div class="stickyFooter">
+    <button data-jump="export">Output</button>
+    <button id="copyPromptBtn2">Copy prompt</button>
+  </div>
 
   <script src="app.js"></script>
 </body>

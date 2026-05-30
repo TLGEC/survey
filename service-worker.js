@@ -1,4 +1,4 @@
-const CACHE_NAME = "tlgec-survey-sync-v1";
+const CACHE_NAME = "tlgec-survey-sync-v2";
 const FILES = [
   "./",
   "./index.html",
