@@ -41,3 +41,12 @@ pre{background:#062819;color:#effff4;border-radius:20px;padding:18px;white-space
   .brandText p{font-size:12px}
   nav{top:0!important;padding:9px 10px}
 }
+
+.roofGrid{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr 1fr;gap:10px;margin:12px 0;padding:12px;background:#f7faf4;border:1px solid #d9e2da;border-radius:18px}
+.savedList .savedCard{border:1px solid #d9e2da;border-radius:18px;padding:14px;margin:12px 0;background:white;box-shadow:0 3px 10px rgba(6,40,25,.04)}
+.savedMeta{font-size:13px;color:#5f6e66;margin:5px 0 12px;line-height:1.35}
+.savedActions{display:flex;gap:8px;flex-wrap:wrap}
+.savedActions button{background:#eef3ef;color:#0b1f18;border:1px solid #d9e2da;border-radius:14px;padding:10px 12px}
+.savedActions button.primaryMini{background:#79ac20;color:white;border-color:#79ac20}
+.secondary{width:100%;margin:8px 0;background:#eef3ef!important;color:#0b1f18!important;border:1px solid #d9e2da!important}
+@media(max-width:760px){.roofGrid{grid-template-columns:1fr 1fr}.roofGrid label:first-child{grid-column:1 / -1}}

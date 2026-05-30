@@ -27,6 +27,7 @@
   <button data-tab="build">Build</button>
   <button data-tab="present">Present</button>
   <button data-tab="files">Files</button>
+  <button data-tab="saved">Saved</button>
   <button data-tab="output">Output</button>
 </nav>
 
@@ -79,7 +80,23 @@
 <section id="site" class="panel">
   <h2>Site notes</h2>
   <label>Roof notes<textarea id="roof" placeholder="Tile/slate, pitch, azimuth, roof planes..."></textarea></label>
-  <label>Dimensions / references<textarea id="dims" placeholder="Width, slope length, reference measurements..."></textarea></label>
+  <h2>Roof dimensions</h2>
+  <p class="hint">Capture each roof plane separately. Use metres. These feed the design brief and panel fit check.</p>
+  <div class="roofGrid">
+    <label>Plane 1 name<input id="roof1Name" placeholder="Main rear roof"></label>
+    <label>Width m<input id="roof1Width" type="number" inputmode="decimal" step="0.1"></label>
+    <label>Slope length m<input id="roof1Slope" type="number" inputmode="decimal" step="0.1"></label>
+    <label>Pitch °<input id="roof1Pitch" type="number" inputmode="decimal"></label>
+    <label>Azimuth °<input id="roof1Azimuth" type="number" inputmode="decimal"></label>
+  </div>
+  <div class="roofGrid">
+    <label>Plane 2 name<input id="roof2Name" placeholder="Garage / east roof"></label>
+    <label>Width m<input id="roof2Width" type="number" inputmode="decimal" step="0.1"></label>
+    <label>Slope length m<input id="roof2Slope" type="number" inputmode="decimal" step="0.1"></label>
+    <label>Pitch °<input id="roof2Pitch" type="number" inputmode="decimal"></label>
+    <label>Azimuth °<input id="roof2Azimuth" type="number" inputmode="decimal"></label>
+  </div>
+  <label>Reference measurement / roof dimension notes<textarea id="dims" placeholder="Laser measure notes, tile count, Google Earth check, sketch notes..."></textarea></label>
   <label>Obstructions / shading<textarea id="shade" placeholder="Chimney, trees, dormers, skylights, neighbour shading..."></textarea></label>
   <label>Battery location<textarea id="batteryLoc"></textarea></label>
   <label>Inverter/controller location<textarea id="invLoc"></textarea></label>
@@ -214,6 +231,20 @@
   </div>
 </section>
 
+
+<section id="saved" class="panel">
+  <h2>Saved surveys</h2>
+  <p class="hint">Save the current survey locally on this phone, then reopen it later if the customer changes something.</p>
+  <label>Survey name<input id="saveName" placeholder="Customer name or job reference"></label>
+  <label>Save action<select id="saveMode">
+    <option value="update">Update current saved survey</option>
+    <option value="new">Save as new survey</option>
+  </select></label>
+  <button id="saveSurvey" class="primary">Save survey</button>
+  <div id="saveStatus" class="guide">This survey is currently only a draft.</div>
+  <div id="savedList" class="savedList"></div>
+</section>
+
 <section id="output" class="panel">
   <h2>Output</h2>
   <label>Next action<input id="nextAction" placeholder="Send formal quote"></label>
@@ -222,6 +253,7 @@
   <label>Internal gut feel<textarea id="gut"></textarea></label>
   <button id="copy" class="primary">Copy ChatGPT prompt</button>
   <button id="txt">Download notes TXT</button>
+  <button id="brief" class="secondary">Download internal brief</button>
   <details>
     <summary>Advanced exports</summary>
     <button id="json">Download data file</button>
