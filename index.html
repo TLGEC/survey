@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#111827" />
+  <title>TLGEC Survey Sync</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <div>
+      <h1>TLGEC Survey Sync</h1>
+      <p>Offline survey notes for James Cooling</p>
+    </div>
+    <button id="resetBtn" class="secondary">Reset</button>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>1. Customer</h2>
+      <label>Customer name <input id="customerName" /></label>
+      <label>Address <textarea id="address"></textarea></label>
+      <div class="grid">
+        <label>Phone <input id="phone" /></label>
+        <label>Email <input id="email" /></label>
+      </div>
+      <label>Survey date <input id="surveyDate" type="date" /></label>
+    </section>
+
+    <section class="card">
+      <h2>2. What they want</h2>
+      <label>Main objective <textarea id="wants" placeholder="Lower bills, battery backup, EV charging, future heat pump..."></textarea></label>
+      <label>Why now? <textarea id="why"></textarea></label>
+      <label>Decision makers <input id="decisionMakers" /></label>
+      <label>Competitors mentioned <input id="competitors" /></label>
+      <label>Budget / price sensitivity <textarea id="budget"></textarea></label>
+      <label>Timing <textarea id="timing"></textarea></label>
+    </section>
+
+    <section class="card">
+      <h2>3. Proposed solution</h2>
+      <label>System type
+        <select id="systemType">
+          <option>Solar + battery</option>
+          <option>Solar only</option>
+          <option>Battery only</option>
+          <option>Powerwall 3</option>
+          <option>Sigenergy</option>
+          <option>EV charger</option>
+          <option>Other</option>
+        </select>
+      </label>
+      <label>Likely recommendation <textarea id="recommendation"></textarea></label>
+      <label>What was agreed before leaving? <textarea id="agreed"></textarea></label>
+    </section>
+
+    <section class="card">
+      <h2>4. Site notes</h2>
+      <label>Roof notes <textarea id="roofNotes"></textarea></label>
+      <label>Dimensions / references <textarea id="dimensions"></textarea></label>
+      <label>Obstructions / shading <textarea id="obstructions"></textarea></label>
+      <label>Battery location <textarea id="batteryLocation"></textarea></label>
+      <label>Inverter / controller location <textarea id="inverterLocation"></textarea></label>
+      <label>Meter / consumer unit / incoming supply <textarea id="meterNotes"></textarea></label>
+      <label>Cable route <textarea id="cableRoute"></textarea></label>
+      <label>Access / scaffolding <textarea id="access"></textarea></label>
+      <label>Tariff / usage / bill notes <textarea id="usage"></textarea></label>
+    </section>
+
+    <section class="card">
+      <h2>5. Survey checklist</h2>
+      <div class="checks">
+        <label><input type="checkbox" id="checkRoofPhotos" /> Roof photos</label>
+        <label><input type="checkbox" id="checkMeter" /> Meter photo</label>
+        <label><input type="checkbox" id="checkCU" /> Consumer unit photo</label>
+        <label><input type="checkbox" id="checkBattery" /> Battery location photo</label>
+        <label><input type="checkbox" id="checkCable" /> Cable route photo</label>
+        <label><input type="checkbox" id="checkDims" /> Dimensions captured</label>
+        <label><input type="checkbox" id="checkTariff" /> Tariff / bill captured</label>
+        <label><input type="checkbox" id="checkDecision" /> Decision maker confirmed</label>
+        <label><input type="checkbox" id="checkNext" /> Next step agreed</label>
+        <label><input type="checkbox" id="checkTranscript" /> Video/SRT transcript captured</label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>6. Close and next action</h2>
+      <label>Objections / concerns <textarea id="objections"></textarea></label>
+      <label>Next action <input id="nextAction" placeholder="Send proposal, revise quote, call Tuesday..." /></label>
+      <label>Follow-up date <input id="followUpDate" type="date" /></label>
+      <label>Confidence
+        <select id="confidence">
+          <option>High</option>
+          <option selected>Medium</option>
+          <option>Low</option>
+          <option>Needs review</option>
+        </select>
+      </label>
+      <label>Internal notes / gut feel <textarea id="internalNotes"></textarea></label>
+    </section>
+
+    <section class="card">
+      <h2>7. Export for ChatGPT</h2>
+      <p class="small">Typed notes save on this phone. When back online, copy the prompt or export the notes file and upload it to ChatGPT with photos/SRT files.</p>
+      <button id="copyPromptBtn">Copy ChatGPT prompt</button>
+      <button id="downloadTxtBtn" class="secondary">Download notes TXT</button>
+      <button id="downloadJsonBtn" class="secondary">Download JSON</button>
+      <textarea id="promptPreview" readonly></textarea>
+    </section>
+  </main>
+
+  <footer>
+    <span id="saveStatus">Saved locally</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
