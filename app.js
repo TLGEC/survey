@@ -1,4 +1,4 @@
-const KEY='tlgec_survey_v25_draft'; const SURVEYS_KEY='tlgec_survey_v25_saved';
+const KEY='tlgec_survey_v26_draft'; const SURVEYS_KEY='tlgec_survey_v26_saved';
 let selectedFiles=[]; let currentSavedId=null; let signatureData=''; let signaturePadDirty=false;
 const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','solarSelfUsePct','panelModel','panelCount','systemOverride','framingSelection','tigoPrice','batteryBrand','sigBatteryModel','sigModuleQty','sigBatteryOnlyController','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut'];
 const checks=['heatPump','highEvening','backupNeeded','askBill','askDecisionMaker','askCompetitors','askTiming','askBackup','askBudget','solar','battery','ev','tigo','bird','spds','pw3','gateway','dcExp','sigGateway'];
@@ -610,8 +610,7 @@ function importMondayCSV(file){
       headers.forEach((h,i)=>obj[h]=chosen[i]||'');
     }
     applyCRMObject(obj,file.name);
-    finishImportFlow();
-  };
+    saveImportedSurveyAndOpenCustomer();};
   reader.readAsText(file);
 }
 
@@ -692,6 +691,7 @@ function finishImportFlow(){
   switchTab('customer');
 }
 
+
 function importPastedCRM(){
   const text=$('crmPaste')?.value||'';
   if(!text.trim()){alert('Paste the monday CSV text first.');return;}
@@ -707,8 +707,9 @@ function importPastedCRM(){
     headers.forEach((h,i)=>obj[h]=chosen[i]||'');
   }
   applyCRMObject(obj,'pasted monday text');
-  finishImportFlow();
+  saveImportedSurveyAndOpenCustomer();
 }
+
 
 
 async function updateApp(){
@@ -820,6 +821,31 @@ function cleanCommercialLine(){
   return `<div class="proposalPrice">${money(q.total)}</div><div class="proposalSub">Proposal position</div>`;
 }
 
+
+
+function saveImportedSurveyAndOpenCustomer(){
+  const name=($('customerName')?.value||'Untitled survey').trim() || 'Untitled survey';
+  if($('saveName')) $('saveName').value=name;
+  if($('saveMode')) $('saveMode').value='new';
+
+  const draft=getData();
+  let arr=getSavedSurveys();
+
+  if(currentSavedId){
+    arr=arr.map(s=>s.id===currentSavedId?{...draft,id:currentSavedId,name,createdAt:s.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()}:s);
+  } else {
+    currentSavedId='svy_'+Date.now();
+    arr.push({...draft,id:currentSavedId,name,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
+  }
+
+  setSavedSurveys(arr);
+  localStorage.setItem(KEY,JSON.stringify({...getData(),currentSavedId}));
+  renderSavedList();
+  if(typeof renderHomeSavedList==='function') renderHomeSavedList();
+  updateSaveStatus();
+  if($('importStatus')) $('importStatus').innerText=`Imported and saved as ${name}. Customer page opened.`;
+  switchTab('customer');
+}
 
 function switchTab(tabId){
   const btn=[...document.querySelectorAll('nav button')].find(b=>b.dataset.tab===tabId);
