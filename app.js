@@ -619,28 +619,7 @@ function findVal(obj,names){
   }
   return '';
 }
-function importMondayCSV(file){
-  if(!file)return;
-  const reader=new FileReader();
-  reader.onload=()=>{
-    const rows=parseCSV(reader.result);
-    if(rows.length<2){$('importStatus').innerText='No rows found in the CSV.';return}
-    let obj={};
-    const h0=(rows[0][0]||'').trim().toLowerCase(), h1=(rows[0][1]||'').trim().toLowerCase();
-    if(h0==='field' && h1==='value'){
-      rows.slice(1).forEach(r=>{if(r[0]) obj[r[0].trim()]=r.slice(1).join(',').trim();});
-    } else {
-      const headers=rows[0].map(h=>h.trim());
-      const dataRows=rows.slice(1).filter(r=>r.some(x=>(x||'').trim()));
-      let chosen=dataRows[0];
-      const current=($('customerName').value||'').toLowerCase();
-      if(current){ const match=dataRows.find(r=>r.join(' ').toLowerCase().includes(current)); if(match) chosen=match; }
-      headers.forEach((h,i)=>obj[h]=chosen[i]||'');
-    }
-    applyCRMObject(obj,file.name);
-    saveImportedSurveyAndOpenCustomer();};
-  reader.readAsText(file);
-}
+
 
 
 function clearCurrentSurvey(){
@@ -720,23 +699,7 @@ function finishImportFlow(){
 }
 
 
-function importPastedCRM(){
-  const text=$('crmPaste')?.value||'';
-  if(!text.trim()){alert('Paste the monday CSV text first.');return;}
-  const rows=parseCSV(text.trim());
-  if(!rows.length){$('importStatus').innerText='Could not read the pasted CSV text.';return;}
-  let obj={};
-  const h0=(rows[0][0]||'').trim().toLowerCase(), h1=(rows[0][1]||'').trim().toLowerCase();
-  if(h0==='field' && h1==='value'){
-    rows.slice(1).forEach(r=>{if(r[0]) obj[r[0].trim()]=r.slice(1).join(',').trim();});
-  } else {
-    const headers=rows[0].map(h=>h.trim());
-    const chosen=rows.slice(1).find(r=>r.some(x=>(x||'').trim()))||[];
-    headers.forEach((h,i)=>obj[h]=chosen[i]||'');
-  }
-  applyCRMObject(obj,'pasted monday text');
-  saveImportedSurveyAndOpenCustomer();
-}
+
 
 
 
@@ -862,29 +825,7 @@ function cleanCommercialLine(){
 
 
 
-function saveImportedSurveyAndOpenCustomer(){
-  const name=($('customerName')?.value||'Untitled survey').trim() || 'Untitled survey';
-  if($('saveName')) $('saveName').value=name;
-  if($('saveMode')) $('saveMode').value='new';
 
-  const draft=getData();
-  let arr=getSavedSurveys();
-
-  if(currentSavedId){
-    arr=arr.map(s=>s.id===currentSavedId?{...draft,id:currentSavedId,name,createdAt:s.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()}:s);
-  } else {
-    currentSavedId='svy_'+Date.now();
-    arr.push({...draft,id:currentSavedId,name,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
-  }
-
-  setSavedSurveys(arr);
-  localStorage.setItem(KEY,JSON.stringify({...getData(),currentSavedId}));
-  renderSavedList();
-  if(typeof renderHomeSavedList==='function') renderHomeSavedList();
-  updateSaveStatus();
-  if($('importStatus')) $('importStatus').innerText=`Imported and saved as ${name}. Customer page opened.`;
-  switchTab('customer');
-}
 
 function switchTab(tabId){
   const btn=[...document.querySelectorAll('nav button')].find(b=>b.dataset.tab===tabId);
@@ -939,7 +880,119 @@ function importSurveyBackup(file){
   reader.readAsText(file);
 }
 
-document.addEventListener('DOMContentLoaded',()=>{migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v28';load();initSignaturePad();
+
+function openTab(tabId){
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));
+  const btn=[...document.querySelectorAll('nav button')].find(b=>b.dataset.tab===tabId);
+  const panel=$(tabId);
+  if(btn) btn.classList.add('on');
+  if(panel) panel.classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function startNewSurveyNow(){
+  const hasData=($('customerName')?.value||$('address')?.value||$('phone')?.value||$('email')?.value||'').trim();
+  if(hasData){
+    const ok=confirm('Start a blank new survey? Save the current survey first if you need to keep it.');
+    if(!ok) return;
+  }
+  localStorage.removeItem(KEY);
+  currentSavedId=null;
+  location.href=location.pathname + '?newSurvey=' + Date.now();
+}
+function saveImportedSurveyAndOpenCustomer(){
+  const customer=($('customerName')?.value||'Untitled survey').trim() || 'Untitled survey';
+  if($('saveName')) $('saveName').value=customer;
+  const draft=getData();
+  let arr=getSavedSurveys();
+  const now=new Date().toISOString();
+
+  // If this draft already has a saved ID, update it. Otherwise create a new saved survey.
+  let id=currentSavedId || ('svy_' + Date.now());
+  const existing=arr.find(s=>s.id===id);
+  const record={...draft,id,name:customer,customerName:customer,createdAt:existing?.createdAt||now,updatedAt:now,currentSavedId:id};
+
+  if(existing) arr=arr.map(s=>s.id===id?record:s);
+  else arr.push(record);
+
+  currentSavedId=id;
+  setSavedSurveys(arr);
+  localStorage.setItem(KEY,JSON.stringify(record));
+  render();
+  renderSavedList();
+  if(typeof renderHomeSavedList==='function') renderHomeSavedList();
+  updateSaveStatus();
+  if($('importStatus')) $('importStatus').innerText='Imported and saved as ' + customer + '. Customer page opened.';
+  openTab('customer');
+}
+function readPastedCRMAndSave(){
+  const text=($('crmPaste')?.value||'').trim();
+  if(!text){alert('Paste the monday CSV text first.');return;}
+  const rows=parseCSV(text);
+  if(!rows.length){alert('Could not read the pasted CSV text.');return;}
+  let obj={};
+  const h0=(rows[0][0]||'').trim().toLowerCase();
+  const h1=(rows[0][1]||'').trim().toLowerCase();
+  if(h0==='field' && h1==='value'){
+    rows.slice(1).forEach(r=>{if(r[0]) obj[r[0].trim()]=r.slice(1).join(',').trim();});
+  } else {
+    const headers=rows[0].map(h=>h.trim());
+    const current=($('customerName')?.value||'').toLowerCase();
+    const dataRows=rows.slice(1).filter(r=>r.some(x=>(x||'').trim()));
+    let chosen=dataRows[0]||[];
+    if(current){
+      const match=dataRows.find(r=>r.join(' ').toLowerCase().includes(current));
+      if(match) chosen=match;
+    }
+    headers.forEach((h,i)=>obj[h]=chosen[i]||'');
+  }
+  applyCRMObject(obj,'pasted monday text');
+  saveImportedSurveyAndOpenCustomer();
+}
+function readCSVFileAndSave(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const rows=parseCSV(reader.result);
+    if(rows.length<2){alert('No rows found in the CSV.');return;}
+    let obj={};
+    const h0=(rows[0][0]||'').trim().toLowerCase();
+    const h1=(rows[0][1]||'').trim().toLowerCase();
+    if(h0==='field' && h1==='value'){
+      rows.slice(1).forEach(r=>{if(r[0]) obj[r[0].trim()]=r.slice(1).join(',').trim();});
+    } else {
+      const headers=rows[0].map(h=>h.trim());
+      const dataRows=rows.slice(1).filter(r=>r.some(x=>(x||'').trim()));
+      const current=($('customerName')?.value||'').toLowerCase();
+      let chosen=dataRows[0]||[];
+      if(current){
+        const match=dataRows.find(r=>r.join(' ').toLowerCase().includes(current));
+        if(match) chosen=match;
+      }
+      headers.forEach((h,i)=>obj[h]=chosen[i]||'');
+    }
+    applyCRMObject(obj,file.name);
+    saveImportedSurveyAndOpenCustomer();
+  };
+  reader.readAsText(file);
+}
+function bindCriticalButtons(){
+  document.addEventListener('click', e=>{
+    const id=e.target && e.target.id;
+    if(id==='homeNewSurvey' || id==='newSurveyTop' || id==='newSurveySaved'){
+      e.preventDefault();
+      startNewSurveyNow();
+    }
+    if(id==='importPastedCRM'){
+      e.preventDefault();
+      readPastedCRMAndSave();
+    }
+  });
+  const monday=$('mondayImport');
+  if(monday) monday.onchange=e=>readCSVFileAndSave((e.target.files||[])[0]);
+}
+
+document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v29';load();initSignaturePad();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
@@ -956,14 +1009,9 @@ $('txt').onclick=()=>download(safeName()+'_survey_notes.txt',prompt());
 if($('brief'))$('brief').onclick=()=>download(safeName()+'_internal_brief.txt',internalBrief());
 $('json').onclick=()=>download(safeName()+'_survey_data.json',JSON.stringify(getData(),null,2),'application/json');
 if($('saveSurvey'))$('saveSurvey').onclick=saveCurrentSurvey;
-if($('mondayImport'))$('mondayImport').onchange=e=>importMondayCSV((e.target.files||[])[0]);
-if($('importPastedCRM'))$('importPastedCRM').onclick=importPastedCRM;
-if($('newSurveyTop'))$('newSurveyTop').onclick=clearCurrentSurvey;
-if($('newSurveySaved'))$('newSurveySaved').onclick=clearCurrentSurvey;
 if($('updateApp'))$('updateApp').onclick=updateApp;
 if($('homeUpdateApp'))$('homeUpdateApp').onclick=updateApp;
 if($('homeHardRefresh'))$('homeHardRefresh').onclick=hardRefreshApp;
-if($('homeNewSurvey'))$('homeNewSurvey').onclick=clearCurrentSurvey;
 if($('homeContinueDraft'))$('homeContinueDraft').onclick=()=>switchTab('customer');
 if($('homeSaveCurrent'))$('homeSaveCurrent').onclick=()=>{saveCurrentSurvey();renderHomeSavedList();};
 if($('exportBackup'))$('exportBackup').onclick=exportSurveyBackup;
