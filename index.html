@@ -21,7 +21,8 @@
 </header>
 
 <nav>
-  <button data-tab="customer" class="on">Customer</button>
+  <button data-tab="home" class="on">Home</button>
+  <button data-tab="customer">Customer</button>
   <button data-tab="usage">Usage</button>
   <button data-tab="site">Site</button>
   <button data-tab="build">Build</button>
@@ -30,7 +31,32 @@
 </nav>
 
 <main>
-<section id="customer" class="panel on">
+
+<section id="home" class="panel on landingPage">
+  <div class="landingHero">
+    <div>
+      <div class="heroKicker">Survey Sync</div>
+      <h2>Saved surveys</h2>
+      <p>Start a new visit, continue the current draft, or reopen a saved customer survey.</p>
+    </div>
+    <button id="homeNewSurvey" class="primary" type="button">New survey</button>
+  </div>
+
+  <div class="quickActions">
+    <button id="homeContinueDraft" class="secondary" type="button">Continue current draft</button>
+    <button id="homeSaveCurrent" class="secondary" type="button">Save current survey</button>
+    <button id="homeUpdateApp" class="secondary" type="button">Update app</button>
+  </div>
+
+  <div class="syncNotice">
+    <b>Local saved surveys</b>
+    <p>These saved surveys are stored on this device. Cross-device sync needs a login/database backend. The app is now structured for that next step.</p>
+  </div>
+
+  <div id="homeSavedList" class="savedList"></div>
+</section>
+
+<section id="customer" class="panel">
   <div class="sectionTop">
     <h2>Customer</h2>
     <button id="newSurveyTop" class="secondary smallBtn" type="button">New survey</button>

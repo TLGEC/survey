@@ -125,3 +125,18 @@ pre{background:#062819;color:#effff4;border-radius:20px;padding:18px;white-space
 @media(max-width:760px){.productHero{grid-template-columns:1fr}.productHero img{height:210px}.proposalPrice{font-size:36px}}
 
 .presenterSummary{overflow:hidden}
+
+.landingPage{background:#ffffff}
+.landingHero{background:linear-gradient(135deg,#062819 0%,#0b7a46 65%,#79ac20 100%);color:white;border-radius:26px;padding:22px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:16px;box-shadow:0 10px 30px rgba(6,40,25,.18)}
+.landingHero h2{color:white;font-size:32px;margin:4px 0 6px}
+.landingHero p{margin:0;color:#eaf5ee}
+.quickActions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
+.syncNotice{background:#f7faf4;border:1px solid #d9e2da;border-radius:20px;padding:14px;margin:12px 0}
+.syncNotice p{margin:4px 0 0;color:#5f6e66}
+.emptyState{background:#f7faf4;border:1px dashed #b8c9bc;border-radius:20px;padding:18px;text-align:center;color:#3d5248}
+.homeCard{border-left:5px solid #79ac20}
+.savedMeta a{color:#0b7a46;text-decoration:none;font-weight:900}
+@media(max-width:760px){
+  .landingHero{align-items:flex-start;flex-direction:column}
+  .quickActions{grid-template-columns:1fr}
+}
