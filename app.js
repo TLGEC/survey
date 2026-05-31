@@ -1,4 +1,4 @@
-const KEY='tlgec_survey_v24_draft'; const SURVEYS_KEY='tlgec_survey_v24_saved';
+const KEY='tlgec_survey_v25_draft'; const SURVEYS_KEY='tlgec_survey_v25_saved';
 let selectedFiles=[]; let currentSavedId=null; let signatureData=''; let signaturePadDirty=false;
 const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','solarSelfUsePct','panelModel','panelCount','systemOverride','framingSelection','tigoPrice','batteryBrand','sigBatteryModel','sigModuleQty','sigBatteryOnlyController','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut'];
 const checks=['heatPump','highEvening','backupNeeded','askBill','askDecisionMaker','askCompetitors','askTiming','askBackup','askBudget','solar','battery','ev','tigo','bird','spds','pw3','gateway','dcExp','sigGateway'];
@@ -610,6 +610,7 @@ function importMondayCSV(file){
       headers.forEach((h,i)=>obj[h]=chosen[i]||'');
     }
     applyCRMObject(obj,file.name);
+    finishImportFlow();
   };
   reader.readAsText(file);
 }
@@ -680,9 +681,17 @@ function applyCRMObject(obj, sourceLabel){
   if($('askCompetitors')) $('askCompetitors').checked=true;
   if($('askTiming')) $('askTiming').checked=true;
   if($('saveName')) $('saveName').value=$('customerName').value || name || 'Untitled survey';
-  $('importStatus').innerText=`Imported pre-survey data from ${sourceLabel}. Check the fields before the survey.`;
+  $('importStatus').innerText=`Imported pre-survey data from ${sourceLabel}. Saved survey and opened Customer page.`;
   save();
 }
+
+function finishImportFlow(){
+  if($('saveName')) $('saveName').value = $('customerName').value || 'Untitled survey';
+  saveCurrentSurvey();
+  renderHomeSavedList();
+  switchTab('customer');
+}
+
 function importPastedCRM(){
   const text=$('crmPaste')?.value||'';
   if(!text.trim()){alert('Paste the monday CSV text first.');return;}
@@ -698,6 +707,7 @@ function importPastedCRM(){
     headers.forEach((h,i)=>obj[h]=chosen[i]||'');
   }
   applyCRMObject(obj,'pasted monday text');
+  finishImportFlow();
 }
 
 

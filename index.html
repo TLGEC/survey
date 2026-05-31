@@ -82,98 +82,92 @@
 
 
 
-<section id="internal" class="panel">
+
+<section id="internal" class="panel internalPanel">
   <h2>Internal</h2>
-  <p class="hint">Pre-survey data, files and outputs live here. This is not customer-facing.</p>
+  <p class="hint">Admin tools, pre-survey import, saved surveys, files and outputs. This page is internal only.</p>
 
-  <h2>Pre-survey</h2>
-  <p class="hint">Paste the monday-generated CSV text below, or import a CSV file.</p>
+  <details class="internalGroup" open>
+    <summary>Pre-survey import</summary>
+    <p class="hint">Paste monday-generated CSV text here. Once imported, the app will save the survey and move you to Customer.</p>
+    <label>Paste monday CSV text<textarea id="crmPaste" placeholder="Paste Field,Value CSV or a normal monday CSV export here"></textarea></label>
+    <button id="importPastedCRM" class="primary" type="button">Import, save and go to Customer</button>
+    <label>Import monday CSV / Excel-exported CSV<input id="mondayImport" type="file" accept=".csv,text/csv"></label>
+    <div id="importStatus" class="guide">No CRM data imported yet.</div>
 
-  <label>Paste monday CSV text<textarea id="crmPaste" placeholder="Paste Field,Value CSV or a normal monday CSV export here"></textarea></label>
-  <button id="importPastedCRM" class="primary" type="button">Import pasted pre-survey data</button>
-
-  <label>Import monday CSV / Excel-exported CSV<input id="mondayImport" type="file" accept=".csv,text/csv"></label>
-  <div id="importStatus" class="guide">No CRM data imported yet.</div>
-
-  <div class="two">
-    <label>monday item ID<input id="mondayId" placeholder="Item ID or pulse ID"></label>
-    <label>Lead source<input id="leadSource" placeholder="Website, referral, existing customer..."></label>
-  </div>
-
-  <div class="two">
-    <label>Appointment time<input id="appointmentTime" type="datetime-local"></label>
-    <label>Current CRM status<input id="crmStatus" placeholder="Survey booked, quote sent..."></label>
-  </div>
-
-  <label>Existing CRM notes<textarea id="crmNotes" placeholder="Paste monday notes or call history here"></textarea></label>
-  <label>Customer interest before visit<textarea id="preInterest" placeholder="Solar, battery, EV, Powerwall, replacement system..."></textarea></label>
-  <label>Known usage / bill notes<textarea id="preUsage" placeholder="Annual kWh, tariff, EV miles, heat pump, bill received..."></textarea></label>
-  <label>Promises already made<textarea id="promisesMade" placeholder="Prices mentioned, equipment promised, discounts, call-back times..."></textarea></label>
-
-  <h2>Questions to ask on site</h2>
-  <div class="checks">
-    <label><input id="askBill" type="checkbox"> Confirm usage / tariff</label>
-    <label><input id="askDecisionMaker" type="checkbox"> Confirm decision maker</label>
-    <label><input id="askCompetitors" type="checkbox"> Ask about competitors</label>
-    <label><input id="askTiming" type="checkbox"> Confirm timing</label>
-    <label><input id="askBackup" type="checkbox"> Clarify backup</label>
-    <label><input id="askBudget" type="checkbox"> Test budget comfort</label>
-  </div>
-
-  <h2>Files</h2>
-  <p class="hint">Add key photos, SRT transcripts, bill PDFs or proposal PDFs if useful. Keep large videos in SharePoint.</p>
-  <input id="filesInput" type="file" accept="image/*,.srt,.txt,.pdf,.csv,.xlsx" multiple>
-  <div id="fileNames"></div>
-  <div id="preview" class="photos"></div>
-
-  <h2>Survey checklist</h2>
-  <div class="checks">
-    <label><input type="checkbox"> Roof photos</label>
-    <label><input type="checkbox"> Meter photo</label>
-    <label><input type="checkbox"> Consumer unit</label>
-    <label><input type="checkbox"> Battery location</label>
-    <label><input type="checkbox"> Cable route</label>
-    <label><input type="checkbox"> Dimensions</label>
-    <label><input type="checkbox"> Usage/tariff</label>
-    <label><input type="checkbox"> Decision maker</label>
-    <label><input type="checkbox"> Next step agreed</label>
-  </div>
-
-  <h2>Saved surveys</h2>
-  <p class="hint">Save, reopen or duplicate surveys from this device.</p>
-  <h2>Saved surveys</h2>
-  <p class="hint">Save the current survey locally on this phone, then reopen it later if the customer changes something.</p>
-  <label>Survey name<input id="saveName" placeholder="Customer name or job reference"></label>
-  <label>Save action<select id="saveMode">
-    <option value="update">Update current saved survey</option>
-    <option value="new">Save as new survey</option>
-  </select></label>
-  <button id="saveSurvey" class="primary">Save survey</button>
-  <button id="saveAndNew" class="secondary">Save and start new survey</button>
-  <button id="newSurveySaved" class="secondary">Start blank new survey</button>
-  <div id="saveStatus" class="guide">This survey is currently only a draft.</div>
-  <div id="savedList" class="savedList"></div>
-
-  <h2>App tools</h2>
-  <button id="updateApp" class="secondary" type="button">Update app / clear cache</button>
-  <p class="hint">Use this after uploading new GitHub files. It clears the app cache and reloads the latest version.</p>
-
-  <h2>Output</h2>
-  <label>Next action<input id="nextAction" placeholder="Send formal quote"></label>
-  <label>Follow-up date<input id="followUp" type="date"></label>
-  <label>Confidence<select id="confidence"><option>High</option><option selected>Medium</option><option>Low</option><option>Needs review</option></select></label>
-  <label>Internal gut feel<textarea id="gut"></textarea></label>
-  <button id="copy" class="primary">Copy ChatGPT prompt</button>
-  <button id="txt">Download notes TXT</button>
-  <button id="brief" class="secondary">Download internal brief</button>
-  <details>
-    <summary>Advanced exports</summary>
-    <button id="json">Download data file</button>
-    <p class="hint">Data file is mainly for future automation or monday import. Normal use is Copy ChatGPT prompt.</p>
+    <div class="two">
+      <label>monday item ID<input id="mondayId" placeholder="Item ID or pulse ID"></label>
+      <label>Lead source<input id="leadSource" placeholder="Website, referral, existing customer..."></label>
+    </div>
+    <div class="two">
+      <label>Appointment time<input id="appointmentTime" type="datetime-local"></label>
+      <label>Current CRM status<input id="crmStatus" placeholder="Survey booked, quote sent..."></label>
+    </div>
+    <label>Existing CRM notes<textarea id="crmNotes" placeholder="monday notes or call history"></textarea></label>
+    <label>Customer interest before visit<textarea id="preInterest" placeholder="Solar, battery, EV, Powerwall, replacement system..."></textarea></label>
+    <label>Known usage / bill notes<textarea id="preUsage" placeholder="Annual kWh, tariff, EV miles, heat pump, bill received..."></textarea></label>
+    <label>Promises already made<textarea id="promisesMade" placeholder="Prices mentioned, equipment promised, discounts, call-back times..."></textarea></label>
+    <div class="checks compactChecks">
+      <label><input id="askBill" type="checkbox"> Usage / tariff</label>
+      <label><input id="askDecisionMaker" type="checkbox"> Decision maker</label>
+      <label><input id="askCompetitors" type="checkbox"> Competitors</label>
+      <label><input id="askTiming" type="checkbox"> Timing</label>
+      <label><input id="askBackup" type="checkbox"> Backup</label>
+      <label><input id="askBudget" type="checkbox"> Budget</label>
+    </div>
   </details>
-  <h2>Preview</h2>
-  <pre id="out"></pre>
+
+  <details class="internalGroup">
+    <summary>Saved surveys</summary>
+    <label>Survey name<input id="saveName" placeholder="Customer name or job reference"></label>
+    <label>Save action<select id="saveMode"><option value="update">Update current saved survey</option><option value="new">Save as new survey</option></select></label>
+    <button id="saveSurvey" class="primary">Save survey</button>
+    <button id="saveAndNew" class="secondary">Save and start new survey</button>
+    <button id="newSurveySaved" class="secondary">Start blank new survey</button>
+    <div id="saveStatus" class="guide">This survey is currently only a draft.</div>
+    <div id="savedList" class="savedList"></div>
+  </details>
+
+  <details class="internalGroup">
+    <summary>Files and checklist</summary>
+    <p class="hint">Add key photos, SRT transcripts, bill PDFs or proposal PDFs if useful. Keep large videos in SharePoint.</p>
+    <input id="filesInput" type="file" accept="image/*,.srt,.txt,.pdf,.csv,.xlsx" multiple>
+    <div id="fileNames"></div>
+    <div id="preview" class="photos"></div>
+    <div class="checks compactChecks">
+      <label><input type="checkbox"> Roof photos</label>
+      <label><input type="checkbox"> Meter photo</label>
+      <label><input type="checkbox"> Consumer unit</label>
+      <label><input type="checkbox"> Battery location</label>
+      <label><input type="checkbox"> Cable route</label>
+      <label><input type="checkbox"> Dimensions</label>
+      <label><input type="checkbox"> Usage/tariff</label>
+      <label><input type="checkbox"> Decision maker</label>
+      <label><input type="checkbox"> Next step agreed</label>
+    </div>
+  </details>
+
+  <details class="internalGroup">
+    <summary>Output and app tools</summary>
+    <button id="updateApp" class="secondary" type="button">Update app / clear cache</button>
+    <p class="hint">Use this after uploading new GitHub files. It clears the app cache and reloads the latest version.</p>
+    <label>Next action<input id="nextAction" placeholder="Send formal quote"></label>
+    <label>Follow-up date<input id="followUp" type="date"></label>
+    <label>Confidence<select id="confidence"><option>High</option><option selected>Medium</option><option>Low</option><option>Needs review</option></select></label>
+    <label>Internal gut feel<textarea id="gut"></textarea></label>
+    <button id="copy" class="primary">Copy ChatGPT prompt</button>
+    <button id="txt">Download notes TXT</button>
+    <button id="brief" class="secondary">Download internal brief</button>
+    <details>
+      <summary>Advanced exports</summary>
+      <button id="json">Download data file</button>
+      <p class="hint">Data file is mainly for future automation or monday import. Normal use is Copy ChatGPT prompt.</p>
+    </details>
+    <h2>Preview</h2>
+    <pre id="out"></pre>
+  </details>
 </section>
+
 
 <section id="usage" class="panel">
   <h2>Usage and tariff</h2>
