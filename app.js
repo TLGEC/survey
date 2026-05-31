@@ -1,8 +1,36 @@
-const KEY='tlgec_survey_v26_draft'; const SURVEYS_KEY='tlgec_survey_v26_saved';
+const KEY='tlgec_current_draft_v1'; const SURVEYS_KEY='tlgec_surveys_saved_v1';
 let selectedFiles=[]; let currentSavedId=null; let signatureData=''; let signaturePadDirty=false;
 const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','solarSelfUsePct','panelModel','panelCount','systemOverride','framingSelection','tigoPrice','batteryBrand','sigBatteryModel','sigModuleQty','sigBatteryOnlyController','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut'];
 const checks=['heatPump','highEvening','backupNeeded','askBill','askDecisionMaker','askCompetitors','askTiming','askBackup','askBudget','solar','battery','ev','tigo','bird','spds','pw3','gateway','dcExp','sigGateway'];
 function $(x){return document.getElementById(x)}
+
+function migrateOldStorageKeys(){
+  const oldSurveyKeys=[
+    'tlgec_survey_v10_saved','tlgec_survey_v13_saved','tlgec_survey_v14_saved','tlgec_survey_v15_saved',
+    'tlgec_survey_v16_saved','tlgec_survey_v17_saved','tlgec_survey_v18_saved','tlgec_survey_v19_saved',
+    'tlgec_survey_v20_saved','tlgec_survey_v21_saved','tlgec_survey_v22_saved','tlgec_survey_v23_saved',
+    'tlgec_survey_v24_saved','tlgec_survey_v25_saved','tlgec_survey_v26_saved'
+  ];
+  const oldDraftKeys=[
+    'tlgec_survey_v10_draft','tlgec_survey_v13_draft','tlgec_survey_v14_draft','tlgec_survey_v15_draft',
+    'tlgec_survey_v16_draft','tlgec_survey_v17_draft','tlgec_survey_v18_draft','tlgec_survey_v19_draft',
+    'tlgec_survey_v20_draft','tlgec_survey_v21_draft','tlgec_survey_v22_draft','tlgec_survey_v23_draft',
+    'tlgec_survey_v24_draft','tlgec_survey_v25_draft','tlgec_survey_v26_draft'
+  ];
+  if(!localStorage.getItem(SURVEYS_KEY)){
+    for(const k of oldSurveyKeys){
+      const v=localStorage.getItem(k);
+      if(v){localStorage.setItem(SURVEYS_KEY,v);break;}
+    }
+  }
+  if(!localStorage.getItem(KEY)){
+    for(const k of oldDraftKeys){
+      const v=localStorage.getItem(k);
+      if(v){localStorage.setItem(KEY,v);break;}
+    }
+  }
+}
+
 function today(){return new Date().toISOString().slice(0,10)}
 
 const PRICE_GUIDE = {
@@ -864,7 +892,43 @@ function renderHomeSavedList(){
   document.querySelectorAll('[data-home-delete]').forEach(b=>b.onclick=()=>deleteSavedSurvey(b.dataset.homeDelete));
 }
 
-document.addEventListener('DOMContentLoaded',()=>{load();initSignaturePad();
+
+function exportSurveyBackup(){
+  const backup={
+    exportedAt:new Date().toISOString(),
+    app:'TLGEC Survey Sync',
+    version:'storage-v1',
+    savedSurveys:getSavedSurveys(),
+    currentDraft:JSON.parse(localStorage.getItem(KEY)||'null')
+  };
+  download('tlgec_survey_backup_'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(backup,null,2),'application/json');
+}
+function importSurveyBackup(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const data=JSON.parse(reader.result);
+      const incoming=Array.isArray(data.savedSurveys)?data.savedSurveys:[];
+      if(!incoming.length){alert('No saved surveys found in this backup.');return;}
+      const existing=getSavedSurveys();
+      const byId=new Map(existing.map(s=>[s.id,s]));
+      incoming.forEach(s=>{
+        if(!s.id)s.id='svy_'+Date.now()+'_'+Math.random().toString(16).slice(2);
+        byId.set(s.id,s);
+      });
+      setSavedSurveys([...byId.values()]);
+      renderSavedList();
+      if(typeof renderHomeSavedList==='function')renderHomeSavedList();
+      alert('Survey backup imported.');
+    }catch(e){
+      alert('Could not import this backup file.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+document.addEventListener('DOMContentLoaded',()=>{migrateOldStorageKeys();load();initSignaturePad();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
@@ -890,6 +954,8 @@ if($('homeUpdateApp'))$('homeUpdateApp').onclick=updateApp;
 if($('homeNewSurvey'))$('homeNewSurvey').onclick=clearCurrentSurvey;
 if($('homeContinueDraft'))$('homeContinueDraft').onclick=()=>switchTab('customer');
 if($('homeSaveCurrent'))$('homeSaveCurrent').onclick=()=>{saveCurrentSurvey();renderHomeSavedList();};
+if($('exportBackup'))$('exportBackup').onclick=exportSurveyBackup;
+if($('importBackup'))$('importBackup').onchange=e=>importSurveyBackup((e.target.files||[])[0]);
 if($('addRoofPlane'))$('addRoofPlane').onclick=()=>{addRoofPlane({});save()};
 if($('saveAndNew'))$('saveAndNew').onclick=saveAndStartNew;
 $('reset').onclick=()=>{if(confirm('Clear local survey?')){localStorage.removeItem(KEY);location.reload()}};

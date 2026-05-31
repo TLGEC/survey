@@ -153,3 +153,6 @@ pre{background:#062819;color:#effff4;border-radius:20px;padding:18px;white-space
 .internalGroup>pre,.internalGroup>#preview,.internalGroup>#savedList{margin-bottom:16px}
 .compactChecks label{font-size:15px;min-width:auto;padding:10px 12px}
 @media(max-width:760px){.internalGroup>summary{font-size:18px;padding:14px 16px}}
+
+.importBackupLabel{display:block;background:#eef3ef!important;color:#0b1f18!important;border:1px solid #d9e2da!important;border-radius:22px;padding:14px 18px;font-weight:850;text-align:center;margin:8px 0}
+.importBackupLabel input{display:none}
