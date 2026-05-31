@@ -1,7 +1,7 @@
-const KEY='tlgec_survey_v10_draft'; const SURVEYS_KEY='tlgec_survey_v10_saved';
+const KEY='tlgec_survey_v15_draft'; const SURVEYS_KEY='tlgec_survey_v15_saved';
 let selectedFiles=[]; let currentSavedId=null; let signatureData=''; let signaturePadDirty=false;
-const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','miles','panelModel','panelCount','solarPrice','solarPerPanel','tigoPrice','birdPrice','batteryBrand','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','scaffoldPrice','zappiPrice','manualDiscount','commercialNote','acceptedName','acceptanceNote','nextAction','followUp','confidence','gut'];
-const checks=['heatPump','highEvening','backupNeeded','solar','battery','ev','tigo','bird','pw3','gateway','dcExp','sigGateway'];
+const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','miles','panelModel','panelCount','solarPrice','solarPerPanel','tigoPrice','birdPrice','batteryBrand','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','scaffoldPrice','zappiPrice','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut'];
+const checks=['heatPump','highEvening','backupNeeded','askBill','askDecisionMaker','askCompetitors','askTiming','askBackup','askBudget','solar','battery','ev','tigo','bird','pw3','gateway','dcExp','sigGateway'];
 function $(x){return document.getElementById(x)}
 function today(){return new Date().toISOString().slice(0,10)}
 function money(n){return '£'+Number(n||0).toLocaleString('en-GB',{maximumFractionDigits:0})}
@@ -43,6 +43,17 @@ Address: ${d.address}
 Phone: ${d.phone}
 Email: ${d.email}
 Survey date: ${d.surveyDate}
+
+Pre-survey:
+monday item ID: ${d.mondayId}
+Lead source: ${d.leadSource}
+Appointment time: ${d.appointmentTime}
+CRM status: ${d.crmStatus}
+CRM notes: ${d.crmNotes}
+Pre-survey interest: ${d.preInterest}
+Known usage / bill notes: ${d.preUsage}
+Promises already made: ${d.promisesMade}
+Questions to ask: ${[d.askBill?'Confirm usage/tariff':null,d.askDecisionMaker?'Confirm decision maker':null,d.askCompetitors?'Ask about competitors':null,d.askTiming?'Confirm timing':null,d.askBackup?'Clarify backup':null,d.askBudget?'Test budget comfort':null].filter(Boolean).join(', ')}
 
 System scope: ${d.scope}
 What they want: ${d.wants}
@@ -113,6 +124,16 @@ Address: ${d.address}
 Phone: ${d.phone}
 Email: ${d.email}
 
+Pre-survey:
+monday item ID: ${d.mondayId}
+Lead source: ${d.leadSource}
+Appointment time: ${d.appointmentTime}
+CRM status: ${d.crmStatus}
+CRM notes: ${d.crmNotes}
+Pre-survey interest: ${d.preInterest}
+Known usage / bill notes: ${d.preUsage}
+Promises already made: ${d.promisesMade}
+
 Scope: ${d.scope}
 What they want: ${d.wants}
 Decision makers: ${d.decisionMakers}
@@ -182,15 +203,83 @@ function initSignaturePad(){
 }
 function hasSignature(){return !!signatureData && signatureData.length>1000}
 
+
+function parseCSV(text){
+  const rows=[]; let row=[], cell='', quote=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i], n=text[i+1];
+    if(c==='"' && quote && n==='"'){cell+='"';i++;continue}
+    if(c==='"'){quote=!quote;continue}
+    if(c===',' && !quote){row.push(cell);cell='';continue}
+    if((c==='\n'||c==='\r') && !quote){
+      if(cell!==''||row.length){row.push(cell);rows.push(row);row=[];cell=''}
+      if(c==='\r'&&n==='\n')i++;
+      continue
+    }
+    cell+=c;
+  }
+  if(cell!==''||row.length){row.push(cell);rows.push(row)}
+  return rows;
+}
+function norm(s){return (s||'').toLowerCase().replace(/[^a-z0-9]/g,'')}
+function findVal(obj,names){
+  const keys=Object.keys(obj);
+  for(const name of names){
+    const wanted=norm(name);
+    const k=keys.find(x=>norm(x)===wanted || norm(x).includes(wanted) || wanted.includes(norm(x)));
+    if(k && obj[k]) return obj[k];
+  }
+  return '';
+}
+function importMondayCSV(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const rows=parseCSV(reader.result);
+    if(rows.length<2){$('importStatus').innerText='No rows found in the CSV.';return}
+    const headers=rows[0].map(h=>h.trim());
+    const dataRows=rows.slice(1).filter(r=>r.some(x=>(x||'').trim()));
+    let chosen=dataRows[0];
+    const current=($('customerName').value||'').toLowerCase();
+    if(current){
+      const match=dataRows.find(r=>r.join(' ').toLowerCase().includes(current));
+      if(match) chosen=match;
+    }
+    const obj={}; headers.forEach((h,i)=>obj[h]=chosen[i]||'');
+    const name=findVal(obj,['Customer name','Name','Client','Contact','Item Name','Item name']);
+    const phone=findVal(obj,['Phone','Telephone','Mobile','Contact number']);
+    const email=findVal(obj,['Email','Email address']);
+    const address=findVal(obj,['Address','Site address','Property address','Location']);
+    const status=findVal(obj,['Status','Lead status','CRM status','Stage']);
+    const lead=findVal(obj,['Lead source','Source','Channel']);
+    const notes=findVal(obj,['Notes','CRM notes','James notes','Updates','Last update']);
+    const itemId=findVal(obj,['Item ID','Pulse ID','ID','monday item ID']);
+    const value=findVal(obj,['Value','Quote value','Deal value','Price']);
+    if(name && !$('customerName').value)$('customerName').value=name;
+    if(phone && !$('phone').value)$('phone').value=phone;
+    if(email && !$('email').value)$('email').value=email;
+    if(address && !$('address').value)$('address').value=address;
+    if(status)$('crmStatus').value=status;
+    if(lead)$('leadSource').value=lead;
+    if(notes)$('crmNotes').value=notes;
+    if(itemId)$('mondayId').value=itemId;
+    if(value)$('budget').value=($('budget').value?$('budget').value+'\n':'')+'CRM value: '+value;
+    $('importStatus').innerText=`Imported 1 row from ${file.name}. Check the fields before the survey.`;
+    if($('saveName') && !$('saveName').value) $('saveName').value=$('customerName').value||name||'Imported survey';
+    save();
+  };
+  reader.readAsText(file);
+}
+
 document.addEventListener('DOMContentLoaded',()=>{load();initSignaturePad();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
 $('batteryGuideBtn').onclick=recommendBattery;$('calcQuote').onclick=calculate;$('refreshPresent').onclick=refreshPresent;
 $('stampAccept').onclick=()=>{
-  if(!$('acceptedName').value.trim()){alert('Please enter the customer name for acceptance.');return;}
   if(!hasSignature()){alert('Please ask the customer to sign with their finger before accepting.');return;}
-  let stamp=`${$('acceptedName').value||'Customer'} signed and agreed to proceed to formal quote on ${new Date().toLocaleString()}. ${$('acceptanceNote').value||''}`;
+  let name = $('customerName').value || 'Customer';
+  let stamp=`${name} signed and agreed to proceed to formal quote on ${new Date().toLocaleString()}. ${$('acceptanceNote').value||''}`;
   $('acceptanceStamp').innerText=stamp;
   save();
 };
@@ -199,6 +288,7 @@ $('txt').onclick=()=>download(safeName()+'_survey_notes.txt',prompt());
 if($('brief'))$('brief').onclick=()=>download(safeName()+'_internal_brief.txt',internalBrief());
 $('json').onclick=()=>download(safeName()+'_survey_data.json',JSON.stringify(getData(),null,2),'application/json');
 if($('saveSurvey'))$('saveSurvey').onclick=saveCurrentSurvey;
+if($('mondayImport'))$('mondayImport').onchange=e=>importMondayCSV((e.target.files||[])[0]);
 $('reset').onclick=()=>{if(confirm('Clear local survey?')){localStorage.removeItem(KEY);location.reload()}};
 $('filesInput').onchange=e=>{selectedFiles=Array.from(e.target.files||[]);$('preview').innerHTML='';selectedFiles.forEach(f=>{if(f.type.startsWith('image/')){let img=document.createElement('img');img.src=URL.createObjectURL(f);$('preview').appendChild(img)}});$('fileNames').textContent=selectedFiles.map(f=>f.name).join('\n');save()};
 if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.js');

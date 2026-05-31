@@ -22,6 +22,7 @@
 
 <nav>
   <button data-tab="customer" class="on">Customer</button>
+  <button data-tab="presurvey">Pre-survey</button>
   <button data-tab="usage">Usage</button>
   <button data-tab="site">Site</button>
   <button data-tab="build">Build</button>
@@ -50,6 +51,40 @@
   </div>
   <label>What they want<textarea id="wants"></textarea></label>
   <label>Why now<textarea id="whyNow"></textarea></label>
+</section>
+
+
+<section id="presurvey" class="panel">
+  <h2>Pre-survey</h2>
+  <p class="hint">Use this before the visit. Paste or import monday/CRM details, then carry the key points into the survey.</p>
+
+  <label>Import monday CSV / Excel-exported CSV<input id="mondayImport" type="file" accept=".csv,text/csv"></label>
+  <div id="importStatus" class="guide">No CRM file imported yet.</div>
+
+  <div class="two">
+    <label>monday item ID<input id="mondayId" placeholder="Item ID or pulse ID"></label>
+    <label>Lead source<input id="leadSource" placeholder="Website, referral, existing customer..."></label>
+  </div>
+
+  <div class="two">
+    <label>Appointment time<input id="appointmentTime" type="datetime-local"></label>
+    <label>Current CRM status<input id="crmStatus" placeholder="Survey booked, quote sent..."></label>
+  </div>
+
+  <label>Existing CRM notes<textarea id="crmNotes" placeholder="Paste monday notes or call history here"></textarea></label>
+  <label>Customer interest before visit<textarea id="preInterest" placeholder="Solar, battery, EV, Powerwall, replacement system..."></textarea></label>
+  <label>Known usage / bill notes<textarea id="preUsage" placeholder="Annual kWh, tariff, EV miles, heat pump, bill received..."></textarea></label>
+  <label>Promises already made<textarea id="promisesMade" placeholder="Prices mentioned, equipment promised, discounts, call-back times..."></textarea></label>
+
+  <h2>Questions to ask on site</h2>
+  <div class="checks">
+    <label><input id="askBill" type="checkbox"> Confirm usage / tariff</label>
+    <label><input id="askDecisionMaker" type="checkbox"> Confirm decision maker</label>
+    <label><input id="askCompetitors" type="checkbox"> Ask about competitors</label>
+    <label><input id="askTiming" type="checkbox"> Confirm timing</label>
+    <label><input id="askBackup" type="checkbox"> Clarify backup</label>
+    <label><input id="askBudget" type="checkbox"> Test budget comfort</label>
+  </div>
 </section>
 
 <section id="usage" class="panel">
@@ -123,7 +158,7 @@
   <div class="two">
     <label>Panel count<input id="panelCount" type="number" inputmode="numeric" value="0"></label>
     <label>Solar package price £<input id="solarPrice" type="number" inputmode="decimal" value="0"></label>
-    <label>Solar £/panel<input id="solarPerPanel" type="number" inputmode="decimal" value="470"></label>
+    <label>Solar £/panel<input id="solarPerPanel" type="number" inputmode="decimal" value="304"></label>
     <p class="hint">Auto solar price = panel count x £/panel. Manual solar package price overrides this.</p>
   </div>
   <div class="scope">
@@ -206,9 +241,15 @@
 
   <h2>Proceed to formal quote</h2>
   <p class="hint">Use this to confirm the customer wants the formal quote prepared around this route.</p>
-  <label>Customer typed name<input id="acceptedName"></label>
   <label>Acceptance note<textarea id="acceptanceNote" placeholder="Customer agreed to proceed to formal quote based on this recommendation."></textarea></label>
-  <button id="stampAccept" class="primary">Stamp acceptance</button>
+  <div class="signatureBox">
+    <div class="signatureTitle">Customer signature</div>
+    <canvas id="signatureCanvas" width="700" height="260"></canvas>
+    <div class="signatureActions">
+      <button id="clearSignature" class="secondary" type="button">Clear signature</button>
+    </div>
+  </div>
+  <button id="stampAccept" class="primary">Accept and proceed to formal quote</button>
   <div id="acceptanceStamp" class="guide">No acceptance stamped yet.</div>
 </section>
 
