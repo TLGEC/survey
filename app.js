@@ -1,6 +1,6 @@
-const KEY='tlgec_survey_v19_draft'; const SURVEYS_KEY='tlgec_survey_v19_saved';
+const KEY='tlgec_survey_v20_draft'; const SURVEYS_KEY='tlgec_survey_v20_saved';
 let selectedFiles=[]; let currentSavedId=null; let signatureData=''; let signaturePadDirty=false;
-const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','miles','panelModel','panelCount','systemOverride','framingSelection','tigoPrice','batteryBrand','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut'];
+const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','panelModel','panelCount','systemOverride','framingSelection','tigoPrice','batteryBrand','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut'];
 const checks=['heatPump','highEvening','backupNeeded','askBill','askDecisionMaker','askCompetitors','askTiming','askBackup','askBudget','solar','battery','ev','tigo','bird','spds','pw3','gateway','dcExp','sigGateway'];
 function $(x){return document.getElementById(x)}
 function today(){return new Date().toISOString().slice(0,10)}
@@ -176,9 +176,70 @@ function quote(){
   return {panels,optimisers,framing,inverter,battery,batteryText:batteryObj.text,scaff:access,ev,discount,total,totalCost,calculatedTotal,override,spds,bird,keyMaterials,labour,logistics,access,other,sundries,optional,kWp:kWp(),panel:panelParts(),sigNominal:sigStorage().toFixed(2),sigUsable:sigUsable().toFixed(2),framingSelection:frame};
 }
 function calculate(){let q=quote();let overrideText=q.override>0?'Approved override used. Included items are listed without cost breakdown.':'Calculated from Residential Pricing V8.6 logic.';$('quoteTotal').innerHTML=`<b>Total: ${money(q.total)}</b><br>${overrideText}<br>${$('panelCount').value||0} x ${q.panel.name}, ${q.kWp} kWp<br>Battery: ${q.batteryText}<br>Bird protection: ${$('bird').checked&&$('solar').checked?'Included':'Not included'} | SPDs: ${$('spds').checked?'Included':'Not included'} | Scaffold: ${$('scaffoldLifts').value||0} lift(s) included`;refreshPresent();save()}
+
+function batteryUsableKwhForPayback(){
+  if($('batteryBrand') && $('batteryBrand').value==='Tesla'){
+    let total=0;
+    if($('pw3') && $('pw3').checked) total+=13.5;
+    if($('dcExp') && $('dcExp').checked) total+=13.5;
+    return total;
+  }
+  if($('batteryBrand') && $('batteryBrand').value==='Sigenergy'){
+    return sigUsable ? Number(sigUsable()||0) : 0;
+  }
+  return 0;
+}
+function estimatePayback(){
+  const q=quote();
+  const annualLoad=Number($('annualKwh')?.value||0);
+  const peak=Number($('peak')?.value||29);
+  const night=Number($('paybackNightRate')?.value||$('offpeak')?.value||5);
+  const exportRate=Number($('exportRate')?.value||15);
+  const gen=Number(q.kWp||0)*900;
+  const batt=batteryUsableKwhForPayback();
+  const hasBattery=batt>0;
+  const directRatio=hasBattery?0.35:0.28;
+  const directSolar=Math.min(annualLoad, gen*directRatio);
+  const remainingLoad=Math.max(annualLoad-directSolar,0);
+  const surplusSolar=Math.max(gen-directSolar,0);
+  const annualBatteryThroughput=batt*365*0.9;
+  const solarStored=Math.min(surplusSolar, annualBatteryThroughput*0.65, remainingLoad);
+  const remainingAfterSolar=Math.max(remainingLoad-solarStored,0);
+  const nightArbitrage=hasBattery?Math.min(remainingAfterSolar, annualBatteryThroughput-solarStored):0;
+  const exportKwh=Math.max(gen-directSolar-solarStored,0);
+  const solarSaving=(directSolar+solarStored)*(peak/100);
+  const arbitrageSaving=nightArbitrage*Math.max((peak-night)/100,0);
+  const exportIncome=exportKwh*(exportRate/100);
+  const totalSaving=solarSaving+arbitrageSaving+exportIncome;
+  const total=Number(q.total||0);
+  const payback=totalSaving>0?total/totalSaving:0;
+  return {
+    annualLoad, peak, night, exportRate, gen, batt, directSolar, solarStored, nightArbitrage, exportKwh,
+    solarSaving, arbitrageSaving, exportIncome, totalSaving, payback
+  };
+}
+function renderPaybackSummary(){
+  if(!$('paybackSummary')) return;
+  const p=estimatePayback();
+  if(!p.annualLoad || !p.totalSaving){
+    $('paybackSummary').innerHTML='<div class="paybackCard"><b>Estimated payback</b><span>Add annual usage and system price to show the estimate.</span></div>';
+    return;
+  }
+  const years=p.payback.toFixed(1);
+  $('paybackSummary').innerHTML=`<div class="paybackCard">
+    <div><span class="smallCaps">Estimated payback</span><b>${years} years</b><span>Approx. first-year benefit ${money(p.totalSaving)}</span></div>
+    <div class="paybackBreakdown">
+      <span>Solar offset ${money(p.solarSaving)}</span>
+      <span>Night-rate battery use ${money(p.arbitrageSaving)}</span>
+      <span>Export ${money(p.exportIncome)}</span>
+    </div>
+    <p>Modelled using ${Math.round(p.annualLoad).toLocaleString()} kWh annual usage, ${p.peak}p peak rate, ${p.night}p night rate and ${p.exportRate}p export.</p>
+  </div>`;
+}
+
 function refreshPresent(){let q=quote(), p=panelParts();let batteryLine='No battery selected';if($('batteryBrand').value==='Tesla')batteryLine=`Tesla: ${$('pw3').checked?'Powerwall 3 ':''}${$('gateway').checked?'+ Gateway ':''}${$('dcExp').checked?'+ DC Expansion ':''}`.trim();if($('batteryBrand').value==='Sigenergy')batteryLine=`Sigenergy: ${$('sig6Qty').value||0} x BAT 6.0, ${$('sig10Qty').value||0} x BAT 10.0, ${q.sigNominal} kWh nominal (${q.sigUsable} kWh usable), controller ${$('sigController').value.split('|')[1]}`;if($('presentVisuals'))$('presentVisuals').innerHTML=customerVisuals();let priceNote=q.override>0?'Approved proposal position. Included specification shown below.':'Proposal position calculated from the current specification.';$('presentSummary').innerHTML=`<div class="summaryGrid"><div class="summaryItem"><b>Recommended for</b><span>${$('customerName').value||'Customer'}</span></div><div class="summaryItem"><b>Main aim</b><span>${$('wants').value||'Lower bills and better energy control'}</span></div><div class="summaryItem"><b>Solar PV</b><span>${$('solar').checked?`${$('panelCount').value||0} x ${p.name}, ${q.kWp} kWp`:'Not selected'}</span></div><div class="summaryItem"><b>Battery</b><span>${batteryLine}</span></div><div class="summaryItem"><b>Included</b><span>${$('spds').checked?'SPDs, ':''}${$('solar').checked&&$('bird').checked?'bird protection, ':''}${$('scaffoldLifts').value||0} scaffold lift(s)</span></div><div class="summaryItem"><b>Roof areas</b><span>${getRoofPlanes().length} elevation(s) captured</span></div></div><div class="priceLine">Proposal position: ${money(q.total)}
 Calculated before override: ${money(q.calculatedTotal)}
-System override used: ${q.override>0?'Yes':'No'}</div><p>${priceNote}</p><p>Next step: proceed to formal quote for review and e-signing.</p>`;render()}
+System override used: ${q.override>0?'Yes':'No'}</div><p>${priceNote}</p><p>Next step: proceed to formal quote for review and e-signing.</p>`;renderPaybackSummary();render()}
 function prompt(){let d=getData(), q=d.quote;return `Survey pack for ${d.customerName||'[Customer]'}.
 
 Use the notes, photos and any SRT transcripts to create:
@@ -249,6 +310,8 @@ Scaffold: ${d.scaffoldLifts} lift(s) included
 EV: ${d.ev?'Zappi':'No'}
 Commercial note: ${d.commercialNote}
 Calculated proposal position: ${money(q.total)}
+Estimated payback: ${estimatePayback().payback?estimatePayback().payback.toFixed(1)+' years':'Not calculated'}
+Estimated first-year benefit: ${money(estimatePayback().totalSaving||0)}
 
 Customer proposal summary:
 ${d.present}

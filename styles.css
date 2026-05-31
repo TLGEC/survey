@@ -89,3 +89,17 @@ pre{background:#062819;color:#effff4;border-radius:20px;padding:18px;white-space
 .removeRoof{background:#eef3ef!important;color:#0b1f18!important;border:1px solid #d9e2da!important;border-radius:14px!important;padding:8px 12px!important;font-size:14px}
 .roofGrid.dynamic{grid-template-columns:1.2fr repeat(5,1fr)}
 @media(max-width:760px){.roofGrid.dynamic{grid-template-columns:1fr 1fr}.roofGrid.dynamic label:first-child{grid-column:1/-1}}
+
+.batteryChoiceCard{border-radius:24px;border:1px solid #d9e2da;background:linear-gradient(180deg,#fff,#f7faf4);box-shadow:0 6px 18px rgba(6,40,25,.06);padding:16px;margin:12px 0}
+.batteryBrandHead{display:flex;align-items:center;gap:12px;margin-bottom:10px;font-weight:850;color:#3d5248}
+.batteryLogo{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:999px;font-weight:950;letter-spacing:.08em;min-width:92px}
+.teslaLogo{background:#111;color:white;text-transform:uppercase}
+.sigLogo{background:#00a878;color:white;letter-spacing:.02em}
+.paybackSummary{margin:14px 0}
+.paybackCard{background:linear-gradient(135deg,#ffffff 0%,#eef8ee 100%);border:1px solid #cfe2cf;border-radius:24px;padding:18px;box-shadow:0 8px 22px rgba(6,40,25,.08)}
+.paybackCard b{display:block;font-size:32px;color:#062819;line-height:1.05}
+.paybackCard p{margin:10px 0 0;color:#5f6e66;font-size:13px}
+.smallCaps{text-transform:uppercase;letter-spacing:.12em;font-size:12px;color:#0b7a46;font-weight:950}
+.paybackBreakdown{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.paybackBreakdown span{background:white;border:1px solid #d9e2da;border-radius:999px;padding:8px 10px;font-weight:800;font-size:13px;color:#3d5248}
+@media(max-width:760px){.batteryBrandHead{align-items:flex-start;flex-direction:column}.paybackCard b{font-size:28px}}

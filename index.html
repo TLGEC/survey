@@ -163,7 +163,9 @@
   </div>
   <div class="two">
     <label>Annual spend £<input id="annualSpend" type="number" inputmode="decimal"></label>
+    <label>Night rate p/kWh for payback<input id="paybackNightRate" type="number" inputmode="decimal" value="5"></label>
     <label>EV miles/year<input id="miles" type="number" inputmode="numeric"></label>
+    <label>Export rate p/kWh<input id="exportRate" type="number" inputmode="decimal" value="15"></label>
   </div>
   <div class="scope">
     <label><input id="heatPump" type="checkbox"> Heat pump</label>
@@ -239,8 +241,8 @@
     <option value="Sigenergy">Sigenergy</option>
   </select></label>
 
-  <div id="teslaBox" class="quoteBox">
-    <h3>Tesla</h3>
+  <div id="teslaBox" class="quoteBox batteryChoiceCard teslaChoice">
+    <div class="batteryBrandHead"><span class="batteryLogo teslaLogo">TESLA</span><span>Powerwall battery option</span></div>
     <div class="scope">
       <label><input id="pw3" type="checkbox"> Powerwall 3</label>
       <label><input id="gateway" type="checkbox"> Backup Gateway</label>
@@ -254,8 +256,8 @@
     </div>
   </div>
 
-  <div id="sigBox" class="quoteBox">
-    <h3>Sigenergy</h3>
+  <div id="sigBox" class="quoteBox batteryChoiceCard sigChoice">
+    <div class="batteryBrandHead"><span class="batteryLogo sigLogo">Sigenergy</span><span>Modular SigenStor battery option</span></div>
     <label>Controller<select id="sigController">
       <option value="0|None">None</option>
       <option value="780|3.6 kW">3.6 kW</option>
@@ -302,6 +304,7 @@
     <p>Built around the survey information reviewed together today.</p>
   </div>
   <div id="presentVisuals" class="presentVisuals"></div>
+  <div id="paybackSummary" class="paybackSummary"></div>
   <div id="presentSummary" class="summaryBox presenterSummary"></div>
   <button id="refreshPresent" class="primary">Refresh summary</button>
 
