@@ -83,3 +83,9 @@ pre{background:#062819;color:#effff4;border-radius:20px;padding:18px;white-space
   .brandText{min-width:0}
   .brandWrap{min-width:0}
 }
+
+.roofPlaneRow{background:#f7faf4;border:1px solid #d9e2da;border-radius:20px;padding:12px;margin:12px 0}
+.roofRowHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.removeRoof{background:#eef3ef!important;color:#0b1f18!important;border:1px solid #d9e2da!important;border-radius:14px!important;padding:8px 12px!important;font-size:14px}
+.roofGrid.dynamic{grid-template-columns:1.2fr repeat(5,1fr)}
+@media(max-width:760px){.roofGrid.dynamic{grid-template-columns:1fr 1fr}.roofGrid.dynamic label:first-child{grid-column:1/-1}}
