@@ -742,17 +742,28 @@ function importPastedCRM(){
 
 async function updateApp(){
   try{
+    if($('appVersionBadge')) $('appVersionBadge').innerText='Updating app...';
     if('serviceWorker' in navigator){
+      const reg=await navigator.serviceWorker.getRegistration();
+      if(reg){try{await reg.update();}catch(e){}}
       const regs=await navigator.serviceWorker.getRegistrations();
-      for(const r of regs){await r.unregister();}
+      for(const r of regs){try{await r.unregister();}catch(e){}}
     }
     if('caches' in window){
       const keys=await caches.keys();
       await Promise.all(keys.map(k=>caches.delete(k)));
     }
-    alert('App cache cleared. The latest version will now reload.');
-    location.reload(true);
-  }catch(e){alert('Could not fully clear cache. Try closing and reopening the browser.');}
+    sessionStorage.setItem('tlgec_last_update_attempt', new Date().toISOString());
+    const baseUrl=location.origin + location.pathname.replace(/\/?index\.html$/,'/');
+    location.replace(baseUrl + '?appUpdate=' + Date.now());
+  }catch(e){
+    alert('Update attempted. If the old version remains, close the app fully and reopen it from the browser link.');
+    location.reload();
+  }
+}
+function hardRefreshApp(){
+  const url=location.origin + location.pathname.replace(/\/?index\.html$/,'/') + '?hardRefresh=' + Date.now();
+  location.replace(url);
 }
 function panelVisualHTML(count){
   const n=Math.max(0,Math.min(parseInt(count||0),24));
@@ -928,7 +939,7 @@ function importSurveyBackup(file){
   reader.readAsText(file);
 }
 
-document.addEventListener('DOMContentLoaded',()=>{migrateOldStorageKeys();load();initSignaturePad();
+document.addEventListener('DOMContentLoaded',()=>{migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v28';load();initSignaturePad();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
@@ -951,6 +962,7 @@ if($('newSurveyTop'))$('newSurveyTop').onclick=clearCurrentSurvey;
 if($('newSurveySaved'))$('newSurveySaved').onclick=clearCurrentSurvey;
 if($('updateApp'))$('updateApp').onclick=updateApp;
 if($('homeUpdateApp'))$('homeUpdateApp').onclick=updateApp;
+if($('homeHardRefresh'))$('homeHardRefresh').onclick=hardRefreshApp;
 if($('homeNewSurvey'))$('homeNewSurvey').onclick=clearCurrentSurvey;
 if($('homeContinueDraft'))$('homeContinueDraft').onclick=()=>switchTab('customer');
 if($('homeSaveCurrent'))$('homeSaveCurrent').onclick=()=>{saveCurrentSurvey();renderHomeSavedList();};

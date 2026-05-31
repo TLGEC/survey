@@ -156,3 +156,5 @@ pre{background:#062819;color:#effff4;border-radius:20px;padding:18px;white-space
 
 .importBackupLabel{display:block;background:#eef3ef!important;color:#0b1f18!important;border:1px solid #d9e2da!important;border-radius:22px;padding:14px 18px;font-weight:850;text-align:center;margin:8px 0}
 .importBackupLabel input{display:none}
+
+.versionBadge{font-size:13px;color:#5f6e66;font-weight:850;text-align:center;margin:8px 0 12px}
