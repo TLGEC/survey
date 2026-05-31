@@ -1,6 +1,6 @@
-const KEY='tlgec_survey_v22_draft'; const SURVEYS_KEY='tlgec_survey_v22_saved';
+const KEY='tlgec_survey_v23_draft'; const SURVEYS_KEY='tlgec_survey_v23_saved';
 let selectedFiles=[]; let currentSavedId=null; let signatureData=''; let signaturePadDirty=false;
-const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','panelModel','panelCount','systemOverride','framingSelection','tigoPrice','batteryBrand','sigBatteryModel','sigModuleQty','sigBatteryOnlyController','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut'];
+const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','solarSelfUsePct','panelModel','panelCount','systemOverride','framingSelection','tigoPrice','batteryBrand','sigBatteryModel','sigModuleQty','sigBatteryOnlyController','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut'];
 const checks=['heatPump','highEvening','backupNeeded','askBill','askDecisionMaker','askCompetitors','askTiming','askBackup','askBudget','solar','battery','ev','tigo','bird','spds','pw3','gateway','dcExp','sigGateway'];
 function $(x){return document.getElementById(x)}
 function today(){return new Date().toISOString().slice(0,10)}
@@ -234,52 +234,98 @@ function quote(){
 }
 function calculate(){let q=quote();let overrideText=q.override>0?'Approved override used. Included items are listed without cost breakdown.':'Calculated from Residential Pricing V8.6 logic.';$('quoteTotal').innerHTML=`<b>Total: ${money(q.total)}</b><br>${overrideText}<br>${$('panelCount').value||0} x ${q.panel.name}, ${q.kWp} kWp<br>Battery: ${q.batteryText}<br>${q.controllerText?('Controller: '+q.controllerText+'<br>'):''}Bird protection: ${$('bird').checked&&$('solar').checked?'Included':'Not included'} | SPDs: ${$('spds').checked?'Included':'Not included'} | Scaffold: ${$('scaffoldLifts').value||0} lift(s) included`;refreshPresent();save()}
 
+
+
+
+
+
+function getNumber(id, fallback=0){
+  const el=$(id);
+  if(!el) return fallback;
+  const raw=(el.value||'').toString().trim();
+  if(raw==='') return fallback;
+  const n=Number(raw);
+  return Number.isFinite(n)?n:fallback;
+}
+function getAnnualUsageForPayback(){
+  const annual=getNumber('annualKwh',0);
+  const daily=getNumber('dailyKwh',0);
+  if(annual>0) return annual;
+  if(daily>0) return daily*365;
+  return 0;
+}
+function getPeakRateForPayback(){
+  const peak=getNumber('peak',0);
+  if(peak>0) return peak;
+  const annualSpend=getNumber('annualSpend',0);
+  const usage=getAnnualUsageForPayback();
+  if(annualSpend>0 && usage>0) return (annualSpend/usage)*100;
+  return 29;
+}
+function getNightRateForPayback(){
+  const night=getNumber('paybackNightRate',0);
+  if(night>0) return night;
+  const offpeak=getNumber('offpeak',0);
+  if(offpeak>0) return offpeak;
+  return 5;
+}
 function batteryUsableKwhForPayback(){
-  if($('batteryBrand') && $('batteryBrand').value==='Tesla'){
+  const brand=$('batteryBrand')?.value||'None';
+  if(brand==='Tesla'){
     let total=0;
-    if($('pw3') && $('pw3').checked) total+=13.5;
-    if($('dcExp') && $('dcExp').checked) total+=13.5;
+    if($('pw3')?.checked) total+=13.5;
+    if($('dcExp')?.checked) total+=13.5;
     return total;
   }
-  if($('batteryBrand') && $('batteryBrand').value==='Sigenergy'){
-    return sigUsable ? Number(sigUsable()||0) : 0;
+  if(brand==='Sigenergy'){
+    const six=getNumber('sig6Qty',0);
+    const ten=getNumber('sig10Qty',0);
+    return six*5.84 + ten*8.76;
   }
   return 0;
 }
+function estimateAnnualGeneration(){
+  const q=quote();
+  const kwp=Number(q.kWp||0);
+  const manual=getNumber('annualGeneration',0);
+  if(manual>0) return manual;
+  return kwp*900;
+}
 function estimatePayback(){
   const q=quote();
-  const annualLoad=Number($('annualKwh')?.value||0);
-  const peak=Number($('peak')?.value||29);
-  const night=Number($('paybackNightRate')?.value||$('offpeak')?.value||5);
-  const exportRate=Number($('exportRate')?.value||15);
-  const gen=Number(q.kWp||0)*900;
+  const systemPrice=Number(q.total||0);
+  const annualLoad=getAnnualUsageForPayback();
+  const peak=getPeakRateForPayback();
+  const night=getNightRateForPayback();
+  const exportRate=getNumber('exportRate',15);
+  const gen=estimateAnnualGeneration();
   const batt=batteryUsableKwhForPayback();
-  const hasBattery=batt>0;
-  const directRatio=hasBattery?0.35:0.28;
-  const directSolar=Math.min(annualLoad, gen*directRatio);
-  const remainingLoad=Math.max(annualLoad-directSolar,0);
-  const surplusSolar=Math.max(gen-directSolar,0);
-  const annualBatteryThroughput=batt*365*0.9;
-  const solarStored=Math.min(surplusSolar, annualBatteryThroughput*0.65, remainingLoad);
-  const remainingAfterSolar=Math.max(remainingLoad-solarStored,0);
-  const nightArbitrage=hasBattery?Math.min(remainingAfterSolar, annualBatteryThroughput-solarStored):0;
-  const exportKwh=Math.max(gen-directSolar-solarStored,0);
-  const solarSaving=(directSolar+solarStored)*(peak/100);
-  const arbitrageSaving=nightArbitrage*Math.max((peak-night)/100,0);
+  const selfUsePct=Math.max(0,Math.min(getNumber('solarSelfUsePct', batt>0?75:45),95))/100;
+
+  if(!systemPrice || (!annualLoad && !gen)){
+    return {ok:false, systemPrice, annualLoad, peak, night, exportRate, gen, batt, totalSaving:0, payback:0, reason:'missing usage or price'};
+  }
+
+  const solarUsed=Math.min(gen*selfUsePct, annualLoad);
+  const exportKwh=Math.max(gen-solarUsed,0);
+
+  const remainingLoad=Math.max(annualLoad-solarUsed,0);
+  const batteryNightCapacity=batt>0 ? batt*365*0.9 : 0;
+  const nightShiftKwh=Math.min(remainingLoad, batteryNightCapacity);
+
+  const solarSaving=solarUsed*(peak/100);
+  const arbitrageSaving=nightShiftKwh*Math.max((peak-night)/100,0);
   const exportIncome=exportKwh*(exportRate/100);
   const totalSaving=solarSaving+arbitrageSaving+exportIncome;
-  const total=Number(q.total||0);
-  const payback=totalSaving>0?total/totalSaving:0;
-  return {
-    annualLoad, peak, night, exportRate, gen, batt, directSolar, solarStored, nightArbitrage, exportKwh,
-    solarSaving, arbitrageSaving, exportIncome, totalSaving, payback
-  };
+  const payback=totalSaving>0 ? systemPrice/totalSaving : 0;
+
+  return {ok:true, systemPrice, annualLoad, peak, night, exportRate, gen, batt, selfUsePct, solarUsed, exportKwh, nightShiftKwh, solarSaving, arbitrageSaving, exportIncome, totalSaving, payback};
 }
 function renderPaybackSummary(){
   if(!$('paybackSummary')) return;
   const p=estimatePayback();
-  if(!p.annualLoad || !p.totalSaving){
-    $('paybackSummary').innerHTML='<div class="paybackCard"><b>Estimated payback</b><span>Add annual usage and system price to show the estimate.</span></div>';
+  if(!p.ok || !p.totalSaving){
+    $('paybackSummary').innerHTML='<div class="paybackCard"><b>Estimated payback</b><span>Add annual usage and proposal price to show the estimate.</span></div>';
     return;
   }
   const years=p.payback.toFixed(1);
@@ -287,10 +333,10 @@ function renderPaybackSummary(){
     <div><span class="smallCaps">Estimated payback</span><b>${years} years</b><span>Approx. first-year benefit ${money(p.totalSaving)}</span></div>
     <div class="paybackBreakdown">
       <span>Solar offset ${money(p.solarSaving)}</span>
-      <span>Night-rate battery use ${money(p.arbitrageSaving)}</span>
+      <span>Cheap night-rate use ${money(p.arbitrageSaving)}</span>
       <span>Export ${money(p.exportIncome)}</span>
     </div>
-    <p>Modelled using ${Math.round(p.annualLoad).toLocaleString()} kWh annual usage, ${p.peak}p peak rate, ${p.night}p night rate and ${p.exportRate}p export.</p>
+    <p>Estimate uses ${Math.round(p.annualLoad).toLocaleString()} kWh/year usage, ${Math.round(p.gen).toLocaleString()} kWh/year solar generation, ${p.peak.toFixed(1)}p peak rate, ${p.night.toFixed(1)}p night rate, ${p.exportRate.toFixed(1)}p export and ${(p.selfUsePct*100).toFixed(0)}% solar self-use.</p>
   </div>`;
 }
 
@@ -385,7 +431,7 @@ Scaffold: ${d.scaffoldLifts} lift(s) included
 EV: ${d.ev?'Zappi':'No'}
 Commercial note: ${d.commercialNote}
 Calculated proposal position: ${money(q.total)}
-Estimated payback: ${estimatePayback().payback?estimatePayback().payback.toFixed(1)+' years':'Not calculated'}
+Estimated payback: ${estimatePayback().ok?estimatePayback().payback.toFixed(1)+' years':'Not calculated'}
 Estimated first-year benefit: ${money(estimatePayback().totalSaving||0)}
 
 Customer proposal summary:
