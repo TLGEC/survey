@@ -71,3 +71,15 @@ pre{background:#062819;color:#effff4;border-radius:20px;padding:18px;white-space
 .brandBadge{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:8px 12px;font-weight:950;letter-spacing:.04em;margin:3px 6px 6px 0;font-size:14px}.brandTesla{background:#111;color:white}.brandSig{background:#00a878;color:white}.brandAiko{background:#eaf5ee;color:#0b7a46;border:1px solid #b8d7bf}
 .presenterSummary{font-size:18px;line-height:1.5}.presenterSummary .priceLine{font-size:28px;font-weight:950;color:#062819;margin-top:14px}.summaryGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:12px 0}.summaryItem{background:#f7faf4;border:1px solid #d9e2da;border-radius:16px;padding:12px}.summaryItem b{display:block;color:#062819}
 #updateApp{border:2px solid #79ac20!important}@media(max-width:760px){.presentVisuals{grid-template-columns:1fr}.panelStack{grid-template-columns:repeat(4,1fr)}.presentHero h2{font-size:25px}.summaryGrid{grid-template-columns:1fr}}
+
+.headerContact{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:5px;color:#3d5248;font-weight:700;font-size:13px;line-height:1.25;max-width:820px}
+.headerContact a{color:#0b7a46;text-decoration:none;font-weight:900}
+.dotSep{color:#9aa99e}
+@media(max-width:760px){
+  .headerContact{font-size:12px;max-width:290px}
+  #appTitle{font-size:22px!important}
+}
+@media(min-width:900px){
+  .brandText{min-width:0}
+  .brandWrap{min-width:0}
+}
