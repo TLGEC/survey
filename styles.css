@@ -58,3 +58,16 @@ pre{background:#062819;color:#effff4;border-radius:20px;padding:18px;white-space
 .signatureActions .secondary{width:auto}
 
 #importStatus{margin-top:8px}
+
+.sectionTop{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.smallBtn{width:auto!important;margin:0!important;padding:10px 14px!important}
+#crmPaste{min-height:180px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14px}
+
+.presentHero{background:linear-gradient(135deg,#062819 0%,#0b7a46 65%,#79ac20 100%);color:white;border-radius:26px;padding:22px;margin-bottom:16px;box-shadow:0 10px 30px rgba(6,40,25,.18)}
+.presentHero h2{color:white;font-size:30px;margin:4px 0 6px}.presentHero p{margin:0;color:#eaf5ee}.heroKicker{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:#dcefc2;font-weight:850}
+.presentVisuals{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;margin:14px 0}.visualCard{background:white;border:1px solid #d9e2da;border-radius:22px;padding:16px;box-shadow:0 6px 18px rgba(6,40,25,.07)}
+.visualCard h3{margin:0 0 10px;font-size:18px}.panelStack{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:12px 0}.miniPanel{height:42px;border-radius:8px;background:linear-gradient(145deg,#101820,#263947);position:relative;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}
+.miniPanel:before{content:"";position:absolute;inset:7px;border-top:1px solid rgba(255,255,255,.18);border-bottom:1px solid rgba(255,255,255,.12)}.bigMetric{font-size:34px;font-weight:950;color:#062819;line-height:1}.metricLabel{font-size:13px;color:#5f6e66;font-weight:800;margin-top:3px}
+.brandBadge{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:8px 12px;font-weight:950;letter-spacing:.04em;margin:3px 6px 6px 0;font-size:14px}.brandTesla{background:#111;color:white}.brandSig{background:#00a878;color:white}.brandAiko{background:#eaf5ee;color:#0b7a46;border:1px solid #b8d7bf}
+.presenterSummary{font-size:18px;line-height:1.5}.presenterSummary .priceLine{font-size:28px;font-weight:950;color:#062819;margin-top:14px}.summaryGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:12px 0}.summaryItem{background:#f7faf4;border:1px solid #d9e2da;border-radius:16px;padding:12px}.summaryItem b{display:block;color:#062819}
+#updateApp{border:2px solid #79ac20!important}@media(max-width:760px){.presentVisuals{grid-template-columns:1fr}.panelStack{grid-template-columns:repeat(4,1fr)}.presentHero h2{font-size:25px}.summaryGrid{grid-template-columns:1fr}}

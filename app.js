@@ -1,6 +1,6 @@
-const KEY='tlgec_survey_v15_draft'; const SURVEYS_KEY='tlgec_survey_v15_saved';
+const KEY='tlgec_survey_v17_draft'; const SURVEYS_KEY='tlgec_survey_v17_saved';
 let selectedFiles=[]; let currentSavedId=null; let signatureData=''; let signaturePadDirty=false;
-const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','miles','panelModel','panelCount','solarPrice','solarPerPanel','tigoPrice','birdPrice','batteryBrand','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','scaffoldPrice','zappiPrice','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut'];
+const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','miles','panelModel','panelCount','solarPrice','solarPerPanel','tigoPrice','birdPrice','batteryBrand','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','scaffoldPrice','zappiPrice','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut'];
 const checks=['heatPump','highEvening','backupNeeded','askBill','askDecisionMaker','askCompetitors','askTiming','askBackup','askBudget','solar','battery','ev','tigo','bird','pw3','gateway','dcExp','sigGateway'];
 function $(x){return document.getElementById(x)}
 function today(){return new Date().toISOString().slice(0,10)}
@@ -18,16 +18,7 @@ function syncUsage(changed){let a=parseFloat($('annualKwh').value||0), d=parseFl
 function recommendBattery(){let k=parseFloat($('annualKwh').value||0), daily=parseFloat($('dailyKwh').value||0), hp=$('heatPump').checked, ev=$('ev').checked, backup=$('backupNeeded').checked;let txt='Enter annual or daily usage to guide battery sizing.';if(k||daily){if(!daily)daily=k/365;if(!k)k=daily*365;let rec='';if(daily<10)rec='Sigenergy 6.0 or Sigenergy 10.0.';else if(daily<18)rec='Sigenergy 10.0 as the clean default, or Powerwall 3 if Tesla/backup route is preferred.';else if(daily<28)rec='Powerwall 3 or 2 x Sigenergy 10.0.';else rec='Powerwall 3 + DC Expansion, or a larger Sigenergy stack.';if(ev||hp)rec+=' EV/heat pump usage may justify stepping up storage once the load profile is reviewed.';if(backup)rec+=' Backup requirement pushes the design toward a Gateway/backup-capable route.';txt=`Guide: ${rec} Average use is about ${daily.toFixed(1)} kWh/day (${Math.round(k)} kWh/year).`;}$('batteryGuide').textContent=txt;save()}
 function quote(){let solarManual=+$('solarPrice').value||0;let solarAuto=(+$('panelCount').value||0)*(+$('solarPerPanel').value||304);let solar=solarManual||solarAuto;let tigo=$('tigo').checked?(+$('panelCount').value||0)*(+$('tigoPrice').value||30):0;let bird=$('bird').checked?(+$('birdPrice').value||0):0;let battery=0, batteryText='None';if($('batteryBrand').value==='Tesla'){batteryText='Tesla'; if($('pw3').checked)battery+=+$('pw3Price').value||0; if($('gateway').checked)battery+=+$('gatewayPrice').value||0; if($('dcExp').checked)battery+=+$('dcPrice').value||0; battery-=+$('teslaDiscounts').value||0;}if($('batteryBrand').value==='Sigenergy'){let ctrl=$('sigController').value.split('|');let ctrlPrice=+$('sigControllerOverride').value||(+ctrl[0]||0);batteryText=`Sigenergy ${ctrl[1]||''}`;battery+=ctrlPrice; if($('sigGateway').checked)battery+=+$('sigGatewayPrice').value||0; battery+=(+$('sig6Qty').value||0)*(+$('sig6Price').value||0); battery+=(+$('sig10Qty').value||0)*(+$('sig10Price').value||0);}let scaff=(+$('scaffoldLifts').value||0)*(+$('scaffoldPrice').value||975);let ev=$('ev').checked?(+$('zappiPrice').value||0):0;let discount=+$('manualDiscount').value||0;let total=solar+tigo+bird+battery+scaff+ev-discount;return {solar,tigo,bird,battery,batteryText,scaff,ev,discount,total,kWp:kWp(),panel:panelParts(),sigNominal:sigStorage().toFixed(2),sigUsable:sigUsable().toFixed(2)}}
 function calculate(){let q=quote();$('quoteTotal').innerHTML=`<b>Total: ${money(q.total)}</b><br>Solar ${money(q.solar)} | Tigo ${money(q.tigo)} | Battery ${money(q.battery)} | Scaffold ${money(q.scaff)} | EV ${money(q.ev)} | Discount -${money(q.discount)}<br>${$('panelCount').value||0} x ${q.panel.name}, ${q.kWp} kWp`;refreshPresent();save()}
-function refreshPresent(){let q=quote(), p=panelParts();let batteryLine='No battery selected';if($('batteryBrand').value==='Tesla')batteryLine=`Tesla: ${$('pw3').checked?'Powerwall 3 ':''}${$('gateway').checked?'+ Gateway ':''}${$('dcExp').checked?'+ DC Expansion ':''}`.trim();if($('batteryBrand').value==='Sigenergy')batteryLine=`Sigenergy: ${$('sig6Qty').value||0} x BAT 6.0, ${$('sig10Qty').value||0} x BAT 10.0, ${q.sigNominal} kWh nominal (${q.sigUsable} kWh usable), controller ${$('sigController').value.split('|')[1]}`;$('presentSummary').innerHTML=`<b>Recommended route for ${$('customerName').value||'customer'}</b><br><br>
-Solar: ${$('solar').checked?`${$('panelCount').value||0} x ${p.name}, ${q.kWp} kWp`:'No'}<br>
-Panel details: ${p.dim}, ${p.weight}<br>
-Tigo optimisation: ${$('tigo').checked?'Included at £'+($('tigoPrice').value||30)+' per panel':'Not included'}<br>
-Bird protection: ${$('bird').checked?'Included':'Not included'}<br>
-Battery: ${batteryLine}<br>
-EV charger: ${$('ev').checked?'Zappi included':'No'}<br>
-Scaffold: ${$('scaffoldLifts').value||0} lift(s)<br><br>
-<b>Proposal position: ${money(q.total)}</b><br><br>
-Next step: proceed to formal quote for review and e-signing.`;render()}
+function refreshPresent(){let q=quote(), p=panelParts();let batteryLine='No battery selected';if($('batteryBrand').value==='Tesla')batteryLine=`Tesla: ${$('pw3').checked?'Powerwall 3 ':''}${$('gateway').checked?'+ Gateway ':''}${$('dcExp').checked?'+ DC Expansion ':''}`.trim();if($('batteryBrand').value==='Sigenergy')batteryLine=`Sigenergy: ${$('sig6Qty').value||0} x BAT 6.0, ${$('sig10Qty').value||0} x BAT 10.0, ${q.sigNominal} kWh nominal (${q.sigUsable} kWh usable), controller ${$('sigController').value.split('|')[1]}`;if($('presentVisuals'))$('presentVisuals').innerHTML=customerVisuals();$('presentSummary').innerHTML=`<div class="summaryGrid"><div class="summaryItem"><b>Recommended for</b><span>${$('customerName').value||'Customer'}</span></div><div class="summaryItem"><b>Main aim</b><span>${$('wants').value||'Lower bills and better energy control'}</span></div><div class="summaryItem"><b>Solar PV</b><span>${$('solar').checked?`${$('panelCount').value||0} x ${p.name}, ${q.kWp} kWp`:'Not selected'}</span></div><div class="summaryItem"><b>Battery</b><span>${batteryLine}</span></div><div class="summaryItem"><b>EV charger</b><span>${$('ev').checked?'Zappi included':'Not included'}</span></div><div class="summaryItem"><b>Roof/access</b><span>${$('scaffoldLifts').value||0} scaffold lift(s), bird protection ${$('bird').checked?'included':'not included'}</span></div></div><div class="priceLine">Proposal position: ${money(q.total)}</div><p>Next step: proceed to formal quote for review and e-signing.</p>`;render()}
 function prompt(){let d=getData(), q=d.quote;return `Survey pack for ${d.customerName||'[Customer]'}.
 
 Use the notes, photos and any SRT transcripts to create:
@@ -237,38 +228,137 @@ function importMondayCSV(file){
   reader.onload=()=>{
     const rows=parseCSV(reader.result);
     if(rows.length<2){$('importStatus').innerText='No rows found in the CSV.';return}
-    const headers=rows[0].map(h=>h.trim());
-    const dataRows=rows.slice(1).filter(r=>r.some(x=>(x||'').trim()));
-    let chosen=dataRows[0];
-    const current=($('customerName').value||'').toLowerCase();
-    if(current){
-      const match=dataRows.find(r=>r.join(' ').toLowerCase().includes(current));
-      if(match) chosen=match;
+    let obj={};
+    const h0=(rows[0][0]||'').trim().toLowerCase(), h1=(rows[0][1]||'').trim().toLowerCase();
+    if(h0==='field' && h1==='value'){
+      rows.slice(1).forEach(r=>{if(r[0]) obj[r[0].trim()]=r.slice(1).join(',').trim();});
+    } else {
+      const headers=rows[0].map(h=>h.trim());
+      const dataRows=rows.slice(1).filter(r=>r.some(x=>(x||'').trim()));
+      let chosen=dataRows[0];
+      const current=($('customerName').value||'').toLowerCase();
+      if(current){ const match=dataRows.find(r=>r.join(' ').toLowerCase().includes(current)); if(match) chosen=match; }
+      headers.forEach((h,i)=>obj[h]=chosen[i]||'');
     }
-    const obj={}; headers.forEach((h,i)=>obj[h]=chosen[i]||'');
-    const name=findVal(obj,['Customer name','Name','Client','Contact','Item Name','Item name']);
-    const phone=findVal(obj,['Phone','Telephone','Mobile','Contact number']);
-    const email=findVal(obj,['Email','Email address']);
-    const address=findVal(obj,['Address','Site address','Property address','Location']);
-    const status=findVal(obj,['Status','Lead status','CRM status','Stage']);
-    const lead=findVal(obj,['Lead source','Source','Channel']);
-    const notes=findVal(obj,['Notes','CRM notes','James notes','Updates','Last update']);
-    const itemId=findVal(obj,['Item ID','Pulse ID','ID','monday item ID']);
-    const value=findVal(obj,['Value','Quote value','Deal value','Price']);
-    if(name && !$('customerName').value)$('customerName').value=name;
-    if(phone && !$('phone').value)$('phone').value=phone;
-    if(email && !$('email').value)$('email').value=email;
-    if(address && !$('address').value)$('address').value=address;
-    if(status)$('crmStatus').value=status;
-    if(lead)$('leadSource').value=lead;
-    if(notes)$('crmNotes').value=notes;
-    if(itemId)$('mondayId').value=itemId;
-    if(value)$('budget').value=($('budget').value?$('budget').value+'\n':'')+'CRM value: '+value;
-    $('importStatus').innerText=`Imported 1 row from ${file.name}. Check the fields before the survey.`;
-    if($('saveName') && !$('saveName').value) $('saveName').value=$('customerName').value||name||'Imported survey';
-    save();
+    applyCRMObject(obj,file.name);
   };
   reader.readAsText(file);
+}
+
+
+function clearCurrentSurvey(){
+  if(!confirm('Start a blank new survey? The current draft will be cleared. Save first if you need to keep it.')) return;
+  localStorage.removeItem(KEY);
+  currentSavedId=null;
+  location.reload();
+}
+function saveAndStartNew(){
+  saveCurrentSurvey();
+  localStorage.removeItem(KEY);
+  currentSavedId=null;
+  setTimeout(()=>location.reload(),300);
+}
+function applyCRMObject(obj, sourceLabel){
+  const get=(names)=>findVal(obj,names);
+  const name=get(['Name','Customer name','Contact Name','Client','Item Name']);
+  const phone=get(['Contact Number','Phone','Telephone','Mobile','Contact number']);
+  const email=get(['Contact Email','Email','Email address']);
+  const address=[get(['Site Address','Address','Property address','Location']), get(['Site Post Code','Post Code','Postcode'])].filter(Boolean).join(', ');
+  const status=get(['Lead Status','Status','CRM status','Stage']);
+  const leadType=get(['Lead Type','System interest','Interest']);
+  const source=get(['Lead source','Source','Channel']);
+  const surveyTime=get(['Survey Scheduled','Appointment time','Appointment']);
+  const usage=get(['Energy Usage','Annual kWh','Usage notes','Known usage']);
+  const reason=get(['Reason for Install','Why now','Motivation']);
+  const otherQuotes=get(['Other quotes','Competitors']);
+  const brand=get(['Specific Brand Requested','Brand requested']);
+  const timescale=get(['Timescale','Timing']);
+  const qualNotes=get(['Qualification Notes','Notes','CRM notes']);
+  const leadNotes=get(['Lead Notes','Last update']);
+  const propType=get(['Property Type']);
+  const bedrooms=get(['Bedrooms']);
+  const roofType=get(['Roof Type']);
+  const owner=get(['Property Ownership']);
+  const ev=get(['Looking to buy EV?','EV']);
+  const itemId=get(['Item ID','Pulse ID','ID','monday item ID']);
+
+  if(name) $('customerName').value=name;
+  if(phone) $('phone').value=phone;
+  if(email) $('email').value=email;
+  if(address) $('address').value=address;
+  if(status) $('crmStatus').value=status;
+  if(source) $('leadSource').value=source;
+  if(itemId) $('mondayId').value=itemId;
+  if(surveyTime) $('appointmentTime').value=surveyTime.replace(' ','T').slice(0,16);
+  if(usage && !isNaN(parseFloat(usage))){$('annualKwh').value=parseFloat(usage); syncUsage('annual');}
+  if(reason) $('wants').value=$('wants').value?$('wants').value+', '+reason:reason;
+  if(timescale) $('timing').value=timescale;
+  if(otherQuotes) $('competitors').value=otherQuotes;
+  if(brand) $('preInterest').value=($('preInterest').value?$('preInterest').value+'\n':'')+'Specific brand requested: '+brand;
+  if(leadType) $('preInterest').value=($('preInterest').value?$('preInterest').value+'\n':'')+'Lead type: '+leadType;
+  if(ev && /^yes/i.test(ev)) $('ev').checked=true;
+  const notes=[
+    propType?'Property type: '+propType:null,
+    bedrooms?'Bedrooms: '+bedrooms:null,
+    roofType?'Roof type: '+roofType:null,
+    owner?'Ownership: '+owner:null,
+    qualNotes?'Qualification notes: '+qualNotes:null,
+    leadNotes?'Lead notes: '+leadNotes:null
+  ].filter(Boolean).join('\n');
+  if(notes) $('crmNotes').value=notes;
+  if($('askBill')) $('askBill').checked=true;
+  if($('askDecisionMaker')) $('askDecisionMaker').checked=true;
+  if($('askCompetitors')) $('askCompetitors').checked=true;
+  if($('askTiming')) $('askTiming').checked=true;
+  if($('saveName')) $('saveName').value=$('customerName').value || name || 'Imported survey';
+  $('importStatus').innerText=`Imported pre-survey data from ${sourceLabel}. Check the fields before the survey.`;
+  save();
+}
+function importPastedCRM(){
+  const text=$('crmPaste')?.value||'';
+  if(!text.trim()){alert('Paste the monday CSV text first.');return;}
+  const rows=parseCSV(text.trim());
+  if(!rows.length){$('importStatus').innerText='Could not read the pasted CSV text.';return;}
+  let obj={};
+  const h0=(rows[0][0]||'').trim().toLowerCase(), h1=(rows[0][1]||'').trim().toLowerCase();
+  if(h0==='field' && h1==='value'){
+    rows.slice(1).forEach(r=>{if(r[0]) obj[r[0].trim()]=r.slice(1).join(',').trim();});
+  } else {
+    const headers=rows[0].map(h=>h.trim());
+    const chosen=rows.slice(1).find(r=>r.some(x=>(x||'').trim()))||[];
+    headers.forEach((h,i)=>obj[h]=chosen[i]||'');
+  }
+  applyCRMObject(obj,'pasted monday text');
+}
+
+
+async function updateApp(){
+  try{
+    if('serviceWorker' in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      for(const r of regs){await r.unregister();}
+    }
+    if('caches' in window){
+      const keys=await caches.keys();
+      await Promise.all(keys.map(k=>caches.delete(k)));
+    }
+    alert('App cache cleared. The latest version will now reload.');
+    location.reload(true);
+  }catch(e){alert('Could not fully clear cache. Try closing and reopening the browser.');}
+}
+function panelVisualHTML(count){
+  const n=Math.max(0,Math.min(parseInt(count||0),24));
+  let cells='';
+  for(let i=0;i<n;i++) cells+='<div class="miniPanel"></div>';
+  return cells || '<div class="hint">No solar panels selected</div>';
+}
+function customerVisuals(){
+  const q=quote(), p=panelParts(), brand=$('batteryBrand').value;
+  let batteryBadge=brand==='Tesla'?'<span class="brandBadge brandTesla">TESLA</span>':brand==='Sigenergy'?'<span class="brandBadge brandSig">Sigenergy</span>':'<span class="brandBadge brandAiko">Battery storage</span>';
+  let storage=brand==='Sigenergy'?q.sigUsable:brand==='Tesla'?'13.5':'0';
+  let storageLabel=brand==='Sigenergy'?'usable Sigenergy storage':brand==='Tesla'?'Powerwall storage per unit':'battery storage';
+  return `<div class="visualCard"><h3>Solar array</h3><span class="brandBadge brandAiko">${p.name||'Solar PV'}</span><div class="panelStack">${panelVisualHTML($('panelCount').value)}</div><div class="summaryGrid"><div class="summaryItem"><b>${$('panelCount').value||0} panels</b><span>${p.name}</span></div><div class="summaryItem"><b>${q.kWp} kWp</b><span>Proposed array size</span></div></div></div>
+  <div class="visualCard"><h3>Storage and control</h3>${batteryBadge}<div class="bigMetric">${storage} kWh</div><div class="metricLabel">${storageLabel}</div><div class="summaryGrid"><div class="summaryItem"><b>${$('ev').checked?'EV included':'EV not included'}</b><span>Zappi option</span></div><div class="summaryItem"><b>${$('scaffoldLifts').value||0} lift(s)</b><span>Scaffold allowance</span></div></div></div>`;
 }
 
 document.addEventListener('DOMContentLoaded',()=>{load();initSignaturePad();
@@ -289,6 +379,11 @@ if($('brief'))$('brief').onclick=()=>download(safeName()+'_internal_brief.txt',i
 $('json').onclick=()=>download(safeName()+'_survey_data.json',JSON.stringify(getData(),null,2),'application/json');
 if($('saveSurvey'))$('saveSurvey').onclick=saveCurrentSurvey;
 if($('mondayImport'))$('mondayImport').onchange=e=>importMondayCSV((e.target.files||[])[0]);
+if($('importPastedCRM'))$('importPastedCRM').onclick=importPastedCRM;
+if($('newSurveyTop'))$('newSurveyTop').onclick=clearCurrentSurvey;
+if($('newSurveySaved'))$('newSurveySaved').onclick=clearCurrentSurvey;
+if($('updateApp'))$('updateApp').onclick=updateApp;
+if($('saveAndNew'))$('saveAndNew').onclick=saveAndStartNew;
 $('reset').onclick=()=>{if(confirm('Clear local survey?')){localStorage.removeItem(KEY);location.reload()}};
 $('filesInput').onchange=e=>{selectedFiles=Array.from(e.target.files||[]);$('preview').innerHTML='';selectedFiles.forEach(f=>{if(f.type.startsWith('image/')){let img=document.createElement('img');img.src=URL.createObjectURL(f);$('preview').appendChild(img)}});$('fileNames').textContent=selectedFiles.map(f=>f.name).join('\n');save()};
 if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.js');
