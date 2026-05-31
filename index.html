@@ -256,32 +256,43 @@
     </div>
   </div>
 
-  <div id="sigBox" class="quoteBox batteryChoiceCard sigChoice">
-    <div class="batteryBrandHead"><span class="batteryLogo sigLogo">Sigenergy</span><span>Modular SigenStor battery option</span></div>
-    <label>Controller<select id="sigController">
-      <option value="0|None">None</option>
-      <option value="780|3.6 kW">3.6 kW</option>
-      <option value="850|4.0 kW">4.0 kW</option>
-      <option value="866|6.0 kW">6.0 kW</option>
-      <option value="1287|8.0 kW">8.0 kW</option>
-      <option value="1402.5|10 kW">10 kW</option>
-      <option value="0|12 kW">12 kW, enter price</option>
-      <option value="2081|15 kW">15 kW</option>
-      <option value="0|20 kW">20 kW, enter price</option>
-      <option value="0|25 kW">25 kW, enter price</option>
-    </select></label>
+  <div id="sigBox" class="quoteBox batteryChoiceCard sigChoice sigCleanCard">
+    <div class="batteryBrandHead"><span class="batteryLogo sigLogo">Sigenergy</span><span>SigenStor battery storage</span></div>
+    <p class="hint">For solar + battery, the Sigen controller is priced through PV Inverter automatically. Only select a battery-only controller when there are no solar panels.</p>
+
     <div class="two">
-      <label>Controller price override £<input id="sigControllerOverride" type="number" placeholder="Leave blank to use dropdown"></label>
-      <label>Gateway price £<input id="sigGatewayPrice" type="number" value="0"></label>
+      <label>Main battery module<select id="sigBatteryModel">
+        <option value="10" selected>SigenStor BAT 10.0</option>
+        <option value="6">SigenStor BAT 6.0</option>
+      </select></label>
+      <label>Total battery modules<input id="sigModuleQty" type="number" value="1" min="0"></label>
     </div>
+
     <div class="scope">
-      <label><input id="sigGateway" type="checkbox"> Gateway included</label>
+      <label><input id="sigGateway" type="checkbox" checked> Gateway included with first battery</label>
     </div>
-    <div class="two">
-      <label>Sigen BAT 6.0 qty<input id="sig6Qty" type="number" value="0"></label>
-      <label>Sigen BAT 10.0 qty<input id="sig10Qty" type="number" value="0"></label>
-      <label>Sigen BAT 6.0 £ each<input id="sig6Price" type="number" value="1575"></label>
-      <label>Sigen BAT 10.0 £ each<input id="sig10Price" type="number" value="2050"></label>
+
+    <div class="sigPreview" id="sigPreviewBox">
+      <div class="sigPreviewMain">SigenStor BAT 10.0</div>
+      <div class="sigPreviewSub">1 module, gateway included</div>
+    </div>
+
+    <div class="batteryOnlyBox">
+      <h3>Battery-only controller</h3>
+      <p class="hint">Use this only when there is no solar PV in the proposal.</p>
+      <label>Controller<select id="sigBatteryOnlyController">
+        <option value="0|None">None</option>
+        <option value="780|Sigenstor Controller 3.6kW">3.6 kW</option>
+        <option value="850|Sigenstor Controller 4.0kW">4.0 kW</option>
+        <option value="835|Sigenstor Controller 5.0kW">5.0 kW</option>
+        <option value="866|Sigenstor Controller 6.0kW">6.0 kW</option>
+        <option value="1287|Sigenstor Controller 8.0kW">8.0 kW</option>
+        <option value="1402.5|Sigenstor Controller 10kW">10 kW</option>
+        <option value="1520|Sigenstor Controller 12kW">12 kW</option>
+        <option value="2081|Sigenstor Controller 15kW">15 kW</option>
+        <option value="1976|Sigenstor Controller 20kW">20 kW</option>
+        <option value="2289.1|Sigenstor Controller 25kW">25 kW</option>
+      </select></label>
     </div>
   </div>
 
@@ -304,6 +315,7 @@
     <p>Built around the survey information reviewed together today.</p>
   </div>
   <div id="presentVisuals" class="presentVisuals"></div>
+  <div id="batteryImagePanel" class="batteryImagePanel"></div>
   <div id="paybackSummary" class="paybackSummary"></div>
   <div id="presentSummary" class="summaryBox presenterSummary"></div>
   <button id="refreshPresent" class="primary">Refresh summary</button>

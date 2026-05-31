@@ -103,3 +103,25 @@ pre{background:#062819;color:#effff4;border-radius:20px;padding:18px;white-space
 .paybackBreakdown{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .paybackBreakdown span{background:white;border:1px solid #d9e2da;border-radius:999px;padding:8px 10px;font-weight:800;font-size:13px;color:#3d5248}
 @media(max-width:760px){.batteryBrandHead{align-items:flex-start;flex-direction:column}.paybackCard b{font-size:28px}}
+
+.sigCleanCard{background:linear-gradient(180deg,#ffffff,#f2fbf6);border:1px solid #cfe8dc}
+.sigPreview{background:white;border:1px solid #cfe8dc;border-radius:18px;padding:14px;margin:12px 0;box-shadow:0 3px 12px rgba(0,168,120,.08)}
+.sigPreviewMain{font-size:22px;font-weight:950;color:#062819}
+.sigPreviewSub{font-size:14px;color:#3d5248;margin-top:4px;font-weight:750}
+.batteryOnlyBox{background:#f7faf4;border:1px dashed #b8d7bf;border-radius:18px;padding:14px;margin-top:12px}
+.batteryOnlyBox h3{margin:0 0 4px}
+
+.batteryImagePanel{margin:14px 0}
+.productHero{display:grid;grid-template-columns:180px 1fr;gap:18px;align-items:center;background:white;border:1px solid #d9e2da;border-radius:26px;overflow:hidden;box-shadow:0 8px 24px rgba(6,40,25,.08)}
+.productHero img{width:100%;height:170px;object-fit:cover;background:#f7faf4}
+.productHero h3{font-size:24px;margin:8px 0 4px;color:#062819}
+.productHero p{margin:0;color:#5f6e66;font-weight:800}
+.brandPill{display:inline-flex;border-radius:999px;padding:8px 13px;font-weight:950;letter-spacing:.07em}
+.teslaPill{background:#111;color:white;text-transform:uppercase}.sigPill{background:#00a878;color:white}
+.customerIntro{background:#f7faf4;border:1px solid #d9e2da;border-radius:20px;padding:16px;margin-bottom:12px}
+.customerIntro span{display:block;text-transform:uppercase;letter-spacing:.12em;font-size:12px;color:#0b7a46;font-weight:950}.customerIntro b{display:block;font-size:26px;color:#062819}.customerIntro p{margin:4px 0 0;color:#3d5248}
+.includedBox{background:#fff;border:1px solid #d9e2da;border-radius:20px;padding:16px;margin:12px 0}.includedBox ul{margin:10px 0 0;padding-left:20px}.includedBox li{margin:5px 0}
+.proposalPrice{font-size:42px;font-weight:950;color:#062819;line-height:1;margin-top:16px}.proposalSub{font-size:14px;text-transform:uppercase;letter-spacing:.12em;color:#0b7a46;font-weight:950;margin-top:4px}.nextStepClean{font-weight:850;color:#3d5248}
+@media(max-width:760px){.productHero{grid-template-columns:1fr}.productHero img{height:210px}.proposalPrice{font-size:36px}}
+
+.presenterSummary{overflow:hidden}

@@ -1,6 +1,6 @@
-const KEY='tlgec_survey_v20_draft'; const SURVEYS_KEY='tlgec_survey_v20_saved';
+const KEY='tlgec_survey_v22_draft'; const SURVEYS_KEY='tlgec_survey_v22_saved';
 let selectedFiles=[]; let currentSavedId=null; let signatureData=''; let signaturePadDirty=false;
-const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','panelModel','panelCount','systemOverride','framingSelection','tigoPrice','batteryBrand','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut'];
+const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','panelModel','panelCount','systemOverride','framingSelection','tigoPrice','batteryBrand','sigBatteryModel','sigModuleQty','sigBatteryOnlyController','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut'];
 const checks=['heatPump','highEvening','backupNeeded','askBill','askDecisionMaker','askCompetitors','askTiming','askBackup','askBudget','solar','battery','ev','tigo','bird','spds','pw3','gateway','dcExp','sigGateway'];
 function $(x){return document.getElementById(x)}
 function today(){return new Date().toISOString().slice(0,10)}
@@ -46,8 +46,20 @@ function panelParts(){let [name,watt,dim,weight]=($('panelModel').value||'AIKO 5
 function kWp(){let p=panelParts();return ((+($('panelCount').value||0)*p.watt)/1000).toFixed(2)}
 function scope(){return [ $('solar').checked?'Solar':null,$('battery').checked?'Battery':null,$('ev').checked?'EV':null].filter(Boolean).join(', ')}
 function flags(){return [ $('heatPump').checked?'Heat pump':null,$('highEvening').checked?'High evening use':null,$('backupNeeded').checked?'Backup wanted':null].filter(Boolean).join(', ')}
-function sigStorage(){return (+$('sig6Qty').value||0)*6.02+(+$('sig10Qty').value||0)*9.04}
-function sigUsable(){return (+$('sig6Qty').value||0)*5.84+(+$('sig10Qty').value||0)*8.76}
+function sigStorage(){
+  if($('sigBatteryModel')){
+    const qty=num($('sigModuleQty')?.value||0);
+    return qty*(($('sigBatteryModel').value==='6')?6.02:9.04);
+  }
+  return (+$('sig6Qty').value||0)*6.02+(+$('sig10Qty').value||0)*9.04
+}
+function sigUsable(){
+  if($('sigBatteryModel')){
+    const qty=num($('sigModuleQty')?.value||0);
+    return qty*(($('sigBatteryModel').value==='6')?5.84:8.76);
+  }
+  return (+$('sig6Qty').value||0)*5.84+(+$('sig10Qty').value||0)*8.76
+}
 
 function getRoofPlanes(){
   const rows=[...document.querySelectorAll('.roofPlaneRow')];
@@ -92,7 +104,7 @@ function roofLines(){
 
 function getData(){let d={};ids.forEach(i=>d[i]=$(i)?.value||'');checks.forEach(i=>d[i]=$(i)?.checked||false);d.scope=scope();d.flags=flags();d.files=selectedFiles.map(f=>f.name);d.roofPlanes=getRoofPlanes();d.batteryGuide=$('batteryGuide').textContent;d.quote=quote();d.present=$('presentSummary').innerText||'';d.acceptance=$('acceptanceStamp').innerText||'';d.signatureData=signatureData;d.currentSavedId=currentSavedId;return d}
 function save(){localStorage.setItem(KEY,JSON.stringify(getData()));render();renderSavedList()}
-function load(){let raw=localStorage.getItem(KEY);if(raw){try{let d=JSON.parse(raw);ids.forEach(i=>{if($(i))$(i).value=d[i]||''});checks.forEach(i=>{if($(i))$(i).checked=!!d[i]}); if(d.acceptance)$('acceptanceStamp').innerText=d.acceptance; currentSavedId=d.currentSavedId||null; signatureData=d.signatureData||''; setRoofPlanes(d.roofPlanes||[]);}catch(e){}}if(!document.querySelector('.roofPlaneRow')) setRoofPlanes([]);if(!$('surveyDate').value)$('surveyDate').value=today();if(!$('nextAction').value)$('nextAction').value='Send formal quote';if($('customerName').value && $('saveName')) $('saveName').value=$('customerName').value;render();refreshPresent();renderSavedList();updateSaveStatus()}
+function load(){let raw=localStorage.getItem(KEY);if(raw){try{let d=JSON.parse(raw);ids.forEach(i=>{if($(i))$(i).value=d[i]||''});checks.forEach(i=>{if($(i))$(i).checked=!!d[i]}); if(d.acceptance)$('acceptanceStamp').innerText=d.acceptance; currentSavedId=d.currentSavedId||null; signatureData=d.signatureData||''; setRoofPlanes(d.roofPlanes||[]);}catch(e){}}if(!document.querySelector('.roofPlaneRow')) setRoofPlanes([]);if(!$('surveyDate').value)$('surveyDate').value=today();if(!$('nextAction').value)$('nextAction').value='Send formal quote';if($('customerName').value && $('saveName')) $('saveName').value=$('customerName').value;render();updateSigPreview();refreshPresent();renderSavedList();updateSaveStatus()}
 function syncUsage(changed){let a=parseFloat($('annualKwh').value||0), d=parseFloat($('dailyKwh').value||0);if(changed==='annual' && a>0)$('dailyKwh').value=(a/365).toFixed(1);if(changed==='daily' && d>0)$('annualKwh').value=Math.round(d*365)}
 function recommendBattery(){let k=parseFloat($('annualKwh').value||0), daily=parseFloat($('dailyKwh').value||0), hp=$('heatPump').checked, ev=$('ev').checked, backup=$('backupNeeded').checked;let txt='Enter annual or daily usage to guide battery sizing.';if(k||daily){if(!daily)daily=k/365;if(!k)k=daily*365;let rec='';if(daily<10)rec='Sigenergy 6.0 or Sigenergy 10.0.';else if(daily<18)rec='Sigenergy 10.0 as the clean default, or Powerwall 3 if Tesla/backup route is preferred.';else if(daily<28)rec='Powerwall 3 or 2 x Sigenergy 10.0.';else rec='Powerwall 3 + DC Expansion, or a larger Sigenergy stack.';if(ev||hp)rec+=' EV/heat pump usage may justify stepping up storage once the load profile is reviewed.';if(backup)rec+=' Backup requirement pushes the design toward a Gateway/backup-capable route.';txt=`Guide: ${rec} Average use is about ${daily.toFixed(1)} kWh/day (${Math.round(k)} kWh/year).`;}$('batteryGuide').textContent=txt;save()}
 function panelCost(){
@@ -110,12 +122,48 @@ function scaffoldCost(lifts, hasSolar){
   if(lifts===1)return PRICE_GUIDE.scaffoldFirstLift;
   return PRICE_GUIDE.scaffoldFirstLift+((lifts-1)*PRICE_GUIDE.scaffoldExtraFactor*PRICE_GUIDE.scaffoldFirstLift);
 }
-function sigControllerCost(){
-  let ctrl=$('sigController').value.split('|');
-  return num($('sigControllerOverride').value)||num(ctrl[0]);
+function sigPvInverterBand(systemKw){
+  const s=num(systemKw);
+  if(s<2)return 0;
+  if(s<3)return 3;
+  if(s<4)return 4;
+  if(s<6)return 5;
+  if(s<8)return 8;
+  if(s<10)return 10;
+  if(s<12)return 12;
+  if(s<14)return 14;
+  if(s<16)return 16;
+  if(s<18)return 18;
+  return 20;
+}
+function sigPvInverterCost(systemKw){
+  const prices={3:780,4:850,5:835,6:866,8:1287,10:1402.5,12:1520,14:1662,16:1862,18:1976,20:2081};
+  return prices[sigPvInverterBand(systemKw)]||0;
+}
+function sigBatteryOnlyControllerCost(){
+  if(!$('sigBatteryOnlyController')) return 0;
+  let ctrl=$('sigBatteryOnlyController').value.split('|');
+  return num(ctrl[0]);
+}
+function sigBatteryDescription(){
+  const model=($('sigBatteryModel')?.value||'10');
+  const qty=num($('sigModuleQty')?.value||0);
+  if(qty<=0)return 'No Sigenergy battery selected';
+  const moduleName=model==='6'?'SigenStor BAT 6.0':'SigenStor BAT 10.0';
+  const nominal=sigStorage().toFixed(2);
+  const usable=sigUsable().toFixed(2);
+  const gateway=$('sigGateway')?.checked?'Gateway included':'No Gateway';
+  return `${moduleName} x ${qty} | ${nominal} kWh nominal / ${usable} kWh usable | ${gateway}`;
+}
+function updateSigPreview(){
+  if(!$('sigPreviewBox'))return;
+  const model=($('sigBatteryModel')?.value||'10');
+  const qty=num($('sigModuleQty')?.value||0);
+  const moduleName=model==='6'?'SigenStor BAT 6.0':'SigenStor BAT 10.0';
+  $('sigPreviewBox').innerHTML=`<div class="sigPreviewMain">${moduleName}</div><div class="sigPreviewSub">${qty} module${qty===1?'':'s'} • ${sigStorage().toFixed(2)} kWh nominal • ${sigUsable().toFixed(2)} kWh usable • ${$('sigGateway')?.checked?'Gateway included':'No Gateway'}</div>`;
 }
 function batteryCostInternal(){
-  let brand=$('batteryBrand').value, cost=0, text='None';
+  let brand=$('batteryBrand').value, cost=0, text='None', inverterCost=0, controllerText='';
   if(brand==='Tesla'){
     let hasPW3=$('pw3').checked, hasGateway=$('gateway').checked, hasExpansion=$('dcExp').checked;
     if(hasPW3){cost+=4075;text='Tesla Powerwall 3';}
@@ -124,13 +172,22 @@ function batteryCostInternal(){
     cost-=num($('teslaDiscounts').value);
   }
   if(brand==='Sigenergy'){
-    let q6=num($('sig6Qty').value), q10=num($('sig10Qty').value);
-    cost += q6*1575 + q10*2050;
-    if($('sigGateway').checked && (q6+q10)>0) cost += 785;
-    cost += sigControllerCost();
-    text=`Sigenergy ${$('sigController').value.split('|')[1]||''}`;
+    const hasSolar=$('solar')?.checked && num($('panelCount')?.value)>0;
+    const model=($('sigBatteryModel')?.value||'10');
+    const qty=num($('sigModuleQty')?.value||0);
+    const base=model==='6'?1575:2050;
+    const gateway=$('sigGateway')?.checked?785:0;
+    if(qty>0) cost += base + gateway + Math.max(qty-1,0)*base;
+    if(hasSolar){
+      inverterCost=sigPvInverterCost(kWp());
+      controllerText=`PV inverter auto-sized to ${sigPvInverterBand(kWp())} kW`;
+    } else {
+      inverterCost=sigBatteryOnlyControllerCost();
+      controllerText=($('sigBatteryOnlyController')?.value||'0|None').split('|')[1]||'None';
+    }
+    text=sigBatteryDescription();
   }
-  return {cost,text};
+  return {cost,text,inverterCost,controllerText};
 }
 function quote(){
   const hasSolar=$('solar').checked && num($('panelCount').value)>0;
@@ -142,7 +199,7 @@ function quote(){
   let panels = hasSolar ? panelCount*panelCost() : 0;
   let optimisers = hasSolar && $('tigo').checked ? panelCount*(num($('tigoPrice').value)||30) : 0;
   let framing = hasSolar ? panelCount*(PRICE_GUIDE.framingCosts[frame]||73) : 0;
-  let inverter = 0; // controller cost is in batteryObj for Sigenergy. Powerwall 3 PV inverter cost is zero in V8.6.
+  let inverter = hasBattery ? (batteryObj.inverterCost||0) : 0; // Sigenergy controller/PV inverter cost follows Residential Pricing V8.6.
   let battery = hasBattery ? batteryObj.cost : 0;
   let keyMaterials = panels+optimisers+framing+inverter+battery;
 
@@ -156,7 +213,7 @@ function quote(){
   let admin = 0.25*PRICE_GUIDE.labour.admin;
   let labour = pvInstaller+pvLabourer+electrician+pm+designer+admin;
 
-  let carriage = (kWp()>8 || (num($('sig6Qty').value)+num($('sig10Qty').value)>1) || $('dcExp').checked) ? PRICE_GUIDE.carriage*2 : PRICE_GUIDE.carriage;
+  let carriage = (kWp()>8 || ((num($('sigModuleQty')?.value||0)>1)||(num($('sig6Qty')?.value||0)+num($('sig10Qty')?.value||0)>1)) || $('dcExp').checked) ? PRICE_GUIDE.carriage*2 : PRICE_GUIDE.carriage;
   let logistics = carriage;
   let access = scaffoldCost($('scaffoldLifts').value,hasSolar);
   let other = PRICE_GUIDE.otherCosts;
@@ -173,9 +230,9 @@ function quote(){
   let override=num($('systemOverride').value);
   let total = override>0 ? override : calculatedTotal;
 
-  return {panels,optimisers,framing,inverter,battery,batteryText:batteryObj.text,scaff:access,ev,discount,total,totalCost,calculatedTotal,override,spds,bird,keyMaterials,labour,logistics,access,other,sundries,optional,kWp:kWp(),panel:panelParts(),sigNominal:sigStorage().toFixed(2),sigUsable:sigUsable().toFixed(2),framingSelection:frame};
+  return {panels,optimisers,framing,inverter,battery,batteryText:batteryObj.text,controllerText:batteryObj.controllerText,scaff:access,ev,discount,total,totalCost,calculatedTotal,override,spds,bird,keyMaterials,labour,logistics,access,other,sundries,optional,kWp:kWp(),panel:panelParts(),sigNominal:sigStorage().toFixed(2),sigUsable:sigUsable().toFixed(2),framingSelection:frame};
 }
-function calculate(){let q=quote();let overrideText=q.override>0?'Approved override used. Included items are listed without cost breakdown.':'Calculated from Residential Pricing V8.6 logic.';$('quoteTotal').innerHTML=`<b>Total: ${money(q.total)}</b><br>${overrideText}<br>${$('panelCount').value||0} x ${q.panel.name}, ${q.kWp} kWp<br>Battery: ${q.batteryText}<br>Bird protection: ${$('bird').checked&&$('solar').checked?'Included':'Not included'} | SPDs: ${$('spds').checked?'Included':'Not included'} | Scaffold: ${$('scaffoldLifts').value||0} lift(s) included`;refreshPresent();save()}
+function calculate(){let q=quote();let overrideText=q.override>0?'Approved override used. Included items are listed without cost breakdown.':'Calculated from Residential Pricing V8.6 logic.';$('quoteTotal').innerHTML=`<b>Total: ${money(q.total)}</b><br>${overrideText}<br>${$('panelCount').value||0} x ${q.panel.name}, ${q.kWp} kWp<br>Battery: ${q.batteryText}<br>${q.controllerText?('Controller: '+q.controllerText+'<br>'):''}Bird protection: ${$('bird').checked&&$('solar').checked?'Included':'Not included'} | SPDs: ${$('spds').checked?'Included':'Not included'} | Scaffold: ${$('scaffoldLifts').value||0} lift(s) included`;refreshPresent();save()}
 
 function batteryUsableKwhForPayback(){
   if($('batteryBrand') && $('batteryBrand').value==='Tesla'){
@@ -237,9 +294,26 @@ function renderPaybackSummary(){
   </div>`;
 }
 
-function refreshPresent(){let q=quote(), p=panelParts();let batteryLine='No battery selected';if($('batteryBrand').value==='Tesla')batteryLine=`Tesla: ${$('pw3').checked?'Powerwall 3 ':''}${$('gateway').checked?'+ Gateway ':''}${$('dcExp').checked?'+ DC Expansion ':''}`.trim();if($('batteryBrand').value==='Sigenergy')batteryLine=`Sigenergy: ${$('sig6Qty').value||0} x BAT 6.0, ${$('sig10Qty').value||0} x BAT 10.0, ${q.sigNominal} kWh nominal (${q.sigUsable} kWh usable), controller ${$('sigController').value.split('|')[1]}`;if($('presentVisuals'))$('presentVisuals').innerHTML=customerVisuals();let priceNote=q.override>0?'Approved proposal position. Included specification shown below.':'Proposal position calculated from the current specification.';$('presentSummary').innerHTML=`<div class="summaryGrid"><div class="summaryItem"><b>Recommended for</b><span>${$('customerName').value||'Customer'}</span></div><div class="summaryItem"><b>Main aim</b><span>${$('wants').value||'Lower bills and better energy control'}</span></div><div class="summaryItem"><b>Solar PV</b><span>${$('solar').checked?`${$('panelCount').value||0} x ${p.name}, ${q.kWp} kWp`:'Not selected'}</span></div><div class="summaryItem"><b>Battery</b><span>${batteryLine}</span></div><div class="summaryItem"><b>Included</b><span>${$('spds').checked?'SPDs, ':''}${$('solar').checked&&$('bird').checked?'bird protection, ':''}${$('scaffoldLifts').value||0} scaffold lift(s)</span></div><div class="summaryItem"><b>Roof areas</b><span>${getRoofPlanes().length} elevation(s) captured</span></div></div><div class="priceLine">Proposal position: ${money(q.total)}
-Calculated before override: ${money(q.calculatedTotal)}
-System override used: ${q.override>0?'Yes':'No'}</div><p>${priceNote}</p><p>Next step: proceed to formal quote for review and e-signing.</p>`;renderPaybackSummary();render()}
+function refreshPresent(){
+  const q=quote(), p=panelParts();
+  if($('presentVisuals')) $('presentVisuals').innerHTML=customerVisuals();
+  if($('batteryImagePanel')) $('batteryImagePanel').innerHTML=customerBatteryImageHTML();
+  const included=cleanIncludedList();
+  const customer=$('customerName')?.value||'Customer';
+  const aim=$('wants')?.value||'Lower bills and better energy control';
+  $('presentSummary').innerHTML=`<div class="customerIntro"><span>Recommended for</span><b>${customer}</b><p>${aim}</p></div>
+  <div class="summaryGrid">
+    <div class="summaryItem"><b>Solar PV</b><span>${$('solar')?.checked?`${$('panelCount')?.value||0} x ${p.name}, ${q.kWp} kWp`:'Not included'}</span></div>
+    <div class="summaryItem"><b>Battery</b><span>${customerBatteryTitle()}</span></div>
+    <div class="summaryItem"><b>Storage</b><span>${customerBatteryStorageText()}</span></div>
+    <div class="summaryItem"><b>EV charger</b><span>${$('ev')?.checked?'Included':'Not included'}</span></div>
+  </div>
+  <div class="includedBox"><b>Included in this recommendation</b><ul>${included.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+  ${cleanCommercialLine()}
+  <p class="nextStepClean">Next step: prepare the formal quote for review and e-signing.</p>`;
+  if(typeof renderPaybackSummary==='function') renderPaybackSummary();
+  render();
+}
 function prompt(){let d=getData(), q=d.quote;return `Survey pack for ${d.customerName||'[Customer]'}.
 
 Use the notes, photos and any SRT transcripts to create:
@@ -306,6 +380,7 @@ Tigo: ${d.tigo?'Yes at £'+d.tigoPrice+' per panel':'No'}
 SPDs: ${d.spds?'Yes':'No'}
 Battery: ${q.batteryText}
 Sig storage: ${q.sigNominal} kWh nominal / ${q.sigUsable} kWh usable
+Sigenergy controller/PV inverter: ${q.controllerText||''}
 Scaffold: ${d.scaffoldLifts} lift(s) included
 EV: ${d.ev?'Zappi':'No'}
 Commercial note: ${d.commercialNote}
@@ -398,14 +473,15 @@ Panel count: ${d.panelCount}
 System size: ${q.kWp} kWp
 Battery: ${q.batteryText}
 Sig storage: ${q.sigNominal} kWh nominal / ${q.sigUsable} kWh usable
+Sigenergy controller/PV inverter: ${q.controllerText||''}
 Scaffold lifts: ${d.scaffoldLifts} included, internal pricing guide used
 Bird protection: ${d.bird?'Yes':'No'}
 Tigo: ${d.tigo?'Yes':'No'}
 EV charger: ${d.ev?'Yes':'No'}
 Commercial note: ${d.commercialNote}
 Proposal position: ${money(q.total)}
-Calculated before override: ${money(q.calculatedTotal)}
-System override used: ${q.override>0?'Yes':'No'}
+Internal calculated position: ${money(q.calculatedTotal)}
+Override active: ${q.override>0?'Yes':'No'}
 
 Customer agreement:
 ${d.acceptance}
@@ -603,9 +679,89 @@ function customerVisuals(){
   const q=quote(), p=panelParts(), brand=$('batteryBrand').value;
   let batteryBadge=brand==='Tesla'?'<span class="brandBadge brandTesla">TESLA</span>':brand==='Sigenergy'?'<span class="brandBadge brandSig">Sigenergy</span>':'<span class="brandBadge brandAiko">Battery storage</span>';
   let storage=brand==='Sigenergy'?q.sigUsable:brand==='Tesla'?'13.5':'0';
-  let storageLabel=brand==='Sigenergy'?'usable Sigenergy storage':brand==='Tesla'?'Powerwall storage per unit':'battery storage';
+  let storageLabel=brand==='Sigenergy'?'usable SigenStor storage':brand==='Tesla'?'Powerwall storage per unit':'battery storage';
   return `<div class="visualCard"><h3>Solar array</h3><span class="brandBadge brandAiko">${p.name||'Solar PV'}</span><div class="panelStack">${panelVisualHTML($('panelCount').value)}</div><div class="summaryGrid"><div class="summaryItem"><b>${$('panelCount').value||0} panels</b><span>${p.name}</span></div><div class="summaryItem"><b>${q.kWp} kWp</b><span>Proposed array size</span></div></div></div>
   <div class="visualCard"><h3>Storage and control</h3>${batteryBadge}<div class="bigMetric">${storage} kWh</div><div class="metricLabel">${storageLabel}</div><div class="summaryGrid"><div class="summaryItem"><b>${$('ev').checked?'EV included':'EV not included'}</b><span>Zappi option</span></div><div class="summaryItem"><b>${$('scaffoldLifts').value||0} lift(s)</b><span>Scaffold allowance</span></div></div></div>`;
+}
+
+
+function customerBatteryTitle(){
+  const brand=$('batteryBrand')?.value||'None';
+  if(brand==='Tesla'){
+    const parts=[];
+    if($('pw3')?.checked) parts.push('Powerwall 3');
+    if($('gateway')?.checked) parts.push('Backup Gateway');
+    if($('dcExp')?.checked) parts.push('DC Expansion');
+    return parts.length ? parts.join(' + ') : 'Tesla Powerwall 3';
+  }
+  if(brand==='Sigenergy'){
+    const six=Number($('sig6Qty')?.value||0);
+    const ten=Number($('sig10Qty')?.value||0);
+    const parts=[];
+    if(six) parts.push(`${six} x Sigen BAT 6.0`);
+    if(ten) parts.push(`${ten} x Sigen BAT 10.0`);
+    return parts.length ? `Sigenergy ${parts.join(' + ')}` : 'Sigenergy SigenStor battery';
+  }
+  return 'Battery storage';
+}
+function customerBatteryStorageText(){
+  const brand=$('batteryBrand')?.value||'None';
+  if(brand==='Tesla'){
+    let units=0;
+    if($('pw3')?.checked) units+=1;
+    if($('dcExp')?.checked) units+=1;
+    const kwh=units*13.5;
+    return kwh ? `${kwh.toFixed(1)} kWh storage` : '13.5 kWh storage';
+  }
+  if(brand==='Sigenergy'){
+    const nominal=Number(sigStorage ? sigStorage() : 0);
+    const usable=Number(sigUsable ? sigUsable() : 0);
+    if(nominal) return `${nominal.toFixed(2)} kWh nominal / ${usable.toFixed(2)} kWh usable`;
+    return 'Modular SigenStor storage';
+  }
+  return 'No battery selected';
+}
+function customerBatteryImageHTML(){
+  const brand=$('batteryBrand')?.value||'None';
+  if(brand==='Tesla'){
+    return `<div class="productHero teslaHero"><img src="tesla-powerwall.webp" alt="Tesla Powerwall 3"><div><span class="brandPill teslaPill">TESLA</span><h3>${customerBatteryTitle()}</h3><p>${customerBatteryStorageText()}</p></div></div>`;
+  }
+  if(brand==='Sigenergy'){
+    return `<div class="productHero sigHero"><img src="sigenergy-battery.webp" alt="Sigenergy battery"><div><span class="brandPill sigPill">Sigenergy</span><h3>${customerBatteryTitle()}</h3><p>${customerBatteryStorageText()}</p></div></div>`;
+  }
+  return '';
+}
+function panelVisualHTML(count){
+  const n=Math.max(0,Math.min(parseInt(count||0),30));
+  let cells='';
+  for(let i=0;i<n;i++) cells+='<div class="miniPanel"></div>';
+  return cells || '<div class="hint">No solar panels selected</div>';
+}
+function customerVisuals(){
+  const q=quote(), p=panelParts();
+  const brand=$('batteryBrand')?.value||'None';
+  return `<div class="visualCard solarVisual"><h3>Your solar array</h3><span class="brandBadge brandAiko">${p.name||'Solar PV'}</span><div class="panelStack">${panelVisualHTML($('panelCount')?.value)}</div><div class="summaryGrid"><div class="summaryItem"><b>${$('panelCount')?.value||0} panels</b><span>${p.name}</span></div><div class="summaryItem"><b>${q.kWp} kWp</b><span>Proposed system size</span></div></div></div>
+  <div class="visualCard"><h3>Battery storage</h3><span class="brandBadge ${brand==='Tesla'?'brandTesla':brand==='Sigenergy'?'brandSig':'brandAiko'}">${brand==='None'?'Storage':brand}</span><div class="bigMetric">${customerBatteryStorageText().split(' ')[0]}</div><div class="metricLabel">${customerBatteryStorageText()}</div><div class="summaryGrid"><div class="summaryItem"><b>${$('ev')?.checked?'EV charger included':'EV charger not included'}</b><span>Zappi option</span></div><div class="summaryItem"><b>${$('solar')?.checked?'Bird protection included':'No solar roof works'}</b><span>Solar protection</span></div></div></div>`;
+}
+function cleanIncludedList(){
+  const items=[];
+  if($('solar')?.checked){
+    const p=panelParts(), q=quote();
+    items.push(`${$('panelCount')?.value||0} x ${p.name} solar panels`);
+    items.push(`${q.kWp} kWp solar PV system`);
+    if($('bird')?.checked) items.push('Bird protection');
+    if($('tigo')?.checked) items.push('Tigo optimisation');
+    if($('spd')?.checked || $('spds')?.checked) items.push('SPDs');
+  }
+  if(($('batteryBrand')?.value||'None')!=='None') items.push(customerBatteryTitle());
+  if($('ev')?.checked) items.push('Zappi EV charger');
+  const roofs = (typeof getRoofs === 'function') ? getRoofs() : [];
+  if(roofs.length) items.push(`${roofs.length} roof elevation${roofs.length>1?'s':''} captured`);
+  return items;
+}
+function cleanCommercialLine(){
+  const q=quote();
+  return `<div class="proposalPrice">${money(q.total)}</div><div class="proposalSub">Proposal position</div>`;
 }
 
 document.addEventListener('DOMContentLoaded',()=>{load();initSignaturePad();
