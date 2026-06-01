@@ -992,7 +992,7 @@ function bindCriticalButtons(){
   if(monday) monday.onchange=e=>readCSVFileAndSave((e.target.files||[])[0]);
 }
 
-document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v32';load();initSignaturePad();
+document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v33';load();initSignaturePad();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
@@ -1062,4 +1062,66 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', removeRoofMarkupUI);
   else removeRoofMarkupUI();
+})();
+
+
+/* v33 home update button */
+(function(){
+  function el(id){ return document.getElementById(id); }
+
+  async function clearCacheAndUpdate(){
+    try{
+      if(el('homeVersionBadge')) el('homeVersionBadge').textContent='Updating... saved surveys stay safe.';
+      if(el('appVersionBadge')) el('appVersionBadge').textContent='Updating... saved surveys stay safe.';
+
+      if('serviceWorker' in navigator){
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for(const reg of regs){
+          try{ await reg.update(); }catch(e){}
+          try{ await reg.unregister(); }catch(e){}
+        }
+      }
+
+      if(window.caches){
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+
+      // Do not clear localStorage. Saved surveys remain in tlgec_surveys_saved_v1.
+      sessionStorage.setItem('tlgec_cache_cleared_at', new Date().toISOString());
+
+      const cleanPath = location.pathname.replace(/index\.html$/,'');
+      location.href = location.origin + cleanPath + '?fresh=' + Date.now();
+    }catch(err){
+      alert('Cache clear attempted. Close the app and reopen it from the browser link if the old version still shows.');
+      location.href = location.href.split('?')[0] + '?fresh=' + Date.now();
+    }
+  }
+
+  function openFreshCopy(){
+    const cleanPath = location.pathname.replace(/index\.html$/,'');
+    location.href = location.origin + cleanPath + '?fresh=' + Date.now();
+  }
+
+  function bindUpdateButtons(){
+    ['homeUpdateApp','updateApp'].forEach(id=>{
+      const b=el(id);
+      if(b){
+        b.onclick=function(e){
+          e.preventDefault();
+          clearCacheAndUpdate();
+        };
+      }
+    });
+    const h=el('homeHardRefresh');
+    if(h) h.onclick=function(e){e.preventDefault();openFreshCopy();};
+    const f=el('homeOpenFresh');
+    if(f) f.onclick=function(e){e.preventDefault();openFreshCopy();};
+
+    if(el('homeVersionBadge')) el('homeVersionBadge').textContent='App version: v33';
+    if(el('appVersionBadge')) el('appVersionBadge').textContent='App version: v33';
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bindUpdateButtons);
+  else bindUpdateButtons();
 })();

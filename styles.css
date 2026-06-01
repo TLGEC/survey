@@ -163,3 +163,7 @@ pre{background:#062819;color:#effff4;border-radius:20px;padding:18px;white-space
 
 .simpleRoofPhoto{background:#f7faf4;border:1px solid #d9e2da;border-radius:18px;padding:14px;margin:10px 0}
 .simpleRoofPhoto p{margin:4px 0 0;color:#5f6e66}
+
+.homeVersionBadge{background:#eef6e8;border:1px solid #cfe2cf;border-radius:999px;padding:10px 14px;text-align:center;font-weight:950;color:#0b7a46;margin:12px 0}
+#homeUpdateApp{border:2px solid #79ac20!important}
+#homeOpenFresh{font-size:15px}
