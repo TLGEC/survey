@@ -1,4 +1,4 @@
-const CACHE='tlgec-survey-v30-2026-05-31-v30';
+const CACHE='tlgec-survey-v31-2026-05-31-v31';
 const FILES=['./','./index.html','./styles.css','./app.js','./manifest.json','./icon.svg','./tesla-powerwall.webp','./sigenergy-battery.webp','./tlgec-logo.png'];
 
 self.addEventListener('install',event=>{

@@ -998,40 +998,124 @@ function bindCriticalButtons(){
 }
 
 
+
 function initRoofMarkup(){
-  markupState={tool:'dimension', image:null, actions:[], pending:null, scalePxPerM:null, canvas:$('markupCanvas'), ctx:null};
-  if(!markupState.canvas) return;
-  markupState.ctx=markupState.canvas.getContext('2d');
+  markupState={
+    tool:'dimension',
+    image:null,
+    imageData:'',
+    actions:[],
+    pending:null,
+    scalePxPerM:null,
+    previewCanvas:$('markupCanvas'),
+    editorCanvas:$('markupEditorCanvas'),
+    activeCanvas:null
+  };
   setupMarkupButtons();
-  setupMarkupCanvasEvents();
+  bindMarkupCanvas(markupState.previewCanvas);
+  bindMarkupCanvas(markupState.editorCanvas);
   renderMarkupList();
   renderMarkupCanvas();
+}
+function activeMarkupCanvas(){
+  const editorOpen=$('markupEditor') && $('markupEditor').classList.contains('open');
+  return editorOpen ? markupState.editorCanvas : markupState.previewCanvas;
+}
+function activeMarkupCtx(){
+  const c=activeMarkupCanvas();
+  return c ? c.getContext('2d') : null;
 }
 function setMarkupTool(tool){
   if(!markupState) return;
   markupState.tool=tool;
   markupState.pending=null;
   document.querySelectorAll('.toolBtn').forEach(b=>b.classList.remove('on'));
-  const id={dimension:'toolDimension',scale:'toolScale',obstruction:'toolObstruction',note:'toolNote'}[tool];
-  if($(id)) $(id).classList.add('on');
+  const ids={
+    dimension:['toolDimension','editorDimension'],
+    scale:['toolScale','editorScale'],
+    obstruction:['toolObstruction','editorObstruction'],
+    note:['toolNote','editorNote']
+  }[tool]||[];
+  ids.forEach(id=>{if($(id))$(id).classList.add('on')});
+  if($('editorModeLabel'))$('editorModeLabel').innerText={
+    dimension:'Dimension line',
+    scale:'Set scale',
+    obstruction:'Obstruction',
+    note:'Text note'
+  }[tool]||'Markup';
+  renderMarkupCanvas();
+}
+function syncEditorInputsFromMain(){
+  if($('editorDimensionLabel'))$('editorDimensionLabel').value=$('dimensionLabel')?.value||'';
+  if($('editorObstructionLabel'))$('editorObstructionLabel').value=$('obstructionLabel')?.value||'';
+  if($('editorScaleLength'))$('editorScaleLength').value=$('scaleLength')?.value||'';
+}
+function syncMainInputsFromEditor(){
+  if($('dimensionLabel')&&$('editorDimensionLabel'))$('dimensionLabel').value=$('editorDimensionLabel').value;
+  if($('obstructionLabel')&&$('editorObstructionLabel'))$('obstructionLabel').value=$('editorObstructionLabel').value;
+  if($('scaleLength')&&$('editorScaleLength'))$('scaleLength').value=$('editorScaleLength').value;
 }
 function setupMarkupButtons(){
-  if($('toolDimension'))$('toolDimension').onclick=()=>setMarkupTool('dimension');
-  if($('toolScale'))$('toolScale').onclick=()=>setMarkupTool('scale');
-  if($('toolObstruction'))$('toolObstruction').onclick=()=>setMarkupTool('obstruction');
-  if($('toolNote'))$('toolNote').onclick=()=>setMarkupTool('note');
-  if($('undoMarkup'))$('undoMarkup').onclick=()=>{markupState.actions.pop();markupState.pending=null;renderMarkupCanvas();};
-  if($('clearMarkup'))$('clearMarkup').onclick=()=>{if(confirm('Clear this roof markup?')){markupState.actions=[];markupState.pending=null;renderMarkupCanvas();}};
+  const toolMap=[
+    ['toolDimension','dimension'],['editorDimension','dimension'],
+    ['toolScale','scale'],['editorScale','scale'],
+    ['toolObstruction','obstruction'],['editorObstruction','obstruction'],
+    ['toolNote','note'],['editorNote','note']
+  ];
+  toolMap.forEach(([id,tool])=>{if($(id))$(id).onclick=()=>setMarkupTool(tool)});
+  if($('undoMarkup'))$('undoMarkup').onclick=undoMarkup;
+  if($('editorUndo'))$('editorUndo').onclick=undoMarkup;
+  if($('clearMarkup'))$('clearMarkup').onclick=clearCurrentMarkup;
+  if($('editorClear'))$('editorClear').onclick=clearCurrentMarkup;
   if($('newMarkup'))$('newMarkup').onclick=()=>newRoofMarkup();
   if($('saveMarkup'))$('saveMarkup').onclick=saveRoofMarkup;
-  if($('markupPhoto'))$('markupPhoto').onchange=e=>loadMarkupPhoto((e.target.files||[])[0]);
+  if($('saveMarkupFromEditor'))$('saveMarkupFromEditor').onclick=()=>{syncMainInputsFromEditor();saveRoofMarkup();};
+  if($('openMarkupEditor'))$('openMarkupEditor').onclick=openMarkupEditor;
+  if($('closeMarkupEditor'))$('closeMarkupEditor').onclick=closeMarkupEditor;
+  if($('markupCamera'))$('markupCamera').onchange=e=>loadMarkupPhoto((e.target.files||[])[0]);
+  if($('markupLibrary'))$('markupLibrary').onchange=e=>loadMarkupPhoto((e.target.files||[])[0]);
+}
+function undoMarkup(){
+  if(!markupState) return;
+  markupState.actions.pop();
+  markupState.pending=null;
+  renderMarkupCanvas();
+  save();
+}
+function clearCurrentMarkup(){
+  if(!markupState) return;
+  if(confirm('Clear this roof markup?')){
+    markupState.actions=[];
+    markupState.pending=null;
+    renderMarkupCanvas();
+    save();
+  }
+}
+function openMarkupEditor(){
+  if(!$('markupEditor')) return;
+  syncEditorInputsFromMain();
+  $('markupEditor').classList.add('open');
+  document.body.classList.add('modalOpen');
+  setTimeout(renderMarkupCanvas,80);
+}
+function closeMarkupEditor(){
+  if(!$('markupEditor')) return;
+  syncMainInputsFromEditor();
+  $('markupEditor').classList.remove('open');
+  document.body.classList.remove('modalOpen');
+  setTimeout(renderMarkupCanvas,80);
 }
 function newRoofMarkup(){
   if(!markupState) initRoofMarkup();
-  markupState.image=null; markupState.actions=[]; markupState.pending=null; markupState.scalePxPerM=null;
-  ['markupRoofName','markupPitch','markupAzimuth','dimensionLabel','obstructionLabel','scaleLength','markupNotes'].forEach(id=>{if($(id))$(id).value=''});
+  markupState.image=null;
+  markupState.imageData='';
+  markupState.actions=[];
+  markupState.pending=null;
+  markupState.scalePxPerM=null;
+  ['markupRoofName','markupPitch','markupAzimuth','dimensionLabel','obstructionLabel','scaleLength','markupNotes','editorDimensionLabel','editorObstructionLabel','editorScaleLength'].forEach(id=>{if($(id))$(id).value=''});
   if($('scaleStatus'))$('scaleStatus').value='No scale set';
-  if($('markupPhoto'))$('markupPhoto').value='';
+  if($('markupCamera'))$('markupCamera').value='';
+  if($('markupLibrary'))$('markupLibrary').value='';
   if($('markupStatus'))$('markupStatus').innerText='New markup started.';
   renderMarkupCanvas();
 }
@@ -1041,58 +1125,94 @@ function loadMarkupPhoto(file){
   reader.onload=()=>{
     const img=new Image();
     img.onload=()=>{
-      const maxW=1400, maxH=1100;
-      let w=img.width, h=img.height, ratio=Math.min(maxW/w,maxH/h,1);
+      const maxW=1800, maxH=1400;
+      let ratio=Math.min(maxW/img.width,maxH/img.height,1);
       const c=document.createElement('canvas');
-      c.width=Math.round(w*ratio); c.height=Math.round(h*ratio);
-      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      c.width=Math.round(img.width*ratio);
+      c.height=Math.round(img.height*ratio);
+      const cx=c.getContext('2d');
+      cx.drawImage(img,0,0,c.width,c.height);
+      const data=c.toDataURL('image/jpeg',0.86);
       const scaled=new Image();
-      scaled.onload=()=>{markupState.image=scaled;markupState.actions=[];markupState.pending=null;renderMarkupCanvas();};
-      scaled.src=c.toDataURL('image/jpeg',0.82);
+      scaled.onload=()=>{
+        markupState.image=scaled;
+        markupState.imageData=data;
+        markupState.actions=[];
+        markupState.pending=null;
+        markupState.scalePxPerM=null;
+        if($('scaleStatus'))$('scaleStatus').value='No scale set';
+        renderMarkupCanvas();
+        openMarkupEditor();
+      };
+      scaled.src=data;
     };
     img.src=reader.result;
   };
   reader.readAsDataURL(file);
 }
-function setupMarkupCanvasEvents(){
-  const c=markupState.canvas;
-  const handle=e=>{
-    if(!markupState.image){alert('Upload or take a roof photo first.');return;}
+function bindMarkupCanvas(canvas){
+  if(!canvas) return;
+  let lastTouch=0;
+  const handler=e=>{
+    if(e.type==='touchend') lastTouch=Date.now();
+    if(e.type==='click' && Date.now()-lastTouch<500) return;
+    if(!markupState || !markupState.image){alert('Upload or choose a roof photo first.');return;}
     e.preventDefault();
-    const p=canvasPoint(e,c);
-    if(markupState.tool==='dimension' || markupState.tool==='scale'){
-      if(!markupState.pending){markupState.pending=p;renderMarkupCanvas();drawTempPoint(p);return;}
-      const start=markupState.pending, end=p;
-      if(markupState.tool==='scale'){
-        const metres=Number($('scaleLength')?.value||0);
-        if(!metres){alert('Enter the known scale reference length in metres first.');markupState.pending=null;renderMarkupCanvas();return;}
-        const px=distance(start,end);
-        markupState.scalePxPerM=px/metres;
-        if($('scaleStatus'))$('scaleStatus').value=`1m = ${Math.round(markupState.scalePxPerM)}px`;
-        markupState.actions.push({type:'scale',start,end,label:`${metres}m scale`,metres});
-      }else{
-        let label=($('dimensionLabel')?.value||'').trim();
-        if(!label && markupState.scalePxPerM){
-          const m=distance(start,end)/markupState.scalePxPerM;
-          label=m.toFixed(1)+'m';
-        }
-        if(!label) label=prompt('Dimension in metres, e.g. 4.2m')||'';
-        if(label) markupState.actions.push({type:'dimension',start,end,label});
-      }
-      markupState.pending=null; renderMarkupCanvas(); save();
+    e.stopPropagation();
+    const p=canvasPoint(e,canvas);
+    handleMarkupTap(p);
+  };
+  canvas.addEventListener('click',handler);
+  canvas.addEventListener('touchend',handler,{passive:false});
+}
+function handleMarkupTap(p){
+  const tool=markupState.tool;
+  if(tool==='dimension' || tool==='scale'){
+    if(!markupState.pending){
+      markupState.pending=p;
+      renderMarkupCanvas();
+      drawTempPoint(p,activeMarkupCanvas());
       return;
     }
-    if(markupState.tool==='obstruction'){
-      const label=($('obstructionLabel')?.value||prompt('Obstruction label, e.g. chimney, dormer, shade')||'Obstruction').trim();
-      markupState.actions.push({type:'obstruction',point:p,label}); renderMarkupCanvas(); save(); return;
+    const start=markupState.pending, end=p;
+    if(tool==='scale'){
+      syncMainInputsFromEditor();
+      const metres=Number($('scaleLength')?.value||0);
+      if(!metres){alert('Enter the known scale length in metres first.');markupState.pending=null;renderMarkupCanvas();return;}
+      const px=distance(start,end);
+      markupState.scalePxPerM=px/metres;
+      if($('scaleStatus'))$('scaleStatus').value=`1m = ${Math.round(markupState.scalePxPerM)}px`;
+      markupState.actions.push({type:'scale',start,end,label:`${metres}m scale`,metres});
+    }else{
+      syncMainInputsFromEditor();
+      let label=($('dimensionLabel')?.value||'').trim();
+      if(!label && markupState.scalePxPerM){
+        const m=distance(start,end)/markupState.scalePxPerM;
+        label=m.toFixed(1)+'m';
+      }
+      if(!label) label=prompt('Dimension in metres, e.g. 4.2m')||'';
+      if(label) markupState.actions.push({type:'dimension',start,end,label});
     }
-    if(markupState.tool==='note'){
-      const label=($('obstructionLabel')?.value||prompt('Text note')||'Note').trim();
-      markupState.actions.push({type:'note',point:p,label}); renderMarkupCanvas(); save(); return;
-    }
-  };
-  c.addEventListener('click',handle);
-  c.addEventListener('touchend',handle,{passive:false});
+    markupState.pending=null;
+    renderMarkupCanvas();
+    save();
+    return;
+  }
+  if(tool==='obstruction'){
+    syncMainInputsFromEditor();
+    const label=($('obstructionLabel')?.value||prompt('Obstruction label, e.g. chimney, dormer, shade')||'Obstruction').trim();
+    markupState.actions.push({type:'obstruction',point:p,label});
+    renderMarkupCanvas();
+    save();
+    return;
+  }
+  if(tool==='note'){
+    syncMainInputsFromEditor();
+    const label=($('obstructionLabel')?.value||prompt('Text note')||'Note').trim();
+    markupState.actions.push({type:'note',point:p,label});
+    renderMarkupCanvas();
+    save();
+  }
 }
 function canvasPoint(e,c){
   const r=c.getBoundingClientRect();
@@ -1101,69 +1221,80 @@ function canvasPoint(e,c){
 }
 function distance(a,b){return Math.hypot(b.x-a.x,b.y-a.y)}
 function renderMarkupCanvas(){
-  if(!markupState||!markupState.canvas) return;
-  const c=markupState.canvas, ctx=markupState.ctx;
+  if(!markupState) return;
+  [markupState.previewCanvas,markupState.editorCanvas].forEach(c=>renderOneMarkupCanvas(c));
+}
+function renderOneMarkupCanvas(c){
+  if(!c) return;
+  const ctx=c.getContext('2d');
   if(!markupState.image){
-    c.width=900; c.height=520; ctx.clearRect(0,0,c.width,c.height);
-    if($('canvasEmpty'))$('canvasEmpty').style.display='flex';
+    c.width=900; c.height=520;
+    ctx.clearRect(0,0,c.width,c.height);
+    if(c.id==='markupCanvas' && $('canvasEmpty'))$('canvasEmpty').style.display='flex';
+    if(c.id==='markupEditorCanvas' && $('editorCanvasEmpty'))$('editorCanvasEmpty').style.display='flex';
     return;
   }
-  if($('canvasEmpty'))$('canvasEmpty').style.display='none';
-  c.width=markupState.image.width; c.height=markupState.image.height;
+  if(c.id==='markupCanvas' && $('canvasEmpty'))$('canvasEmpty').style.display='none';
+  if(c.id==='markupEditorCanvas' && $('editorCanvasEmpty'))$('editorCanvasEmpty').style.display='none';
+  c.width=markupState.image.width;
+  c.height=markupState.image.height;
   ctx.drawImage(markupState.image,0,0,c.width,c.height);
-  markupState.actions.forEach(a=>drawMarkupAction(ctx,a));
-  if(markupState.pending) drawTempPoint(markupState.pending);
+  markupState.actions.forEach(a=>drawMarkupAction(ctx,a,c));
+  if(markupState.pending) drawTempPoint(markupState.pending,c);
 }
-function drawTempPoint(p){
-  const ctx=markupState.ctx;
-  ctx.save(); ctx.fillStyle='#ffe900'; ctx.strokeStyle='#111'; ctx.lineWidth=2;
-  ctx.beginPath(); ctx.arc(p.x,p.y,8,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
+function drawTempPoint(p,c){
+  const ctx=(c||activeMarkupCanvas()).getContext('2d');
+  ctx.save(); ctx.fillStyle='#ffe900'; ctx.strokeStyle='#111'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.arc(p.x,p.y,10,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
 }
-function drawMarkupAction(ctx,a){
+function drawMarkupAction(ctx,a,c){
+  const scale=Math.max(c.width/900,1);
   ctx.save();
-  ctx.lineWidth=4;
+  ctx.lineWidth=5*scale;
   ctx.strokeStyle='#ffe900';
   ctx.fillStyle='#ffe900';
-  ctx.font='bold 28px Arial';
+  ctx.font=`bold ${Math.round(26*scale)}px Arial`;
   ctx.textAlign='center';
   ctx.textBaseline='middle';
   if(a.type==='dimension' || a.type==='scale'){
     ctx.beginPath(); ctx.moveTo(a.start.x,a.start.y); ctx.lineTo(a.end.x,a.end.y); ctx.stroke();
     const angle=Math.atan2(a.end.y-a.start.y,a.end.x-a.start.x);
-    drawTick(ctx,a.start,angle); drawTick(ctx,a.end,angle);
+    drawTick(ctx,a.start,angle,scale); drawTick(ctx,a.end,angle,scale);
     const mid={x:(a.start.x+a.end.x)/2,y:(a.start.y+a.end.y)/2};
-    drawLabelBox(ctx,mid,a.label);
+    drawLabelBox(ctx,mid,a.label,scale);
   }else if(a.type==='obstruction'){
-    const w=190,h=60;
-    ctx.strokeStyle='#ffe900'; ctx.lineWidth=4;
+    const w=190*scale,h=62*scale;
+    ctx.strokeStyle='#ffe900'; ctx.lineWidth=4*scale;
     ctx.strokeRect(a.point.x-w/2,a.point.y-h/2,w,h);
-    drawLabelBox(ctx,{x:a.point.x,y:a.point.y},a.label);
+    drawLabelBox(ctx,{x:a.point.x,y:a.point.y},a.label,scale);
   }else if(a.type==='note'){
-    drawLabelBox(ctx,a.point,a.label);
+    drawLabelBox(ctx,a.point,a.label,scale);
   }
   ctx.restore();
 }
-function drawTick(ctx,p,angle){
-  const len=28, perp=angle+Math.PI/2;
+function drawTick(ctx,p,angle,scale){
+  const len=32*scale, perp=angle+Math.PI/2;
   ctx.beginPath();
   ctx.moveTo(p.x+Math.cos(perp)*len/2,p.y+Math.sin(perp)*len/2);
   ctx.lineTo(p.x-Math.cos(perp)*len/2,p.y-Math.sin(perp)*len/2);
   ctx.stroke();
 }
-function drawLabelBox(ctx,p,text){
-  const pad=12;
-  ctx.font='bold 28px Arial';
-  const w=ctx.measureText(text).width+pad*2, h=44;
+function drawLabelBox(ctx,p,text,scale){
+  const pad=12*scale;
+  ctx.font=`bold ${Math.round(26*scale)}px Arial`;
+  const w=ctx.measureText(text).width+pad*2, h=46*scale;
   ctx.fillStyle='#ffe900';
   ctx.fillRect(p.x-w/2,p.y-h/2,w,h);
-  ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.lineWidth=2; ctx.strokeRect(p.x-w/2,p.y-h/2,w,h);
+  ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=2*scale; ctx.strokeRect(p.x-w/2,p.y-h/2,w,h);
   ctx.fillStyle='#111';
-  ctx.fillText(text,p.x,p.y+1);
+  ctx.fillText(text,p.x,p.y+scale);
 }
 function saveRoofMarkup(){
-  if(!markupState||!markupState.image){alert('Upload or take a roof photo first.');return;}
+  if(!markupState||!markupState.image){alert('Upload or choose a roof photo first.');return;}
+  syncMainInputsFromEditor();
   renderMarkupCanvas();
-  const imageData=markupState.canvas.toDataURL('image/jpeg',0.86);
+  const c=markupState.editorCanvas || markupState.previewCanvas;
+  const imageData=c.toDataURL('image/jpeg',0.86);
   const record={
     id:'rm_'+Date.now(),
     roofName:($('markupRoofName')?.value||'Roof plane').trim(),
@@ -1171,12 +1302,16 @@ function saveRoofMarkup(){
     azimuth:$('markupAzimuth')?.value||'',
     notes:$('markupNotes')?.value||'',
     actions:markupState.actions,
+    scalePxPerM:markupState.scalePxPerM,
     imageData,
     createdAt:new Date().toISOString()
   };
   roofMarkups.push(record);
   if($('markupStatus'))$('markupStatus').innerText=`Saved markup for ${record.roofName}.`;
-  renderMarkupList(); renderPresentMarkupGallery(); save();
+  renderMarkupList();
+  renderPresentMarkupGallery();
+  save();
+  closeMarkupEditor();
 }
 function renderMarkupList(){
   if(!$('markupList')) return;
@@ -1195,7 +1330,7 @@ function roofMarkupLines(){
   return roofMarkups.map((m,i)=>`${i+1}. ${m.roofName||'Roof plane'} - pitch ${m.pitch||'-'}°, azimuth ${m.azimuth||'-'}°, notes: ${m.notes||'None'}, markup image saved: Yes`).join('\n');
 }
 
-document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v30';load();initSignaturePad();initRoofMarkup();renderPresentMarkupGallery();
+document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v31';load();initSignaturePad();initRoofMarkup();renderPresentMarkupGallery();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});

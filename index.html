@@ -152,7 +152,7 @@
   <details class="internalGroup">
     <summary>Output and app tools</summary>
     <button id="updateApp" class="secondary" type="button">Update app / clear cache</button>
-    <div id="appVersionBadge" class="versionBadge">App version: v30</div>
+    <div id="appVersionBadge" class="versionBadge">App version: v31</div>
     <button id="exportBackup" class="secondary" type="button">Export saved survey backup</button>
     <label class="importBackupLabel">Import saved survey backup<input id="importBackup" type="file" accept=".json,application/json"></label>
     <p class="hint">Use this after uploading new GitHub files. It clears the app cache and reloads the latest version. It does not delete saved surveys.</p>
@@ -233,7 +233,11 @@
       <label>Pitch °<input id="markupPitch" type="number" inputmode="decimal"></label>
       <label>Azimuth °<input id="markupAzimuth" type="number" inputmode="decimal"></label>
     </div>
-    <label>Take/upload roof photo<input id="markupPhoto" type="file" accept="image/*" capture="environment"></label>
+    <div class="photoButtons">
+      <label class="fileButton">Take roof photo<input id="markupCamera" type="file" accept="image/*" capture="environment"></label>
+      <label class="fileButton">Choose existing photo<input id="markupLibrary" type="file" accept="image/*"></label>
+    </div>
+    <button id="openMarkupEditor" class="primary" type="button">Open full-screen editor</button>
     <div class="guide">Tip: take the photo as square-on to the roof plane as possible, with both roof edges visible.</div>
   </details>
 
@@ -258,9 +262,38 @@
     <p class="hint">Dimension and scale tools use two taps: tap the start point, then tap the end point. Obstruction and note tools use one tap.</p>
   </details>
 
-  <div class="canvasWrap">
+  <div class="canvasWrap previewCanvasWrap">
     <canvas id="markupCanvas"></canvas>
-    <div id="canvasEmpty" class="canvasEmpty">Upload or take a roof photo to begin.</div>
+    <div id="canvasEmpty" class="canvasEmpty">Upload or choose a roof photo to begin.</div>
+  </div>
+
+  <div id="markupEditor" class="markupEditor">
+    <div class="editorTop">
+      <button id="closeMarkupEditor" type="button">Done</button>
+      <div>
+        <b>Roof Markup Editor</b>
+        <span id="editorModeLabel">Dimension line</span>
+      </div>
+      <button id="saveMarkupFromEditor" type="button">Save</button>
+    </div>
+    <div class="editorTools">
+      <button id="editorDimension" class="toolBtn on" type="button">Dimension</button>
+      <button id="editorScale" class="toolBtn" type="button">Scale</button>
+      <button id="editorObstruction" class="toolBtn" type="button">Obstruction</button>
+      <button id="editorNote" class="toolBtn" type="button">Note</button>
+      <button id="editorUndo" class="toolBtn" type="button">Undo</button>
+      <button id="editorClear" class="toolBtn danger" type="button">Clear</button>
+    </div>
+    <div class="editorInputs">
+      <input id="editorDimensionLabel" placeholder="Dimension e.g. 4.2m">
+      <input id="editorObstructionLabel" placeholder="Label e.g. dormer, chimney">
+      <input id="editorScaleLength" type="number" inputmode="decimal" step="0.1" placeholder="Scale m">
+    </div>
+    <div class="editorCanvasArea">
+      <canvas id="markupEditorCanvas"></canvas>
+      <div id="editorCanvasEmpty" class="canvasEmpty">Upload or choose a roof photo first.</div>
+    </div>
+    <div class="editorHelp">Two taps for dimension/scale. One tap for obstruction/note. Drag/zoom the page is disabled here so taps stay accurate.</div>
   </div>
 
   <label>Markup notes<textarea id="markupNotes" placeholder="Tree shading, dormer restriction, no-go area, preferred panel zone..."></textarea></label>
