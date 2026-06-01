@@ -992,7 +992,7 @@ function bindCriticalButtons(){
   if(monday) monday.onchange=e=>readCSVFileAndSave((e.target.files||[])[0]);
 }
 
-document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v31';load();initSignaturePad();
+document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v32';load();initSignaturePad();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
@@ -1043,4 +1043,23 @@ function importPaste(){let text=$('crmPaste')?.value||'';if(!text.trim()){alert(
 function importFile(f){if(!f)return;let r=new FileReader();r.onload=()=>{let o=objFrom(r.result||'');if(!o){alert('Could not read the CSV file.');return}fill(o);let rec=saveSurvey();if($('importStatus'))$('importStatus').textContent='Imported and saved as '+rec.customerName+'.';tab('customer')};r.readAsText(f)}
 function bind(){document.addEventListener('click',e=>{let b=e.target.closest('button');if(!b)return;if(['homeNewSurvey','newSurveyTop','newSurveySaved'].includes(b.id)){e.preventDefault();e.stopImmediatePropagation();newSurvey()}if(b.id==='importPastedCRM'){e.preventDefault();e.stopImmediatePropagation();importPaste()}},true);let mi=$('mondayImport');if(mi)mi.addEventListener('change',e=>importFile((e.target.files||[])[0]),true)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+})();
+
+
+/* v32 remove roof markup UI guard */
+(function(){
+  function removeRoofMarkupUI(){
+    document.querySelectorAll('button').forEach(b=>{
+      if((b.textContent||'').toLowerCase().includes('roof markup')) b.remove();
+    });
+    document.querySelectorAll('.panel, section, div').forEach(el=>{
+      const txt=(el.textContent||'').slice(0,200).toLowerCase();
+      const id=(el.id||'').toLowerCase();
+      if((id.includes('roof') && id.includes('markup')) || txt.includes('roof markup editor')){
+        el.remove();
+      }
+    });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', removeRoofMarkupUI);
+  else removeRoofMarkupUI();
 })();

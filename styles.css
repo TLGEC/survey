@@ -160,3 +160,6 @@ pre{background:#062819;color:#effff4;border-radius:20px;padding:18px;white-space
 .versionBadge{font-size:13px;color:#5f6e66;font-weight:850;text-align:center;margin:8px 0 12px}
 
 .simpleRoofPhoto{background:#f7faf4;border:1px solid #d9e2da;border-radius:18px;padding:14px;margin:10px 0}
+
+.simpleRoofPhoto{background:#f7faf4;border:1px solid #d9e2da;border-radius:18px;padding:14px;margin:10px 0}
+.simpleRoofPhoto p{margin:4px 0 0;color:#5f6e66}
