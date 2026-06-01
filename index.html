@@ -25,7 +25,6 @@
   <button data-tab="customer">Customer</button>
   <button data-tab="usage">Usage</button>
   <button data-tab="site">Site</button>
-  <button data-tab="roofMarkup">Roof Markup</button>
   <button data-tab="build">Build</button>
   <button data-tab="present">Present</button>
   <button data-tab="internal">Internal</button>
@@ -218,93 +217,6 @@
   <label>Access / scaffold<textarea id="access"></textarea></label>
 </section>
 
-
-<section id="roofMarkup" class="panel">
-  <div class="sectionTop">
-    <h2>Roof Markup</h2>
-    <button id="newMarkup" class="secondary smallBtn" type="button">New markup</button>
-  </div>
-  <p class="hint">Take or upload a roof photo, add yellow dimension lines, obstructions and notes, then save it into the survey handover.</p>
-
-  <details class="internalGroup" open>
-    <summary>1. Photo and roof plane</summary>
-    <label>Roof plane / elevation name<input id="markupRoofName" placeholder="Rear roof, front roof, garage roof..."></label>
-    <div class="two">
-      <label>Pitch °<input id="markupPitch" type="number" inputmode="decimal"></label>
-      <label>Azimuth °<input id="markupAzimuth" type="number" inputmode="decimal"></label>
-    </div>
-    <div class="photoButtons">
-      <label class="fileButton">Take roof photo<input id="markupCamera" type="file" accept="image/*" capture="environment"></label>
-      <label class="fileButton">Choose existing photo<input id="markupLibrary" type="file" accept="image/*"></label>
-    </div>
-    <button id="openMarkupEditor" class="primary" type="button">Open full-screen editor</button>
-    <div class="guide">Tip: take the photo as square-on to the roof plane as possible, with both roof edges visible.</div>
-  </details>
-
-  <details class="internalGroup" open>
-    <summary>2. Markup tools</summary>
-    <div class="toolGrid">
-      <button id="toolDimension" class="toolBtn on" type="button">Dimension line</button>
-      <button id="toolScale" class="toolBtn" type="button">Set scale</button>
-      <button id="toolObstruction" class="toolBtn" type="button">Obstruction</button>
-      <button id="toolNote" class="toolBtn" type="button">Text note</button>
-      <button id="undoMarkup" class="toolBtn" type="button">Undo</button>
-      <button id="clearMarkup" class="toolBtn danger" type="button">Clear</button>
-    </div>
-    <div class="two">
-      <label>Manual dimension label<input id="dimensionLabel" placeholder="e.g. 4.2m"></label>
-      <label>Obstruction / note label<input id="obstructionLabel" placeholder="chimney, dormer, vent, shade..."></label>
-    </div>
-    <div class="two">
-      <label>Scale reference length m<input id="scaleLength" type="number" inputmode="decimal" step="0.1" placeholder="Known line length"></label>
-      <label>Current scale<input id="scaleStatus" readonly placeholder="No scale set"></label>
-    </div>
-    <p class="hint">Dimension and scale tools use two taps: tap the start point, then tap the end point. Obstruction and note tools use one tap.</p>
-  </details>
-
-  <div class="canvasWrap previewCanvasWrap">
-    <canvas id="markupCanvas"></canvas>
-    <div id="canvasEmpty" class="canvasEmpty">Upload or choose a roof photo to begin.</div>
-  </div>
-
-  <div id="markupEditor" class="markupEditor">
-    <div class="editorTop">
-      <button id="closeMarkupEditor" type="button">Done</button>
-      <div>
-        <b>Roof Markup Editor</b>
-        <span id="editorModeLabel">Dimension line</span>
-      </div>
-      <button id="saveMarkupFromEditor" type="button">Save</button>
-    </div>
-    <div class="editorTools">
-      <button id="editorDimension" class="toolBtn on" type="button">Dimension</button>
-      <button id="editorScale" class="toolBtn" type="button">Scale</button>
-      <button id="editorObstruction" class="toolBtn" type="button">Obstruction</button>
-      <button id="editorNote" class="toolBtn" type="button">Note</button>
-      <button id="editorUndo" class="toolBtn" type="button">Undo</button>
-      <button id="editorClear" class="toolBtn danger" type="button">Clear</button>
-    </div>
-    <div class="editorInputs">
-      <input id="editorDimensionLabel" placeholder="Dimension e.g. 4.2m">
-      <input id="editorObstructionLabel" placeholder="Label e.g. dormer, chimney">
-      <input id="editorScaleLength" type="number" inputmode="decimal" step="0.1" placeholder="Scale m">
-    </div>
-    <div class="editorCanvasArea">
-      <canvas id="markupEditorCanvas"></canvas>
-      <div id="editorCanvasEmpty" class="canvasEmpty">Upload or choose a roof photo first.</div>
-    </div>
-    <div class="editorHelp">Two taps for dimension/scale. One tap for obstruction/note. Drag/zoom the page is disabled here so taps stay accurate.</div>
-  </div>
-
-  <label>Markup notes<textarea id="markupNotes" placeholder="Tree shading, dormer restriction, no-go area, preferred panel zone..."></textarea></label>
-
-  <button id="saveMarkup" class="primary" type="button">Save marked roof image to survey</button>
-  <div id="markupStatus" class="guide">No roof markup saved yet.</div>
-
-  <h2>Saved roof markups</h2>
-  <div id="markupList" class="markupList"></div>
-</section>
-
 <section id="build" class="panel">
   <h2>Build quote</h2>
   <div class="scope">
@@ -431,7 +343,6 @@
   <div id="batteryImagePanel" class="batteryImagePanel"></div>
   <div id="paybackSummary" class="paybackSummary"></div>
   <div id="presentSummary" class="summaryBox presenterSummary"></div>
-  <div id="presentMarkupGallery" class="presentMarkupGallery"></div>
   <button id="refreshPresent" class="primary">Refresh summary</button>
 
   <h2>Confirm next step</h2>

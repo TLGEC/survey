@@ -1,5 +1,5 @@
 const KEY='tlgec_current_draft_v1'; const SURVEYS_KEY='tlgec_surveys_saved_v1';
-let selectedFiles=[]; let currentSavedId=null; let signatureData=''; let signaturePadDirty=false; let roofMarkups=[]; let markupState=null;
+let selectedFiles=[]; let currentSavedId=null; let signatureData=''; let signaturePadDirty=false;
 const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','solarSelfUsePct','panelModel','panelCount','systemOverride','framingSelection','tigoPrice','batteryBrand','sigBatteryModel','sigModuleQty','sigBatteryOnlyController','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut'];
 const checks=['heatPump','highEvening','backupNeeded','askBill','askDecisionMaker','askCompetitors','askTiming','askBackup','askBudget','solar','battery','ev','tigo','bird','spds','pw3','gateway','dcExp','sigGateway'];
 function $(x){return document.getElementById(x)}
@@ -130,9 +130,9 @@ function roofLines(){
   return planes.map((r,i)=>`${i+1}. ${r.name||'Roof'}: width ${r.width||'?'} m, slope ${r.slope||'?'} m, pitch ${r.pitch||'?'}°, azimuth ${r.azimuth||'?'}°, panels ${r.panels||'not allocated'}`).join('\n');
 }
 
-function getData(){let d={};ids.forEach(i=>d[i]=$(i)?.value||'');checks.forEach(i=>d[i]=$(i)?.checked||false);d.scope=scope();d.flags=flags();d.files=selectedFiles.map(f=>f.name);d.roofPlanes=getRoofPlanes();d.batteryGuide=$('batteryGuide').textContent;d.quote=quote();d.present=$('presentSummary').innerText||'';d.acceptance=$('acceptanceStamp').innerText||'';d.signatureData=signatureData;d.roofMarkups=roofMarkups;d.currentSavedId=currentSavedId;return d}
+function getData(){let d={};ids.forEach(i=>d[i]=$(i)?.value||'');checks.forEach(i=>d[i]=$(i)?.checked||false);d.scope=scope();d.flags=flags();d.files=selectedFiles.map(f=>f.name);d.roofPlanes=getRoofPlanes();d.batteryGuide=$('batteryGuide').textContent;d.quote=quote();d.present=$('presentSummary').innerText||'';d.acceptance=$('acceptanceStamp').innerText||'';d.signatureData=signatureData;d.currentSavedId=currentSavedId;return d}
 function save(){localStorage.setItem(KEY,JSON.stringify(getData()));render();renderSavedList();renderHomeSavedList()}
-function load(){let raw=localStorage.getItem(KEY);if(raw){try{let d=JSON.parse(raw);ids.forEach(i=>{if($(i))$(i).value=d[i]||''});checks.forEach(i=>{if($(i))$(i).checked=!!d[i]}); if(d.acceptance)$('acceptanceStamp').innerText=d.acceptance; currentSavedId=d.currentSavedId||null; signatureData=d.signatureData||''; roofMarkups=d.roofMarkups||[]; setRoofPlanes(d.roofPlanes||[]);}catch(e){}}if(!document.querySelector('.roofPlaneRow')) setRoofPlanes([]);if(!$('surveyDate').value)$('surveyDate').value=today();if(!$('nextAction').value)$('nextAction').value='Send formal quote';if($('customerName').value && $('saveName')) $('saveName').value=$('customerName').value;render();updateSigPreview();refreshPresent();renderSavedList();renderHomeSavedList();updateSaveStatus()}
+function load(){let raw=localStorage.getItem(KEY);if(raw){try{let d=JSON.parse(raw);ids.forEach(i=>{if($(i))$(i).value=d[i]||''});checks.forEach(i=>{if($(i))$(i).checked=!!d[i]}); if(d.acceptance)$('acceptanceStamp').innerText=d.acceptance; currentSavedId=d.currentSavedId||null; signatureData=d.signatureData||''; setRoofPlanes(d.roofPlanes||[]);}catch(e){}}if(!document.querySelector('.roofPlaneRow')) setRoofPlanes([]);if(!$('surveyDate').value)$('surveyDate').value=today();if(!$('nextAction').value)$('nextAction').value='Send formal quote';if($('customerName').value && $('saveName')) $('saveName').value=$('customerName').value;render();updateSigPreview();refreshPresent();renderSavedList();renderHomeSavedList();updateSaveStatus()}
 function syncUsage(changed){let a=parseFloat($('annualKwh').value||0), d=parseFloat($('dailyKwh').value||0);if(changed==='annual' && a>0)$('dailyKwh').value=(a/365).toFixed(1);if(changed==='daily' && d>0)$('annualKwh').value=Math.round(d*365)}
 function recommendBattery(){let k=parseFloat($('annualKwh').value||0), daily=parseFloat($('dailyKwh').value||0), hp=$('heatPump').checked, ev=$('ev').checked, backup=$('backupNeeded').checked;let txt='Enter annual or daily usage to guide battery sizing.';if(k||daily){if(!daily)daily=k/365;if(!k)k=daily*365;let rec='';if(daily<10)rec='Sigenergy 6.0 or Sigenergy 10.0.';else if(daily<18)rec='Sigenergy 10.0 as the clean default, or Powerwall 3 if Tesla/backup route is preferred.';else if(daily<28)rec='Powerwall 3 or 2 x Sigenergy 10.0.';else rec='Powerwall 3 + DC Expansion, or a larger Sigenergy stack.';if(ev||hp)rec+=' EV/heat pump usage may justify stepping up storage once the load profile is reviewed.';if(backup)rec+=' Backup requirement pushes the design toward a Gateway/backup-capable route.';txt=`Guide: ${rec} Average use is about ${daily.toFixed(1)} kWh/day (${Math.round(k)} kWh/year).`;}$('batteryGuide').textContent=txt;save()}
 function panelCost(){
@@ -386,7 +386,6 @@ function refreshPresent(){
   ${cleanCommercialLine()}
   <p class="nextStepClean">Next step: prepare the formal quote for review and e-signing.</p>`;
   if(typeof renderPaybackSummary==='function') renderPaybackSummary();
-  renderPresentMarkupGallery();
   render();
 }
 function prompt(){let d=getData(), q=d.quote;return `Survey pack for ${d.customerName||'[Customer]'}.
@@ -425,8 +424,6 @@ Competitors: ${d.competitors}
 Roof notes: ${d.roof}
 Roof planes:
 ${roofLines()}
-Roof photo markups:
-${roofMarkupLines()}
 Dimension notes: ${d.dims}
 Obstructions / shading: ${d.shade}
 Battery location: ${d.batteryLoc}
@@ -501,7 +498,7 @@ function getSavedSurveys(){try{return JSON.parse(localStorage.getItem(SURVEYS_KE
 function setSavedSurveys(arr){localStorage.setItem(SURVEYS_KEY,JSON.stringify(arr))}
 function updateSaveStatus(){if(!$('saveStatus'))return;$('saveStatus').innerText=currentSavedId?`Editing saved survey. Use Save Survey to update it, or choose Save as new survey to duplicate it.`:'This survey is currently only a draft. Save it to access it later.'}
 function renderSavedList(){if(!$('savedList'))return;const list=getSavedSurveys().sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''));if(!list.length){$('savedList').innerHTML='<p class="hint">No saved surveys yet.</p>';return;}$('savedList').innerHTML=list.map(s=>`<div class="savedCard"><b>${s.customerName||s.name||'Untitled survey'}</b><div class="savedMeta">${s.customerName||''}<br>${s.address||''}<br>Updated ${new Date(s.updatedAt).toLocaleString()}${s.quote&&s.quote.total?` • ${money(s.quote.total)}`:''}</div><div class="savedActions"><button class="primaryMini" data-load="${s.id}">Open</button><button data-duplicate="${s.id}">Duplicate</button><button data-delete="${s.id}">Delete</button></div></div>`).join('');document.querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>loadSavedSurvey(b.dataset.load));document.querySelectorAll('[data-duplicate]').forEach(b=>b.onclick=()=>duplicateSavedSurvey(b.dataset.duplicate));document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>deleteSavedSurvey(b.dataset.delete))}
-function loadSavedSurvey(id){const s=getSavedSurveys().find(x=>x.id===id);if(!s)return;ids.forEach(i=>{if($(i))$(i).value=s[i]||''});checks.forEach(i=>{if($(i))$(i).checked=!!s[i]});if(s.acceptance)$('acceptanceStamp').innerText=s.acceptance;signatureData=s.signatureData||'';roofMarkups=s.roofMarkups||[];setRoofPlanes(s.roofPlanes||[]);currentSavedId=s.id;if($('saveName'))$('saveName').value=s.customerName||s.name||'';save();refreshPresent();updateSaveStatus();alert('Saved survey opened')}
+function loadSavedSurvey(id){const s=getSavedSurveys().find(x=>x.id===id);if(!s)return;ids.forEach(i=>{if($(i))$(i).value=s[i]||''});checks.forEach(i=>{if($(i))$(i).checked=!!s[i]});if(s.acceptance)$('acceptanceStamp').innerText=s.acceptance;signatureData=s.signatureData||'';setRoofPlanes(s.roofPlanes||[]);currentSavedId=s.id;if($('saveName'))$('saveName').value=s.customerName||s.name||'';save();refreshPresent();updateSaveStatus();alert('Saved survey opened')}
 function duplicateSavedSurvey(id){const s=getSavedSurveys().find(x=>x.id===id);if(!s)return;const copy={...s,id:'svy_'+Date.now(),name:(s.name||s.customerName||'Survey')+' copy',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};const arr=getSavedSurveys();arr.push(copy);setSavedSurveys(arr);renderSavedList();renderHomeSavedList();alert('Survey duplicated')}
 function deleteSavedSurvey(id){if(!confirm('Delete this saved survey?'))return;let arr=getSavedSurveys().filter(x=>x.id!==id);setSavedSurveys(arr);if(currentSavedId===id){currentSavedId=null;updateSaveStatus();save()}renderSavedList()}
 function saveCurrentSurvey(){const mode=$('saveMode')?.value||'update';const draft=getData();let arr=getSavedSurveys();let targetId=(mode==='update'&&currentSavedId)?currentSavedId:null;const name=surveyDisplayName(draft); if($('saveName')) $('saveName').value=name;if(targetId){arr=arr.map(s=>s.id===targetId?{...draft,id:targetId,name,createdAt:s.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()}:s)}else{targetId='svy_'+Date.now();arr.push({...draft,id:targetId,name,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});currentSavedId=targetId}setSavedSurveys(arr);if($('saveMode'))$('saveMode').value='update';updateSaveStatus();renderSavedList();save();alert('Survey saved')}
@@ -530,8 +527,6 @@ Competitors: ${d.competitors}
 Roof: ${d.roof}
 Roof planes:
 ${roofLines()}
-Roof photo markups:
-${roofMarkupLines()}
 Dimension notes: ${d.dims}
 Shading / obstructions: ${d.shade}
 Battery location: ${d.batteryLoc}
@@ -997,340 +992,7 @@ function bindCriticalButtons(){
   if(monday) monday.onchange=e=>readCSVFileAndSave((e.target.files||[])[0]);
 }
 
-
-
-function initRoofMarkup(){
-  markupState={
-    tool:'dimension',
-    image:null,
-    imageData:'',
-    actions:[],
-    pending:null,
-    scalePxPerM:null,
-    previewCanvas:$('markupCanvas'),
-    editorCanvas:$('markupEditorCanvas'),
-    activeCanvas:null
-  };
-  setupMarkupButtons();
-  bindMarkupCanvas(markupState.previewCanvas);
-  bindMarkupCanvas(markupState.editorCanvas);
-  renderMarkupList();
-  renderMarkupCanvas();
-}
-function activeMarkupCanvas(){
-  const editorOpen=$('markupEditor') && $('markupEditor').classList.contains('open');
-  return editorOpen ? markupState.editorCanvas : markupState.previewCanvas;
-}
-function activeMarkupCtx(){
-  const c=activeMarkupCanvas();
-  return c ? c.getContext('2d') : null;
-}
-function setMarkupTool(tool){
-  if(!markupState) return;
-  markupState.tool=tool;
-  markupState.pending=null;
-  document.querySelectorAll('.toolBtn').forEach(b=>b.classList.remove('on'));
-  const ids={
-    dimension:['toolDimension','editorDimension'],
-    scale:['toolScale','editorScale'],
-    obstruction:['toolObstruction','editorObstruction'],
-    note:['toolNote','editorNote']
-  }[tool]||[];
-  ids.forEach(id=>{if($(id))$(id).classList.add('on')});
-  if($('editorModeLabel'))$('editorModeLabel').innerText={
-    dimension:'Dimension line',
-    scale:'Set scale',
-    obstruction:'Obstruction',
-    note:'Text note'
-  }[tool]||'Markup';
-  renderMarkupCanvas();
-}
-function syncEditorInputsFromMain(){
-  if($('editorDimensionLabel'))$('editorDimensionLabel').value=$('dimensionLabel')?.value||'';
-  if($('editorObstructionLabel'))$('editorObstructionLabel').value=$('obstructionLabel')?.value||'';
-  if($('editorScaleLength'))$('editorScaleLength').value=$('scaleLength')?.value||'';
-}
-function syncMainInputsFromEditor(){
-  if($('dimensionLabel')&&$('editorDimensionLabel'))$('dimensionLabel').value=$('editorDimensionLabel').value;
-  if($('obstructionLabel')&&$('editorObstructionLabel'))$('obstructionLabel').value=$('editorObstructionLabel').value;
-  if($('scaleLength')&&$('editorScaleLength'))$('scaleLength').value=$('editorScaleLength').value;
-}
-function setupMarkupButtons(){
-  const toolMap=[
-    ['toolDimension','dimension'],['editorDimension','dimension'],
-    ['toolScale','scale'],['editorScale','scale'],
-    ['toolObstruction','obstruction'],['editorObstruction','obstruction'],
-    ['toolNote','note'],['editorNote','note']
-  ];
-  toolMap.forEach(([id,tool])=>{if($(id))$(id).onclick=()=>setMarkupTool(tool)});
-  if($('undoMarkup'))$('undoMarkup').onclick=undoMarkup;
-  if($('editorUndo'))$('editorUndo').onclick=undoMarkup;
-  if($('clearMarkup'))$('clearMarkup').onclick=clearCurrentMarkup;
-  if($('editorClear'))$('editorClear').onclick=clearCurrentMarkup;
-  if($('newMarkup'))$('newMarkup').onclick=()=>newRoofMarkup();
-  if($('saveMarkup'))$('saveMarkup').onclick=saveRoofMarkup;
-  if($('saveMarkupFromEditor'))$('saveMarkupFromEditor').onclick=()=>{syncMainInputsFromEditor();saveRoofMarkup();};
-  if($('openMarkupEditor'))$('openMarkupEditor').onclick=openMarkupEditor;
-  if($('closeMarkupEditor'))$('closeMarkupEditor').onclick=closeMarkupEditor;
-  if($('markupCamera'))$('markupCamera').onchange=e=>loadMarkupPhoto((e.target.files||[])[0]);
-  if($('markupLibrary'))$('markupLibrary').onchange=e=>loadMarkupPhoto((e.target.files||[])[0]);
-}
-function undoMarkup(){
-  if(!markupState) return;
-  markupState.actions.pop();
-  markupState.pending=null;
-  renderMarkupCanvas();
-  save();
-}
-function clearCurrentMarkup(){
-  if(!markupState) return;
-  if(confirm('Clear this roof markup?')){
-    markupState.actions=[];
-    markupState.pending=null;
-    renderMarkupCanvas();
-    save();
-  }
-}
-function openMarkupEditor(){
-  if(!$('markupEditor')) return;
-  syncEditorInputsFromMain();
-  $('markupEditor').classList.add('open');
-  document.body.classList.add('modalOpen');
-  setTimeout(renderMarkupCanvas,80);
-}
-function closeMarkupEditor(){
-  if(!$('markupEditor')) return;
-  syncMainInputsFromEditor();
-  $('markupEditor').classList.remove('open');
-  document.body.classList.remove('modalOpen');
-  setTimeout(renderMarkupCanvas,80);
-}
-function newRoofMarkup(){
-  if(!markupState) initRoofMarkup();
-  markupState.image=null;
-  markupState.imageData='';
-  markupState.actions=[];
-  markupState.pending=null;
-  markupState.scalePxPerM=null;
-  ['markupRoofName','markupPitch','markupAzimuth','dimensionLabel','obstructionLabel','scaleLength','markupNotes','editorDimensionLabel','editorObstructionLabel','editorScaleLength'].forEach(id=>{if($(id))$(id).value=''});
-  if($('scaleStatus'))$('scaleStatus').value='No scale set';
-  if($('markupCamera'))$('markupCamera').value='';
-  if($('markupLibrary'))$('markupLibrary').value='';
-  if($('markupStatus'))$('markupStatus').innerText='New markup started.';
-  renderMarkupCanvas();
-}
-function loadMarkupPhoto(file){
-  if(!file) return;
-  const reader=new FileReader();
-  reader.onload=()=>{
-    const img=new Image();
-    img.onload=()=>{
-      const maxW=1800, maxH=1400;
-      let ratio=Math.min(maxW/img.width,maxH/img.height,1);
-      const c=document.createElement('canvas');
-      c.width=Math.round(img.width*ratio);
-      c.height=Math.round(img.height*ratio);
-      const cx=c.getContext('2d');
-      cx.drawImage(img,0,0,c.width,c.height);
-      const data=c.toDataURL('image/jpeg',0.86);
-      const scaled=new Image();
-      scaled.onload=()=>{
-        markupState.image=scaled;
-        markupState.imageData=data;
-        markupState.actions=[];
-        markupState.pending=null;
-        markupState.scalePxPerM=null;
-        if($('scaleStatus'))$('scaleStatus').value='No scale set';
-        renderMarkupCanvas();
-        openMarkupEditor();
-      };
-      scaled.src=data;
-    };
-    img.src=reader.result;
-  };
-  reader.readAsDataURL(file);
-}
-function bindMarkupCanvas(canvas){
-  if(!canvas) return;
-  let lastTouch=0;
-  const handler=e=>{
-    if(e.type==='touchend') lastTouch=Date.now();
-    if(e.type==='click' && Date.now()-lastTouch<500) return;
-    if(!markupState || !markupState.image){alert('Upload or choose a roof photo first.');return;}
-    e.preventDefault();
-    e.stopPropagation();
-    const p=canvasPoint(e,canvas);
-    handleMarkupTap(p);
-  };
-  canvas.addEventListener('click',handler);
-  canvas.addEventListener('touchend',handler,{passive:false});
-}
-function handleMarkupTap(p){
-  const tool=markupState.tool;
-  if(tool==='dimension' || tool==='scale'){
-    if(!markupState.pending){
-      markupState.pending=p;
-      renderMarkupCanvas();
-      drawTempPoint(p,activeMarkupCanvas());
-      return;
-    }
-    const start=markupState.pending, end=p;
-    if(tool==='scale'){
-      syncMainInputsFromEditor();
-      const metres=Number($('scaleLength')?.value||0);
-      if(!metres){alert('Enter the known scale length in metres first.');markupState.pending=null;renderMarkupCanvas();return;}
-      const px=distance(start,end);
-      markupState.scalePxPerM=px/metres;
-      if($('scaleStatus'))$('scaleStatus').value=`1m = ${Math.round(markupState.scalePxPerM)}px`;
-      markupState.actions.push({type:'scale',start,end,label:`${metres}m scale`,metres});
-    }else{
-      syncMainInputsFromEditor();
-      let label=($('dimensionLabel')?.value||'').trim();
-      if(!label && markupState.scalePxPerM){
-        const m=distance(start,end)/markupState.scalePxPerM;
-        label=m.toFixed(1)+'m';
-      }
-      if(!label) label=prompt('Dimension in metres, e.g. 4.2m')||'';
-      if(label) markupState.actions.push({type:'dimension',start,end,label});
-    }
-    markupState.pending=null;
-    renderMarkupCanvas();
-    save();
-    return;
-  }
-  if(tool==='obstruction'){
-    syncMainInputsFromEditor();
-    const label=($('obstructionLabel')?.value||prompt('Obstruction label, e.g. chimney, dormer, shade')||'Obstruction').trim();
-    markupState.actions.push({type:'obstruction',point:p,label});
-    renderMarkupCanvas();
-    save();
-    return;
-  }
-  if(tool==='note'){
-    syncMainInputsFromEditor();
-    const label=($('obstructionLabel')?.value||prompt('Text note')||'Note').trim();
-    markupState.actions.push({type:'note',point:p,label});
-    renderMarkupCanvas();
-    save();
-  }
-}
-function canvasPoint(e,c){
-  const r=c.getBoundingClientRect();
-  const t=e.changedTouches&&e.changedTouches[0] ? e.changedTouches[0] : e;
-  return {x:(t.clientX-r.left)*(c.width/r.width), y:(t.clientY-r.top)*(c.height/r.height)};
-}
-function distance(a,b){return Math.hypot(b.x-a.x,b.y-a.y)}
-function renderMarkupCanvas(){
-  if(!markupState) return;
-  [markupState.previewCanvas,markupState.editorCanvas].forEach(c=>renderOneMarkupCanvas(c));
-}
-function renderOneMarkupCanvas(c){
-  if(!c) return;
-  const ctx=c.getContext('2d');
-  if(!markupState.image){
-    c.width=900; c.height=520;
-    ctx.clearRect(0,0,c.width,c.height);
-    if(c.id==='markupCanvas' && $('canvasEmpty'))$('canvasEmpty').style.display='flex';
-    if(c.id==='markupEditorCanvas' && $('editorCanvasEmpty'))$('editorCanvasEmpty').style.display='flex';
-    return;
-  }
-  if(c.id==='markupCanvas' && $('canvasEmpty'))$('canvasEmpty').style.display='none';
-  if(c.id==='markupEditorCanvas' && $('editorCanvasEmpty'))$('editorCanvasEmpty').style.display='none';
-  c.width=markupState.image.width;
-  c.height=markupState.image.height;
-  ctx.drawImage(markupState.image,0,0,c.width,c.height);
-  markupState.actions.forEach(a=>drawMarkupAction(ctx,a,c));
-  if(markupState.pending) drawTempPoint(markupState.pending,c);
-}
-function drawTempPoint(p,c){
-  const ctx=(c||activeMarkupCanvas()).getContext('2d');
-  ctx.save(); ctx.fillStyle='#ffe900'; ctx.strokeStyle='#111'; ctx.lineWidth=3;
-  ctx.beginPath(); ctx.arc(p.x,p.y,10,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
-}
-function drawMarkupAction(ctx,a,c){
-  const scale=Math.max(c.width/900,1);
-  ctx.save();
-  ctx.lineWidth=5*scale;
-  ctx.strokeStyle='#ffe900';
-  ctx.fillStyle='#ffe900';
-  ctx.font=`bold ${Math.round(26*scale)}px Arial`;
-  ctx.textAlign='center';
-  ctx.textBaseline='middle';
-  if(a.type==='dimension' || a.type==='scale'){
-    ctx.beginPath(); ctx.moveTo(a.start.x,a.start.y); ctx.lineTo(a.end.x,a.end.y); ctx.stroke();
-    const angle=Math.atan2(a.end.y-a.start.y,a.end.x-a.start.x);
-    drawTick(ctx,a.start,angle,scale); drawTick(ctx,a.end,angle,scale);
-    const mid={x:(a.start.x+a.end.x)/2,y:(a.start.y+a.end.y)/2};
-    drawLabelBox(ctx,mid,a.label,scale);
-  }else if(a.type==='obstruction'){
-    const w=190*scale,h=62*scale;
-    ctx.strokeStyle='#ffe900'; ctx.lineWidth=4*scale;
-    ctx.strokeRect(a.point.x-w/2,a.point.y-h/2,w,h);
-    drawLabelBox(ctx,{x:a.point.x,y:a.point.y},a.label,scale);
-  }else if(a.type==='note'){
-    drawLabelBox(ctx,a.point,a.label,scale);
-  }
-  ctx.restore();
-}
-function drawTick(ctx,p,angle,scale){
-  const len=32*scale, perp=angle+Math.PI/2;
-  ctx.beginPath();
-  ctx.moveTo(p.x+Math.cos(perp)*len/2,p.y+Math.sin(perp)*len/2);
-  ctx.lineTo(p.x-Math.cos(perp)*len/2,p.y-Math.sin(perp)*len/2);
-  ctx.stroke();
-}
-function drawLabelBox(ctx,p,text,scale){
-  const pad=12*scale;
-  ctx.font=`bold ${Math.round(26*scale)}px Arial`;
-  const w=ctx.measureText(text).width+pad*2, h=46*scale;
-  ctx.fillStyle='#ffe900';
-  ctx.fillRect(p.x-w/2,p.y-h/2,w,h);
-  ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=2*scale; ctx.strokeRect(p.x-w/2,p.y-h/2,w,h);
-  ctx.fillStyle='#111';
-  ctx.fillText(text,p.x,p.y+scale);
-}
-function saveRoofMarkup(){
-  if(!markupState||!markupState.image){alert('Upload or choose a roof photo first.');return;}
-  syncMainInputsFromEditor();
-  renderMarkupCanvas();
-  const c=markupState.editorCanvas || markupState.previewCanvas;
-  const imageData=c.toDataURL('image/jpeg',0.86);
-  const record={
-    id:'rm_'+Date.now(),
-    roofName:($('markupRoofName')?.value||'Roof plane').trim(),
-    pitch:$('markupPitch')?.value||'',
-    azimuth:$('markupAzimuth')?.value||'',
-    notes:$('markupNotes')?.value||'',
-    actions:markupState.actions,
-    scalePxPerM:markupState.scalePxPerM,
-    imageData,
-    createdAt:new Date().toISOString()
-  };
-  roofMarkups.push(record);
-  if($('markupStatus'))$('markupStatus').innerText=`Saved markup for ${record.roofName}.`;
-  renderMarkupList();
-  renderPresentMarkupGallery();
-  save();
-  closeMarkupEditor();
-}
-function renderMarkupList(){
-  if(!$('markupList')) return;
-  if(!roofMarkups.length){$('markupList').innerHTML='<div class="emptyState"><b>No marked roof images yet</b><p>Upload a photo and save a markup to attach it to the survey.</p></div>';return;}
-  $('markupList').innerHTML=roofMarkups.map(m=>`<div class="markupCard"><img src="${m.imageData}" alt="Roof markup"><div><b>${m.roofName||'Roof plane'}</b><p>Pitch ${m.pitch||'-'}°, azimuth ${m.azimuth||'-'}°<br>${m.notes||''}</p><button data-delete-markup="${m.id}" type="button">Delete</button></div></div>`).join('');
-  document.querySelectorAll('[data-delete-markup]').forEach(b=>b.onclick=()=>{roofMarkups=roofMarkups.filter(m=>m.id!==b.dataset.deleteMarkup);renderMarkupList();renderPresentMarkupGallery();save();});
-}
-function renderPresentMarkupGallery(){
-  if(!$('presentMarkupGallery')) return;
-  if(!roofMarkups.length){$('presentMarkupGallery').innerHTML='';return;}
-  const first=roofMarkups[0];
-  $('presentMarkupGallery').innerHTML=`<div class="presentRoofMarkup"><h3>Surveyed roof detail</h3><img src="${first.imageData}" alt="Annotated roof markup"><p>${first.roofName||'Roof plane'}${first.pitch?` • Pitch ${first.pitch}°`:''}${first.azimuth?` • Azimuth ${first.azimuth}°`:''}</p></div>`;
-}
-function roofMarkupLines(){
-  if(!roofMarkups.length) return 'None saved';
-  return roofMarkups.map((m,i)=>`${i+1}. ${m.roofName||'Roof plane'} - pitch ${m.pitch||'-'}°, azimuth ${m.azimuth||'-'}°, notes: ${m.notes||'None'}, markup image saved: Yes`).join('\n');
-}
-
-document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v31';load();initSignaturePad();initRoofMarkup();renderPresentMarkupGallery();
+document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v31';load();initSignaturePad();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
@@ -1356,7 +1018,29 @@ if($('exportBackup'))$('exportBackup').onclick=exportSurveyBackup;
 if($('importBackup'))$('importBackup').onchange=e=>importSurveyBackup((e.target.files||[])[0]);
 if($('addRoofPlane'))$('addRoofPlane').onclick=()=>{addRoofPlane({});save()};
 if($('saveAndNew'))$('saveAndNew').onclick=saveAndStartNew;
-if($('reset'))$('reset').onclick=()=>{if(confirm('Clear local survey?')){localStorage.removeItem(KEY);location.reload()}};
+$('reset').onclick=()=>{if(confirm('Clear local survey?')){localStorage.removeItem(KEY);location.reload()}};
 $('filesInput').onchange=e=>{selectedFiles=Array.from(e.target.files||[]);$('preview').innerHTML='';selectedFiles.forEach(f=>{if(f.type.startsWith('image/')){let img=document.createElement('img');img.src=URL.createObjectURL(f);$('preview').appendChild(img)}});$('fileNames').textContent=selectedFiles.map(f=>f.name).join('\n');save()};
 if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.js');
 });
+
+
+(function(){
+const KEY='tlgec_current_draft_v1', SAVED='tlgec_surveys_saved_v1';
+const $=id=>document.getElementById(id);
+function tab(t){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('on',p.id===t));scrollTo(0,0)}
+function loadS(){try{return JSON.parse(localStorage.getItem(SAVED)||'[]')}catch(e){return[]}}
+function saveS(a){localStorage.setItem(SAVED,JSON.stringify(a))}
+function data(){try{if(window.getData)return getData()}catch(e){};let d={};['customerName','address','phone','email','surveyDate','wants','crmNotes','preInterest','preUsage'].forEach(id=>d[id]=$(id)?.value||'');return d}
+function saveSurvey(){let d=data(), name=($('customerName')?.value||d.customerName||'Untitled survey').trim()||'Untitled survey', now=new Date().toISOString(), arr=loadS(), id=d.currentSavedId||window.currentSavedId||('svy_'+Date.now()), old=arr.find(s=>s.id===id), rec={...d,id,name,customerName:name,currentSavedId:id,createdAt:old?.createdAt||now,updatedAt:now};saveS(old?arr.map(s=>s.id===id?rec:s):[...arr,rec]);localStorage.setItem(KEY,JSON.stringify(rec));window.currentSavedId=id;if($('saveName'))$('saveName').value=name;try{render()}catch(e){}try{renderSavedList()}catch(e){}try{renderHomeSavedList()}catch(e){}try{updateSaveStatus()}catch(e){}return rec}
+function clearAll(){document.querySelectorAll('input,textarea,select').forEach(x=>{if(x.type==='file')return;if(x.id==='surveyDate'){x.value=new Date().toISOString().slice(0,10);return}if(x.type==='checkbox'||x.type==='radio'){x.checked=false;return}if(x.tagName==='SELECT'){x.selectedIndex=0;return}x.value=''}); if($('solarPerPanel'))$('solarPerPanel').value='304'; if($('paybackNightRate'))$('paybackNightRate').value='5'; if($('exportRate'))$('exportRate').value='15'; if($('bird'))$('bird').checked=true; if($('nextAction'))$('nextAction').value='Send formal quote'}
+function newSurvey(){let has=['customerName','address','phone','email'].some(id=>($(id)?.value||'').trim()); if(has && confirm('Save the current survey before starting a new one? Press OK to save, or Cancel to start fresh without saving.'))saveSurvey(); localStorage.removeItem(KEY); window.currentSavedId=null; clearAll(); tab('customer')}
+function parseCSV(t){let rows=[],r=[],c='',q=false;for(let i=0;i<t.length;i++){let ch=t[i],n=t[i+1];if(ch=='"'&&q&&n=='"'){c+='"';i++;continue}if(ch=='"'){q=!q;continue}if(ch==','&&!q){r.push(c);c='';continue}if((ch=='\n'||ch=='\r')&&!q){if(c!==''||r.length){r.push(c);rows.push(r);r=[];c=''}if(ch=='\r'&&n=='\n')i++;continue}c+=ch}if(c!==''||r.length){r.push(c);rows.push(r)}return rows}
+const norm=s=>(s||'').toString().toLowerCase().replace(/[^a-z0-9]/g,'');
+function find(o,ns){let ks=Object.keys(o);for(let n of ns){let w=norm(n),k=ks.find(x=>norm(x)===w||norm(x).includes(w)||w.includes(norm(x)));if(k&&o[k])return o[k]}return''}
+function objFrom(t){let rows=parseCSV(t.trim());if(!rows.length)return null;let o={},h0=(rows[0][0]||'').trim().toLowerCase(),h1=(rows[0][1]||'').trim().toLowerCase();if(h0==='field'&&h1==='value'){rows.slice(1).forEach(r=>{if(r[0])o[r[0].trim()]=r.slice(1).join(',').trim()});return o}let hs=rows[0].map(h=>h.trim()), ds=rows.slice(1).filter(r=>r.some(x=>(x||'').trim())), cur=($('customerName')?.value||'').toLowerCase(), chosen=ds[0]||[];if(cur){let m=ds.find(r=>r.join(' ').toLowerCase().includes(cur));if(m)chosen=m}hs.forEach((h,i)=>o[h]=chosen[i]||'');return o}
+function fill(o){[['customerName',['Name','Customer name','Contact Name']],['phone',['Contact Number','Phone','Mobile']],['email',['Contact Email','Email']],['crmStatus',['Lead Status','Status']],['preInterest',['Lead Type','System interest','Specific Brand Requested']],['crmNotes',['Qualification Notes','Lead Notes','Notes']],['wants',['Reason for Install','Motivation']],['competitors',['Other quotes','Competitors']],['timing',['Timescale','Timing']]].forEach(([id,ns])=>{let v=find(o,ns);if(v&&$(id))$(id).value=v});let addr=[find(o,['Site Address','Address']),find(o,['Site Post Code','Postcode'])].filter(Boolean).join(', ');if(addr&&$('address'))$('address').value=addr;let ap=find(o,['Survey Scheduled','Appointment time']);if(ap&&$('appointmentTime'))$('appointmentTime').value=ap.replace(' ','T').slice(0,16);let u=find(o,['Energy Usage','Annual kWh']);if(u&&$('annualKwh')){let n=parseFloat(u);if(Number.isFinite(n)){$('annualKwh').value=n;if($('dailyKwh'))$('dailyKwh').value=(n/365).toFixed(1)}}}
+function importPaste(){let text=$('crmPaste')?.value||'';if(!text.trim()){alert('Paste the monday CSV text first.');return}let o=objFrom(text);if(!o){alert('Could not read the pasted monday data.');return}fill(o);let rec=saveSurvey();if($('importStatus'))$('importStatus').textContent='Imported and saved as '+rec.customerName+'.';tab('customer')}
+function importFile(f){if(!f)return;let r=new FileReader();r.onload=()=>{let o=objFrom(r.result||'');if(!o){alert('Could not read the CSV file.');return}fill(o);let rec=saveSurvey();if($('importStatus'))$('importStatus').textContent='Imported and saved as '+rec.customerName+'.';tab('customer')};r.readAsText(f)}
+function bind(){document.addEventListener('click',e=>{let b=e.target.closest('button');if(!b)return;if(['homeNewSurvey','newSurveyTop','newSurveySaved'].includes(b.id)){e.preventDefault();e.stopImmediatePropagation();newSurvey()}if(b.id==='importPastedCRM'){e.preventDefault();e.stopImmediatePropagation();importPaste()}},true);let mi=$('mondayImport');if(mi)mi.addEventListener('change',e=>importFile((e.target.files||[])[0]),true)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+})();
