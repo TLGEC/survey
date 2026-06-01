@@ -158,3 +158,21 @@ pre{background:#062819;color:#effff4;border-radius:20px;padding:18px;white-space
 .importBackupLabel input{display:none}
 
 .versionBadge{font-size:13px;color:#5f6e66;font-weight:850;text-align:center;margin:8px 0 12px}
+
+.canvasWrap{position:relative;background:#0b1f18;border-radius:22px;overflow:hidden;margin:14px 0;border:1px solid #d9e2da;min-height:280px}
+#markupCanvas{width:100%;display:block;background:#edf2eb;touch-action:none}
+.canvasEmpty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:#3d5248;background:#f7faf4;font-weight:850;padding:24px}
+.toolGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 16px}
+.toolBtn{background:#eef3ef;color:#0b1f18;border:1px solid #d9e2da;border-radius:16px;padding:12px;font-weight:900}
+.toolBtn.on{background:#0b7a46;color:white;border-color:#0b7a46}
+.toolBtn.danger{border-color:#e0b3b3}
+.markupList{display:grid;gap:12px}
+.markupCard{display:grid;grid-template-columns:130px 1fr;gap:12px;background:white;border:1px solid #d9e2da;border-radius:18px;padding:12px;align-items:center}
+.markupCard img{width:130px;height:95px;object-fit:cover;border-radius:12px;border:1px solid #d9e2da}
+.markupCard p{margin:4px 0 8px;color:#5f6e66;font-size:13px}
+.markupCard button{background:#eef3ef;color:#0b1f18;border:1px solid #d9e2da;border-radius:12px;padding:8px 10px;font-weight:850}
+.presentRoofMarkup{background:white;border:1px solid #d9e2da;border-radius:24px;padding:16px;margin:14px 0;box-shadow:0 6px 18px rgba(6,40,25,.07)}
+.presentRoofMarkup h3{margin:0 0 10px;color:#062819}
+.presentRoofMarkup img{width:100%;border-radius:18px;border:1px solid #d9e2da;display:block}
+.presentRoofMarkup p{margin:8px 0 0;color:#3d5248;font-weight:850}
+@media(max-width:760px){.toolGrid{grid-template-columns:repeat(2,1fr)}.markupCard{grid-template-columns:1fr}.markupCard img{width:100%;height:auto}}

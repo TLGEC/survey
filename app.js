@@ -1,5 +1,5 @@
 const KEY='tlgec_current_draft_v1'; const SURVEYS_KEY='tlgec_surveys_saved_v1';
-let selectedFiles=[]; let currentSavedId=null; let signatureData=''; let signaturePadDirty=false;
+let selectedFiles=[]; let currentSavedId=null; let signatureData=''; let signaturePadDirty=false; let roofMarkups=[]; let markupState=null;
 const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','solarSelfUsePct','panelModel','panelCount','systemOverride','framingSelection','tigoPrice','batteryBrand','sigBatteryModel','sigModuleQty','sigBatteryOnlyController','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut'];
 const checks=['heatPump','highEvening','backupNeeded','askBill','askDecisionMaker','askCompetitors','askTiming','askBackup','askBudget','solar','battery','ev','tigo','bird','spds','pw3','gateway','dcExp','sigGateway'];
 function $(x){return document.getElementById(x)}
@@ -130,9 +130,9 @@ function roofLines(){
   return planes.map((r,i)=>`${i+1}. ${r.name||'Roof'}: width ${r.width||'?'} m, slope ${r.slope||'?'} m, pitch ${r.pitch||'?'}°, azimuth ${r.azimuth||'?'}°, panels ${r.panels||'not allocated'}`).join('\n');
 }
 
-function getData(){let d={};ids.forEach(i=>d[i]=$(i)?.value||'');checks.forEach(i=>d[i]=$(i)?.checked||false);d.scope=scope();d.flags=flags();d.files=selectedFiles.map(f=>f.name);d.roofPlanes=getRoofPlanes();d.batteryGuide=$('batteryGuide').textContent;d.quote=quote();d.present=$('presentSummary').innerText||'';d.acceptance=$('acceptanceStamp').innerText||'';d.signatureData=signatureData;d.currentSavedId=currentSavedId;return d}
+function getData(){let d={};ids.forEach(i=>d[i]=$(i)?.value||'');checks.forEach(i=>d[i]=$(i)?.checked||false);d.scope=scope();d.flags=flags();d.files=selectedFiles.map(f=>f.name);d.roofPlanes=getRoofPlanes();d.batteryGuide=$('batteryGuide').textContent;d.quote=quote();d.present=$('presentSummary').innerText||'';d.acceptance=$('acceptanceStamp').innerText||'';d.signatureData=signatureData;d.roofMarkups=roofMarkups;d.currentSavedId=currentSavedId;return d}
 function save(){localStorage.setItem(KEY,JSON.stringify(getData()));render();renderSavedList();renderHomeSavedList()}
-function load(){let raw=localStorage.getItem(KEY);if(raw){try{let d=JSON.parse(raw);ids.forEach(i=>{if($(i))$(i).value=d[i]||''});checks.forEach(i=>{if($(i))$(i).checked=!!d[i]}); if(d.acceptance)$('acceptanceStamp').innerText=d.acceptance; currentSavedId=d.currentSavedId||null; signatureData=d.signatureData||''; setRoofPlanes(d.roofPlanes||[]);}catch(e){}}if(!document.querySelector('.roofPlaneRow')) setRoofPlanes([]);if(!$('surveyDate').value)$('surveyDate').value=today();if(!$('nextAction').value)$('nextAction').value='Send formal quote';if($('customerName').value && $('saveName')) $('saveName').value=$('customerName').value;render();updateSigPreview();refreshPresent();renderSavedList();renderHomeSavedList();updateSaveStatus()}
+function load(){let raw=localStorage.getItem(KEY);if(raw){try{let d=JSON.parse(raw);ids.forEach(i=>{if($(i))$(i).value=d[i]||''});checks.forEach(i=>{if($(i))$(i).checked=!!d[i]}); if(d.acceptance)$('acceptanceStamp').innerText=d.acceptance; currentSavedId=d.currentSavedId||null; signatureData=d.signatureData||''; roofMarkups=d.roofMarkups||[]; setRoofPlanes(d.roofPlanes||[]);}catch(e){}}if(!document.querySelector('.roofPlaneRow')) setRoofPlanes([]);if(!$('surveyDate').value)$('surveyDate').value=today();if(!$('nextAction').value)$('nextAction').value='Send formal quote';if($('customerName').value && $('saveName')) $('saveName').value=$('customerName').value;render();updateSigPreview();refreshPresent();renderSavedList();renderHomeSavedList();updateSaveStatus()}
 function syncUsage(changed){let a=parseFloat($('annualKwh').value||0), d=parseFloat($('dailyKwh').value||0);if(changed==='annual' && a>0)$('dailyKwh').value=(a/365).toFixed(1);if(changed==='daily' && d>0)$('annualKwh').value=Math.round(d*365)}
 function recommendBattery(){let k=parseFloat($('annualKwh').value||0), daily=parseFloat($('dailyKwh').value||0), hp=$('heatPump').checked, ev=$('ev').checked, backup=$('backupNeeded').checked;let txt='Enter annual or daily usage to guide battery sizing.';if(k||daily){if(!daily)daily=k/365;if(!k)k=daily*365;let rec='';if(daily<10)rec='Sigenergy 6.0 or Sigenergy 10.0.';else if(daily<18)rec='Sigenergy 10.0 as the clean default, or Powerwall 3 if Tesla/backup route is preferred.';else if(daily<28)rec='Powerwall 3 or 2 x Sigenergy 10.0.';else rec='Powerwall 3 + DC Expansion, or a larger Sigenergy stack.';if(ev||hp)rec+=' EV/heat pump usage may justify stepping up storage once the load profile is reviewed.';if(backup)rec+=' Backup requirement pushes the design toward a Gateway/backup-capable route.';txt=`Guide: ${rec} Average use is about ${daily.toFixed(1)} kWh/day (${Math.round(k)} kWh/year).`;}$('batteryGuide').textContent=txt;save()}
 function panelCost(){
@@ -386,6 +386,7 @@ function refreshPresent(){
   ${cleanCommercialLine()}
   <p class="nextStepClean">Next step: prepare the formal quote for review and e-signing.</p>`;
   if(typeof renderPaybackSummary==='function') renderPaybackSummary();
+  renderPresentMarkupGallery();
   render();
 }
 function prompt(){let d=getData(), q=d.quote;return `Survey pack for ${d.customerName||'[Customer]'}.
@@ -424,6 +425,8 @@ Competitors: ${d.competitors}
 Roof notes: ${d.roof}
 Roof planes:
 ${roofLines()}
+Roof photo markups:
+${roofMarkupLines()}
 Dimension notes: ${d.dims}
 Obstructions / shading: ${d.shade}
 Battery location: ${d.batteryLoc}
@@ -498,7 +501,7 @@ function getSavedSurveys(){try{return JSON.parse(localStorage.getItem(SURVEYS_KE
 function setSavedSurveys(arr){localStorage.setItem(SURVEYS_KEY,JSON.stringify(arr))}
 function updateSaveStatus(){if(!$('saveStatus'))return;$('saveStatus').innerText=currentSavedId?`Editing saved survey. Use Save Survey to update it, or choose Save as new survey to duplicate it.`:'This survey is currently only a draft. Save it to access it later.'}
 function renderSavedList(){if(!$('savedList'))return;const list=getSavedSurveys().sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''));if(!list.length){$('savedList').innerHTML='<p class="hint">No saved surveys yet.</p>';return;}$('savedList').innerHTML=list.map(s=>`<div class="savedCard"><b>${s.customerName||s.name||'Untitled survey'}</b><div class="savedMeta">${s.customerName||''}<br>${s.address||''}<br>Updated ${new Date(s.updatedAt).toLocaleString()}${s.quote&&s.quote.total?` • ${money(s.quote.total)}`:''}</div><div class="savedActions"><button class="primaryMini" data-load="${s.id}">Open</button><button data-duplicate="${s.id}">Duplicate</button><button data-delete="${s.id}">Delete</button></div></div>`).join('');document.querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>loadSavedSurvey(b.dataset.load));document.querySelectorAll('[data-duplicate]').forEach(b=>b.onclick=()=>duplicateSavedSurvey(b.dataset.duplicate));document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>deleteSavedSurvey(b.dataset.delete))}
-function loadSavedSurvey(id){const s=getSavedSurveys().find(x=>x.id===id);if(!s)return;ids.forEach(i=>{if($(i))$(i).value=s[i]||''});checks.forEach(i=>{if($(i))$(i).checked=!!s[i]});if(s.acceptance)$('acceptanceStamp').innerText=s.acceptance;signatureData=s.signatureData||'';setRoofPlanes(s.roofPlanes||[]);currentSavedId=s.id;if($('saveName'))$('saveName').value=s.customerName||s.name||'';save();refreshPresent();updateSaveStatus();alert('Saved survey opened')}
+function loadSavedSurvey(id){const s=getSavedSurveys().find(x=>x.id===id);if(!s)return;ids.forEach(i=>{if($(i))$(i).value=s[i]||''});checks.forEach(i=>{if($(i))$(i).checked=!!s[i]});if(s.acceptance)$('acceptanceStamp').innerText=s.acceptance;signatureData=s.signatureData||'';roofMarkups=s.roofMarkups||[];setRoofPlanes(s.roofPlanes||[]);currentSavedId=s.id;if($('saveName'))$('saveName').value=s.customerName||s.name||'';save();refreshPresent();updateSaveStatus();alert('Saved survey opened')}
 function duplicateSavedSurvey(id){const s=getSavedSurveys().find(x=>x.id===id);if(!s)return;const copy={...s,id:'svy_'+Date.now(),name:(s.name||s.customerName||'Survey')+' copy',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};const arr=getSavedSurveys();arr.push(copy);setSavedSurveys(arr);renderSavedList();renderHomeSavedList();alert('Survey duplicated')}
 function deleteSavedSurvey(id){if(!confirm('Delete this saved survey?'))return;let arr=getSavedSurveys().filter(x=>x.id!==id);setSavedSurveys(arr);if(currentSavedId===id){currentSavedId=null;updateSaveStatus();save()}renderSavedList()}
 function saveCurrentSurvey(){const mode=$('saveMode')?.value||'update';const draft=getData();let arr=getSavedSurveys();let targetId=(mode==='update'&&currentSavedId)?currentSavedId:null;const name=surveyDisplayName(draft); if($('saveName')) $('saveName').value=name;if(targetId){arr=arr.map(s=>s.id===targetId?{...draft,id:targetId,name,createdAt:s.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()}:s)}else{targetId='svy_'+Date.now();arr.push({...draft,id:targetId,name,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});currentSavedId=targetId}setSavedSurveys(arr);if($('saveMode'))$('saveMode').value='update';updateSaveStatus();renderSavedList();save();alert('Survey saved')}
@@ -527,6 +530,8 @@ Competitors: ${d.competitors}
 Roof: ${d.roof}
 Roof planes:
 ${roofLines()}
+Roof photo markups:
+${roofMarkupLines()}
 Dimension notes: ${d.dims}
 Shading / obstructions: ${d.shade}
 Battery location: ${d.batteryLoc}
@@ -992,7 +997,205 @@ function bindCriticalButtons(){
   if(monday) monday.onchange=e=>readCSVFileAndSave((e.target.files||[])[0]);
 }
 
-document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v29';load();initSignaturePad();
+
+function initRoofMarkup(){
+  markupState={tool:'dimension', image:null, actions:[], pending:null, scalePxPerM:null, canvas:$('markupCanvas'), ctx:null};
+  if(!markupState.canvas) return;
+  markupState.ctx=markupState.canvas.getContext('2d');
+  setupMarkupButtons();
+  setupMarkupCanvasEvents();
+  renderMarkupList();
+  renderMarkupCanvas();
+}
+function setMarkupTool(tool){
+  if(!markupState) return;
+  markupState.tool=tool;
+  markupState.pending=null;
+  document.querySelectorAll('.toolBtn').forEach(b=>b.classList.remove('on'));
+  const id={dimension:'toolDimension',scale:'toolScale',obstruction:'toolObstruction',note:'toolNote'}[tool];
+  if($(id)) $(id).classList.add('on');
+}
+function setupMarkupButtons(){
+  if($('toolDimension'))$('toolDimension').onclick=()=>setMarkupTool('dimension');
+  if($('toolScale'))$('toolScale').onclick=()=>setMarkupTool('scale');
+  if($('toolObstruction'))$('toolObstruction').onclick=()=>setMarkupTool('obstruction');
+  if($('toolNote'))$('toolNote').onclick=()=>setMarkupTool('note');
+  if($('undoMarkup'))$('undoMarkup').onclick=()=>{markupState.actions.pop();markupState.pending=null;renderMarkupCanvas();};
+  if($('clearMarkup'))$('clearMarkup').onclick=()=>{if(confirm('Clear this roof markup?')){markupState.actions=[];markupState.pending=null;renderMarkupCanvas();}};
+  if($('newMarkup'))$('newMarkup').onclick=()=>newRoofMarkup();
+  if($('saveMarkup'))$('saveMarkup').onclick=saveRoofMarkup;
+  if($('markupPhoto'))$('markupPhoto').onchange=e=>loadMarkupPhoto((e.target.files||[])[0]);
+}
+function newRoofMarkup(){
+  if(!markupState) initRoofMarkup();
+  markupState.image=null; markupState.actions=[]; markupState.pending=null; markupState.scalePxPerM=null;
+  ['markupRoofName','markupPitch','markupAzimuth','dimensionLabel','obstructionLabel','scaleLength','markupNotes'].forEach(id=>{if($(id))$(id).value=''});
+  if($('scaleStatus'))$('scaleStatus').value='No scale set';
+  if($('markupPhoto'))$('markupPhoto').value='';
+  if($('markupStatus'))$('markupStatus').innerText='New markup started.';
+  renderMarkupCanvas();
+}
+function loadMarkupPhoto(file){
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      const maxW=1400, maxH=1100;
+      let w=img.width, h=img.height, ratio=Math.min(maxW/w,maxH/h,1);
+      const c=document.createElement('canvas');
+      c.width=Math.round(w*ratio); c.height=Math.round(h*ratio);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      const scaled=new Image();
+      scaled.onload=()=>{markupState.image=scaled;markupState.actions=[];markupState.pending=null;renderMarkupCanvas();};
+      scaled.src=c.toDataURL('image/jpeg',0.82);
+    };
+    img.src=reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+function setupMarkupCanvasEvents(){
+  const c=markupState.canvas;
+  const handle=e=>{
+    if(!markupState.image){alert('Upload or take a roof photo first.');return;}
+    e.preventDefault();
+    const p=canvasPoint(e,c);
+    if(markupState.tool==='dimension' || markupState.tool==='scale'){
+      if(!markupState.pending){markupState.pending=p;renderMarkupCanvas();drawTempPoint(p);return;}
+      const start=markupState.pending, end=p;
+      if(markupState.tool==='scale'){
+        const metres=Number($('scaleLength')?.value||0);
+        if(!metres){alert('Enter the known scale reference length in metres first.');markupState.pending=null;renderMarkupCanvas();return;}
+        const px=distance(start,end);
+        markupState.scalePxPerM=px/metres;
+        if($('scaleStatus'))$('scaleStatus').value=`1m = ${Math.round(markupState.scalePxPerM)}px`;
+        markupState.actions.push({type:'scale',start,end,label:`${metres}m scale`,metres});
+      }else{
+        let label=($('dimensionLabel')?.value||'').trim();
+        if(!label && markupState.scalePxPerM){
+          const m=distance(start,end)/markupState.scalePxPerM;
+          label=m.toFixed(1)+'m';
+        }
+        if(!label) label=prompt('Dimension in metres, e.g. 4.2m')||'';
+        if(label) markupState.actions.push({type:'dimension',start,end,label});
+      }
+      markupState.pending=null; renderMarkupCanvas(); save();
+      return;
+    }
+    if(markupState.tool==='obstruction'){
+      const label=($('obstructionLabel')?.value||prompt('Obstruction label, e.g. chimney, dormer, shade')||'Obstruction').trim();
+      markupState.actions.push({type:'obstruction',point:p,label}); renderMarkupCanvas(); save(); return;
+    }
+    if(markupState.tool==='note'){
+      const label=($('obstructionLabel')?.value||prompt('Text note')||'Note').trim();
+      markupState.actions.push({type:'note',point:p,label}); renderMarkupCanvas(); save(); return;
+    }
+  };
+  c.addEventListener('click',handle);
+  c.addEventListener('touchend',handle,{passive:false});
+}
+function canvasPoint(e,c){
+  const r=c.getBoundingClientRect();
+  const t=e.changedTouches&&e.changedTouches[0] ? e.changedTouches[0] : e;
+  return {x:(t.clientX-r.left)*(c.width/r.width), y:(t.clientY-r.top)*(c.height/r.height)};
+}
+function distance(a,b){return Math.hypot(b.x-a.x,b.y-a.y)}
+function renderMarkupCanvas(){
+  if(!markupState||!markupState.canvas) return;
+  const c=markupState.canvas, ctx=markupState.ctx;
+  if(!markupState.image){
+    c.width=900; c.height=520; ctx.clearRect(0,0,c.width,c.height);
+    if($('canvasEmpty'))$('canvasEmpty').style.display='flex';
+    return;
+  }
+  if($('canvasEmpty'))$('canvasEmpty').style.display='none';
+  c.width=markupState.image.width; c.height=markupState.image.height;
+  ctx.drawImage(markupState.image,0,0,c.width,c.height);
+  markupState.actions.forEach(a=>drawMarkupAction(ctx,a));
+  if(markupState.pending) drawTempPoint(markupState.pending);
+}
+function drawTempPoint(p){
+  const ctx=markupState.ctx;
+  ctx.save(); ctx.fillStyle='#ffe900'; ctx.strokeStyle='#111'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(p.x,p.y,8,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
+}
+function drawMarkupAction(ctx,a){
+  ctx.save();
+  ctx.lineWidth=4;
+  ctx.strokeStyle='#ffe900';
+  ctx.fillStyle='#ffe900';
+  ctx.font='bold 28px Arial';
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  if(a.type==='dimension' || a.type==='scale'){
+    ctx.beginPath(); ctx.moveTo(a.start.x,a.start.y); ctx.lineTo(a.end.x,a.end.y); ctx.stroke();
+    const angle=Math.atan2(a.end.y-a.start.y,a.end.x-a.start.x);
+    drawTick(ctx,a.start,angle); drawTick(ctx,a.end,angle);
+    const mid={x:(a.start.x+a.end.x)/2,y:(a.start.y+a.end.y)/2};
+    drawLabelBox(ctx,mid,a.label);
+  }else if(a.type==='obstruction'){
+    const w=190,h=60;
+    ctx.strokeStyle='#ffe900'; ctx.lineWidth=4;
+    ctx.strokeRect(a.point.x-w/2,a.point.y-h/2,w,h);
+    drawLabelBox(ctx,{x:a.point.x,y:a.point.y},a.label);
+  }else if(a.type==='note'){
+    drawLabelBox(ctx,a.point,a.label);
+  }
+  ctx.restore();
+}
+function drawTick(ctx,p,angle){
+  const len=28, perp=angle+Math.PI/2;
+  ctx.beginPath();
+  ctx.moveTo(p.x+Math.cos(perp)*len/2,p.y+Math.sin(perp)*len/2);
+  ctx.lineTo(p.x-Math.cos(perp)*len/2,p.y-Math.sin(perp)*len/2);
+  ctx.stroke();
+}
+function drawLabelBox(ctx,p,text){
+  const pad=12;
+  ctx.font='bold 28px Arial';
+  const w=ctx.measureText(text).width+pad*2, h=44;
+  ctx.fillStyle='#ffe900';
+  ctx.fillRect(p.x-w/2,p.y-h/2,w,h);
+  ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.lineWidth=2; ctx.strokeRect(p.x-w/2,p.y-h/2,w,h);
+  ctx.fillStyle='#111';
+  ctx.fillText(text,p.x,p.y+1);
+}
+function saveRoofMarkup(){
+  if(!markupState||!markupState.image){alert('Upload or take a roof photo first.');return;}
+  renderMarkupCanvas();
+  const imageData=markupState.canvas.toDataURL('image/jpeg',0.86);
+  const record={
+    id:'rm_'+Date.now(),
+    roofName:($('markupRoofName')?.value||'Roof plane').trim(),
+    pitch:$('markupPitch')?.value||'',
+    azimuth:$('markupAzimuth')?.value||'',
+    notes:$('markupNotes')?.value||'',
+    actions:markupState.actions,
+    imageData,
+    createdAt:new Date().toISOString()
+  };
+  roofMarkups.push(record);
+  if($('markupStatus'))$('markupStatus').innerText=`Saved markup for ${record.roofName}.`;
+  renderMarkupList(); renderPresentMarkupGallery(); save();
+}
+function renderMarkupList(){
+  if(!$('markupList')) return;
+  if(!roofMarkups.length){$('markupList').innerHTML='<div class="emptyState"><b>No marked roof images yet</b><p>Upload a photo and save a markup to attach it to the survey.</p></div>';return;}
+  $('markupList').innerHTML=roofMarkups.map(m=>`<div class="markupCard"><img src="${m.imageData}" alt="Roof markup"><div><b>${m.roofName||'Roof plane'}</b><p>Pitch ${m.pitch||'-'}°, azimuth ${m.azimuth||'-'}°<br>${m.notes||''}</p><button data-delete-markup="${m.id}" type="button">Delete</button></div></div>`).join('');
+  document.querySelectorAll('[data-delete-markup]').forEach(b=>b.onclick=()=>{roofMarkups=roofMarkups.filter(m=>m.id!==b.dataset.deleteMarkup);renderMarkupList();renderPresentMarkupGallery();save();});
+}
+function renderPresentMarkupGallery(){
+  if(!$('presentMarkupGallery')) return;
+  if(!roofMarkups.length){$('presentMarkupGallery').innerHTML='';return;}
+  const first=roofMarkups[0];
+  $('presentMarkupGallery').innerHTML=`<div class="presentRoofMarkup"><h3>Surveyed roof detail</h3><img src="${first.imageData}" alt="Annotated roof markup"><p>${first.roofName||'Roof plane'}${first.pitch?` • Pitch ${first.pitch}°`:''}${first.azimuth?` • Azimuth ${first.azimuth}°`:''}</p></div>`;
+}
+function roofMarkupLines(){
+  if(!roofMarkups.length) return 'None saved';
+  return roofMarkups.map((m,i)=>`${i+1}. ${m.roofName||'Roof plane'} - pitch ${m.pitch||'-'}°, azimuth ${m.azimuth||'-'}°, notes: ${m.notes||'None'}, markup image saved: Yes`).join('\n');
+}
+
+document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v30';load();initSignaturePad();initRoofMarkup();renderPresentMarkupGallery();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
@@ -1018,7 +1221,7 @@ if($('exportBackup'))$('exportBackup').onclick=exportSurveyBackup;
 if($('importBackup'))$('importBackup').onchange=e=>importSurveyBackup((e.target.files||[])[0]);
 if($('addRoofPlane'))$('addRoofPlane').onclick=()=>{addRoofPlane({});save()};
 if($('saveAndNew'))$('saveAndNew').onclick=saveAndStartNew;
-$('reset').onclick=()=>{if(confirm('Clear local survey?')){localStorage.removeItem(KEY);location.reload()}};
+if($('reset'))$('reset').onclick=()=>{if(confirm('Clear local survey?')){localStorage.removeItem(KEY);location.reload()}};
 $('filesInput').onchange=e=>{selectedFiles=Array.from(e.target.files||[]);$('preview').innerHTML='';selectedFiles.forEach(f=>{if(f.type.startsWith('image/')){let img=document.createElement('img');img.src=URL.createObjectURL(f);$('preview').appendChild(img)}});$('fileNames').textContent=selectedFiles.map(f=>f.name).join('\n');save()};
 if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.js');
 });
