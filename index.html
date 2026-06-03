@@ -42,7 +42,7 @@
     <button id="homeNewSurvey" class="primary" type="button">New survey</button>
   </div>
 
-  <div id="homeVersionBadge" class="homeVersionBadge">App version: v34</div>
+  <div id="homeVersionBadge" class="homeVersionBadge">App version: v35</div>
   <div class="quickActions">
     <button id="homeContinueDraft" class="secondary" type="button">Continue current draft</button>
     <button id="homeSaveCurrent" class="secondary" type="button">Save current survey</button>
@@ -91,92 +91,61 @@
 
 <section id="internal" class="panel internalPanel">
   <h2>Internal</h2>
-  <p class="hint">Admin tools, pre-survey import, saved surveys, files and outputs. This page is internal only.</p>
+  <p class="hint">This is for James only. Keep it light on site: import, save, backup or copy the ChatGPT prompt.</p>
 
   <details class="internalGroup" open>
     <summary>Pre-survey import</summary>
-    <p class="hint">Paste monday-generated CSV text here. Once imported, the app will save the survey and move you to Customer.</p>
+    <p class="hint">Paste monday-generated CSV text. Import saves the survey and opens Customer.</p>
     <label>Paste monday CSV text<textarea id="crmPaste" placeholder="Paste Field,Value CSV or a normal monday CSV export here"></textarea></label>
     <button id="importPastedCRM" class="primary" type="button">Import, save survey and open Customer</button>
-    <label>Import monday CSV / Excel-exported CSV<input id="mondayImport" type="file" accept=".csv,text/csv"></label>
+    <label>Import monday CSV<input id="mondayImport" type="file" accept=".csv,text/csv"></label>
     <div id="importStatus" class="guide">No CRM data imported yet.</div>
 
-    <div class="two">
-      <label>monday item ID<input id="mondayId" placeholder="Item ID or pulse ID"></label>
-      <label>Lead source<input id="leadSource" placeholder="Website, referral, existing customer..."></label>
-    </div>
     <div class="two">
       <label>Appointment time<input id="appointmentTime" type="datetime-local"></label>
       <label>Current CRM status<input id="crmStatus" placeholder="Survey booked, quote sent..."></label>
     </div>
-    <label>Existing CRM notes<textarea id="crmNotes" placeholder="monday notes or call history"></textarea></label>
-    <label>Customer interest before visit<textarea id="preInterest" placeholder="Solar, battery, EV, Powerwall, replacement system..."></textarea></label>
+    <label>Existing notes<textarea id="crmNotes" placeholder="monday notes, call history or pre-survey comments"></textarea></label>
     <label>Known usage / bill notes<textarea id="preUsage" placeholder="Annual kWh, tariff, EV miles, heat pump, bill received..."></textarea></label>
-    <label>Promises already made<textarea id="promisesMade" placeholder="Prices mentioned, equipment promised, discounts, call-back times..."></textarea></label>
-    <div class="checks compactChecks">
-      <label><input id="askBill" type="checkbox"> Usage / tariff</label>
-      <label><input id="askDecisionMaker" type="checkbox"> Decision maker</label>
-      <label><input id="askCompetitors" type="checkbox"> Competitors</label>
-      <label><input id="askTiming" type="checkbox"> Timing</label>
-      <label><input id="askBackup" type="checkbox"> Backup</label>
-      <label><input id="askBudget" type="checkbox"> Budget</label>
-    </div>
   </details>
 
   <details class="internalGroup">
     <summary>Saved surveys</summary>
-    <label>Survey name<input id="saveName" placeholder="Customer name or job reference"></label>
-    <label>Save action<select id="saveMode"><option value="update">Update current saved survey</option><option value="new">Save as new survey</option></select></label>
+    <label>Survey name<input id="saveName" placeholder="Customer name"></label>
     <button id="saveSurvey" class="primary">Save survey</button>
     <button id="saveAndNew" class="secondary">Save and start new survey</button>
-    <button id="newSurveySaved" class="secondary" type="button">Start blank new survey</button>
+    <button id="newSurveySaved" class="secondary">Start blank new survey</button>
     <div id="saveStatus" class="guide">This survey is currently only a draft.</div>
     <div id="savedList" class="savedList"></div>
   </details>
 
   <details class="internalGroup">
-    <summary>Files and checklist</summary>
-    <p class="hint">Add key photos, SRT transcripts, bill PDFs or proposal PDFs if useful. Keep large videos in SharePoint.</p>
-    <input id="filesInput" type="file" accept="image/*,.srt,.txt,.pdf,.csv,.xlsx" multiple>
-    <div id="fileNames"></div>
-    <div id="preview" class="photos"></div>
-    <div class="checks compactChecks">
-      <label><input type="checkbox"> Roof photos</label>
-      <label><input type="checkbox"> Meter photo</label>
-      <label><input type="checkbox"> Consumer unit</label>
-      <label><input type="checkbox"> Battery location</label>
-      <label><input type="checkbox"> Cable route</label>
-      <label><input type="checkbox"> Dimensions</label>
-      <label><input type="checkbox"> Usage/tariff</label>
-      <label><input type="checkbox"> Decision maker</label>
-      <label><input type="checkbox"> Next step agreed</label>
-    </div>
+    <summary>Survey readiness</summary>
+    <button id="checkReadiness" class="primary" type="button">Check what is missing</button>
+    <div id="readinessBox" class="readinessBox">Readiness check not run yet.</div>
+    <button id="markSurveyComplete" class="primary" type="button">Mark survey complete</button>
   </details>
 
   <details class="internalGroup">
-    <summary>Output and app tools</summary>
-    <button id="updateApp" class="secondary" type="button">Update app / clear cache</button>
-    <div id="appVersionBadge" class="versionBadge">App version: v34</div>
-    <button id="exportBackup" class="secondary" type="button">Export saved survey backup</button>
-    <label class="importBackupLabel">Import saved survey backup<input id="importBackup" type="file" accept=".json,application/json"></label>
-    <p class="hint">Use this after uploading new GitHub files. It clears the app cache and reloads the latest version. It does not delete saved surveys.</p>
-    <label>Next action<input id="nextAction" placeholder="Send formal quote"></label>
-    <label>Follow-up date<input id="followUp" type="date"></label>
-    <label>Confidence<select id="confidence"><option>High</option><option selected>Medium</option><option>Low</option><option>Needs review</option></select></label>
-    <label>Internal gut feel<textarea id="gut"></textarea></label>
-    <button id="checkReadiness" class="primary" type="button">Check survey readiness</button>
-    <div id="readinessBox" class="readinessBox">Readiness check not run yet.</div>
-    <button id="markSurveyComplete" class="primary" type="button">Mark survey complete</button>
-    <button id="copy" class="primary">Copy ChatGPT prompt</button>
+    <summary>ChatGPT handover</summary>
+    <p class="hint">Copy this into a new ChatGPT chat for that customer. Start the chat with the customer name so ChatGPT titles it clearly.</p>
+    <button id="copy" class="primary">Copy ChatGPT customer pack</button>
     <button id="txt">Download notes TXT</button>
     <button id="brief" class="secondary">Download internal brief</button>
     <details>
-      <summary>Advanced exports</summary>
+      <summary>Advanced backup</summary>
       <button id="json">Download data file</button>
-      <p class="hint">Data file is mainly for future automation or monday import. Normal use is Copy ChatGPT prompt.</p>
+      <button id="exportBackup" class="secondary" type="button">Export saved survey backup</button>
+      <label class="importBackupLabel">Import saved survey backup<input id="importBackup" type="file" accept=".json,application/json"></label>
     </details>
     <h2>Preview</h2>
     <pre id="out"></pre>
+  </details>
+
+  <details class="internalGroup">
+    <summary>App tools</summary>
+    <button id="updateApp" class="secondary" type="button">Update app / clear cache</button>
+    <div id="appVersionBadge" class="versionBadge">App version: v35</div>
   </details>
 </section>
 
@@ -240,13 +209,13 @@
 
   <h2>Solar</h2>
   <label>Panel model<select id="panelModel">
-    <option value="AIKO 540W|540|1954 x 1134 x 30 mm|27.1 kg" selected>AIKO 540W, default</option>
+    <option value="AIKO 540W|540|1954 x 1134 x 30 mm|27.1 kg" selected>AIKO 540W</option>
     <option value="AIKO 495W|495|1762 x 1134 x 30 mm|20.6 kg">AIKO 495W</option>
     <option value="SunPower P7 500W|500|1996 x 1134 x 30 mm|27.5 kg">SunPower P7 500W</option>
     <option value="SunPower P7 450W|450|1790 x 1134 x 30 mm|24.8 kg">SunPower P7 450W</option>
   </select></label>
   <div class="two">
-    <label>Panel count<input id="panelCount" type="number" inputmode="numeric" value="0"></label>
+    <label>Panel count<input id="panelCount" type="number" inputmode="numeric" value="0"><span class="fieldHint">Auto-filled from roof elevations when panels are entered there.</span></label>
     <label>System override price £<input id="systemOverride" type="number" inputmode="decimal" value="0"></label>
   </div>
   <p class="hint">Pricing follows Residential Pricing V8.6 cost build. Use system override only for an approved final proposal position.</p>
@@ -361,19 +330,19 @@
   <button id="refreshPresent" class="primary">Refresh summary</button>
 
   
-  <div class="closingCheck">
-    <h2>Customer likelihood</h2>
-    <p class="hint">Ask this before they sign. If the answer is not Highly likely, uncover the blocker while you are still with them.</p>
-    <label>Based on today's survey and recommendation, how likely are you to go ahead with The Little Green Energy Company?
+  <div class="closingCheck customerClose">
+    <h2>How does this feel?</h2>
+    <p class="hint">Before I prepare the formal quote, it is useful to know whether this feels like the right direction for you.</p>
+    <label>Based on today's survey and recommendation, where are you with The Little Green Energy Company?
       <select id="customerLikelihood">
         <option value="">Select answer</option>
-        <option>Highly likely</option>
-        <option>Not likely yet</option>
-        <option>Not at all</option>
+        <option>Yes, this is the route I want to move forward with</option>
+        <option>Interested, but I have a question or concern</option>
+        <option>This is not the right route for me</option>
       </select>
     </label>
-    <div id="blockerPrompt" class="blockerPrompt">Select the customer's likelihood to reveal the next question.</div>
-    <label>Blocker / reason discussed<textarea id="blockerReason" placeholder="Capture the real blocker here if they are not highly likely."></textarea></label>
+    <div id="blockerPrompt" class="blockerPrompt">Choose the closest answer above.</div>
+    <label>What would help you feel comfortable moving forward?<textarea id="blockerReason" placeholder="Only use this if there is a question, concern or change needed."></textarea></label>
   </div>
 
   <h2>Confirm next step</h2>

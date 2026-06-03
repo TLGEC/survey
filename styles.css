@@ -179,3 +179,8 @@ pre{background:#062819;color:#effff4;border-radius:20px;padding:18px;white-space
 .readyGood,.readyWarn{border-radius:20px;padding:14px;border:1px solid #d9e2da;background:#f7faf4}
 .readyGood b{color:#0b7a46}.readyWarn b{color:#8a5a00}
 .readyWarn ul{margin:8px 0 0;padding-left:22px}
+
+.fieldHint{display:block;font-size:12px;color:#5f6e66;margin-top:4px;font-weight:700}
+.customerClose .hint{font-size:15px;color:#3d5248}
+.internalPanel .internalGroup summary{font-size:19px}
+.internalPanel textarea{min-height:92px}

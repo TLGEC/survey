@@ -992,7 +992,7 @@ function bindCriticalButtons(){
   if(monday) monday.onchange=e=>readCSVFileAndSave((e.target.files||[])[0]);
 }
 
-document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v34';load();initSignaturePad();
+document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v35';load();initSignaturePad();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
@@ -1118,8 +1118,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const f=el('homeOpenFresh');
     if(f) f.onclick=function(e){e.preventDefault();openFreshCopy();};
 
-    if(el('homeVersionBadge')) el('homeVersionBadge').textContent='App version: v34';
-    if(el('appVersionBadge')) el('appVersionBadge').textContent='App version: v34';
+    if(el('homeVersionBadge')) el('homeVersionBadge').textContent='App version: v35';
+    if(el('appVersionBadge')) el('appVersionBadge').textContent='App version: v35';
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bindUpdateButtons);
@@ -1229,10 +1229,153 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if($('checkReadiness')) $('checkReadiness').addEventListener('click', e => { e.preventDefault(); checkReadiness(); });
     if($('markSurveyComplete')) $('markSurveyComplete').addEventListener('click', e => { e.preventDefault(); markComplete(); });
 
-    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v34';
-    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v34';
+    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v35';
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v35';
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
   else bind();
+})();
+
+
+/* v35 slick survey flow */
+(function(){
+  const $ = id => document.getElementById(id);
+  const val = id => ($(id)?.value || '').trim();
+
+  function setPanelCountFromRoofs(){
+    let total = 0;
+    try {
+      if(typeof getRoofs === 'function'){
+        const roofs = getRoofs();
+        roofs.forEach(r => {
+          const n = Number(r.panels || r.panelCount || r.panel_count || 0);
+          if(Number.isFinite(n)) total += n;
+        });
+      }
+    } catch(e){}
+
+    if(!total){
+      document.querySelectorAll('#roofPlanes input').forEach(inp => {
+        const label = (inp.closest('label')?.textContent || '').toLowerCase();
+        const id = (inp.id || '').toLowerCase();
+        const name = (inp.name || '').toLowerCase();
+        if(label.includes('panel') || id.includes('panel') || name.includes('panel')){
+          const n = Number(inp.value || 0);
+          if(Number.isFinite(n)) total += n;
+        }
+      });
+    }
+
+    if(total && $('panelCount')){
+      $('panelCount').value = total;
+      try { if(typeof save === 'function') save(); } catch(e){}
+    }
+  }
+
+  function updateLikelihoodWording(){
+    const ans = val('customerLikelihood');
+    const p = $('blockerPrompt');
+    if(!p) return;
+
+    if(!ans){
+      p.textContent = 'Choose the closest answer above.';
+      p.className = 'blockerPrompt';
+      return;
+    }
+
+    if(ans === 'Yes, this is the route I want to move forward with' || ans === 'Highly likely'){
+      p.textContent = 'Great. I will prepare the formal quote for review and e-signing based on this recommendation.';
+      p.className = 'blockerPrompt good';
+      if($('salesStatus')) $('salesStatus').value = 'Formal quote needed';
+      if($('mainBlocker')) $('mainBlocker').value = 'None known';
+    } else if(ans === 'Interested, but I have a question or concern' || ans === 'Not likely yet'){
+      p.textContent = 'That is useful to know. What would you want changed, clarified or confirmed before this feels right?';
+      p.className = 'blockerPrompt warn';
+      if($('salesStatus')) $('salesStatus').value = 'Proposal to prepare';
+      if($('mainBlocker') && $('mainBlocker').value === 'None known') $('mainBlocker').value = 'Needs more information';
+    } else {
+      p.textContent = 'Thanks for being direct. What is the main reason this does not feel like the right route?';
+      p.className = 'blockerPrompt danger';
+      if($('salesStatus')) $('salesStatus').value = 'Closed lost';
+    }
+
+    try { if(typeof save === 'function') save(); } catch(e){}
+  }
+
+  function buildCustomerPackPrompt(){
+    if(typeof prompt !== 'function') return '';
+    let base = prompt();
+    const name = val('customerName') || 'Customer';
+    return `Customer board: ${name}
+
+Use this as the working customer board for ${name}. Keep outputs practical and ready for James to use after the survey.
+
+Create or update:
+1. Survey summary
+2. OpenSolar/PandaDoc proposal brief
+3. Customer follow-up email
+4. Sales strategy
+5. Next action list
+6. monday CRM note
+
+Keep the customer-facing email clean, direct and Outlook-safe.
+
+` + base;
+  }
+
+  function overrideCopyButton(){
+    const copy = $('copy');
+    if(copy){
+      copy.onclick = async function(e){
+        e.preventDefault();
+        const text = buildCustomerPackPrompt();
+        try {
+          await navigator.clipboard.writeText(text);
+          alert('Customer pack copied. Paste it into a new ChatGPT chat named with the customer.');
+        } catch(err){
+          alert('Could not copy automatically. Use the preview text instead.');
+        }
+      };
+    }
+
+    const out = $('out');
+    if(out){
+      try { out.textContent = buildCustomerPackPrompt(); } catch(e){}
+    }
+  }
+
+  function bindV35(){
+    document.addEventListener('input', e => {
+      if(e.target && e.target.closest && e.target.closest('#roofPlanes')) setPanelCountFromRoofs();
+    }, true);
+
+    const addRoof = $('addRoofPlane');
+    if(addRoof){
+      addRoof.addEventListener('click', () => setTimeout(setPanelCountFromRoofs, 150));
+    }
+
+    const like = $('customerLikelihood');
+    if(like){
+      like.addEventListener('change', updateLikelihoodWording);
+    }
+
+    const oldRefresh = window.refreshPresent;
+    if(typeof oldRefresh === 'function'){
+      window.refreshPresent = function(){
+        setPanelCountFromRoofs();
+        oldRefresh();
+        updateLikelihoodWording();
+      }
+    }
+
+    overrideCopyButton();
+    setPanelCountFromRoofs();
+
+    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v35';
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v35';
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindV35);
+  else bindV35();
 })();

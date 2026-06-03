@@ -1,4 +1,4 @@
-const CACHE='tlgec-survey-v34-2026-06-01-v34';
+const CACHE='tlgec-survey-v35-2026-06-01-v35';
 const FILES=['./','./index.html','./styles.css','./app.js','./manifest.json','./icon.svg','./tesla-powerwall.webp','./sigenergy-battery.webp','./tlgec-logo.png'];
 
 self.addEventListener('install', event => {
@@ -21,7 +21,6 @@ self.addEventListener('fetch', event => {
     url.pathname.endsWith('/app.js') ||
     url.pathname.endsWith('/styles.css')
   );
-
   if(shell){
     event.respondWith(fetch(req, {cache:'no-store'}).then(res => {
       const copy = res.clone();
@@ -30,7 +29,6 @@ self.addEventListener('fetch', event => {
     }).catch(() => caches.match(req)));
     return;
   }
-
   event.respondWith(caches.match(req).then(cached => cached || fetch(req).then(res => {
     const copy = res.clone();
     caches.open(CACHE).then(cache => cache.put(req, copy));
