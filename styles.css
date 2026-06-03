@@ -184,3 +184,27 @@ pre{background:#062819;color:#effff4;border-radius:20px;padding:18px;white-space
 .customerClose .hint{font-size:15px;color:#3d5248}
 .internalPanel .internalGroup summary{font-size:19px}
 .internalPanel textarea{min-height:92px}
+
+.homeVersionBadge{display:none!important}
+.homeVersionSmall{
+  position:absolute;
+  top:12px;
+  right:14px;
+  font-size:12px;
+  font-weight:950;
+  color:#eaf5ee;
+  background:rgba(255,255,255,.14);
+  border:1px solid rgba(255,255,255,.22);
+  border-radius:999px;
+  padding:5px 9px;
+}
+.landingHero{position:relative}
+.simpleHomeActions{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+}
+@media(max-width:760px){
+  .simpleHomeActions{grid-template-columns:1fr}
+}
+nav button{touch-action:manipulation}

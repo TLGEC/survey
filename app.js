@@ -992,7 +992,7 @@ function bindCriticalButtons(){
   if(monday) monday.onchange=e=>readCSVFileAndSave((e.target.files||[])[0]);
 }
 
-document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v35';load();initSignaturePad();
+document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v36';load();initSignaturePad();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
@@ -1118,8 +1118,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const f=el('homeOpenFresh');
     if(f) f.onclick=function(e){e.preventDefault();openFreshCopy();};
 
-    if(el('homeVersionBadge')) el('homeVersionBadge').textContent='App version: v35';
-    if(el('appVersionBadge')) el('appVersionBadge').textContent='App version: v35';
+    if(el('homeVersionBadge')) el('homeVersionBadge').textContent='App version: v36';
+    if(el('appVersionBadge')) el('appVersionBadge').textContent='App version: v36';
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bindUpdateButtons);
@@ -1229,8 +1229,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if($('checkReadiness')) $('checkReadiness').addEventListener('click', e => { e.preventDefault(); checkReadiness(); });
     if($('markSurveyComplete')) $('markSurveyComplete').addEventListener('click', e => { e.preventDefault(); markComplete(); });
 
-    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v35';
-    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v35';
+    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v36';
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v36';
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
@@ -1372,10 +1372,97 @@ Keep the customer-facing email clean, direct and Outlook-safe.
     overrideCopyButton();
     setPanelCountFromRoofs();
 
-    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v35';
-    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v35';
+    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v36';
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v36';
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindV35);
   else bindV35();
+})();
+
+
+/* v36 navigation and home update fix */
+(function(){
+  const VERSION = 'v36';
+  const $ = id => document.getElementById(id);
+
+  function showTab(tabId){
+    document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tabId));
+    document.querySelectorAll('main > section.panel').forEach(p => p.classList.toggle('on', p.id === tabId));
+    const panel = document.getElementById(tabId);
+    if(panel) panel.classList.add('on');
+    window.scrollTo(0,0);
+  }
+
+  function bindNav(){
+    document.querySelectorAll('nav button[data-tab]').forEach(btn => {
+      btn.onclick = function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        showTab(btn.dataset.tab);
+        if(btn.dataset.tab === 'present' && typeof refreshPresent === 'function'){
+          try { refreshPresent(); } catch(err){}
+        }
+      };
+    });
+  }
+
+  async function clearCacheAndUpdate(){
+    try{
+      if($('homeVersionSmall')) $('homeVersionSmall').textContent = 'updating...';
+      if($('appVersionBadge')) $('appVersionBadge').textContent = 'Updating...';
+      if('serviceWorker' in navigator){
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for(const reg of regs){
+          try { await reg.update(); } catch(e){}
+          try { await reg.unregister(); } catch(e){}
+        }
+      }
+      if(window.caches){
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+      const cleanPath = location.pathname.replace(/index\.html$/,'');
+      location.href = location.origin + cleanPath + '?fresh=' + Date.now();
+    }catch(e){
+      alert('Update attempted. Saved surveys are not deleted. Close and reopen the app if the old version remains.');
+      location.href = location.href.split('?')[0] + '?fresh=' + Date.now();
+    }
+  }
+
+  function bindHomeButtons(){
+    const update = $('homeUpdateApp');
+    if(update){
+      update.onclick = function(e){
+        e.preventDefault();
+        clearCacheAndUpdate();
+      };
+    }
+    const internalUpdate = $('updateApp');
+    if(internalUpdate){
+      internalUpdate.onclick = function(e){
+        e.preventDefault();
+        clearCacheAndUpdate();
+      };
+    }
+
+    if($('homeVersionSmall')) $('homeVersionSmall').textContent = VERSION;
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: ' + VERSION;
+  }
+
+  function removeOldHomeButtons(){
+    ['homeContinueDraft','homeHardRefresh','homeOpenFresh'].forEach(id => {
+      const b = $(id);
+      if(b) b.remove();
+    });
+  }
+
+  function init(){
+    removeOldHomeButtons();
+    bindNav();
+    bindHomeButtons();
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
 })();
