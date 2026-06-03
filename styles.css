@@ -211,3 +211,11 @@ nav button{touch-action:manipulation}
 
 .importBackupLabel{display:block;background:#eef3ef!important;color:#0b1f18!important;border:1px solid #d9e2da!important;border-radius:22px;padding:14px 18px;font-weight:850;text-align:center;margin:8px 0}
 .importBackupLabel input{display:none}
+
+.quoteCheckBox{background:#f7faf4;border:1px solid #d9e2da;border-radius:22px;padding:14px;margin:16px 0}
+.quoteCheck{margin-top:10px}
+.quoteGood,.quoteWarn{background:white;border:1px solid #d9e2da;border-radius:18px;padding:14px}
+.quoteGood b{color:#0b7a46}.quoteWarn b{color:#8a5a00}
+.quoteTotal{font-size:20px;font-weight:950;color:#062819}
+.quoteWarn ul{margin:8px 0 0;padding-left:22px}
+#signatureCanvas{touch-action:none}

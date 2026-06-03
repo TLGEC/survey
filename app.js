@@ -992,7 +992,7 @@ function bindCriticalButtons(){
   if(monday) monday.onchange=e=>readCSVFileAndSave((e.target.files||[])[0]);
 }
 
-document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v37';load();initSignaturePad();
+document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v38';load();initSignaturePad();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
@@ -1118,8 +1118,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const f=el('homeOpenFresh');
     if(f) f.onclick=function(e){e.preventDefault();openFreshCopy();};
 
-    if(el('homeVersionBadge')) el('homeVersionBadge').textContent='App version: v37';
-    if(el('appVersionBadge')) el('appVersionBadge').textContent='App version: v37';
+    if(el('homeVersionBadge')) el('homeVersionBadge').textContent='App version: v38';
+    if(el('appVersionBadge')) el('appVersionBadge').textContent='App version: v38';
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bindUpdateButtons);
@@ -1229,8 +1229,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if($('checkReadiness')) $('checkReadiness').addEventListener('click', e => { e.preventDefault(); checkReadiness(); });
     if($('markSurveyComplete')) $('markSurveyComplete').addEventListener('click', e => { e.preventDefault(); markComplete(); });
 
-    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v37';
-    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v37';
+    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v38';
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v38';
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
@@ -1372,8 +1372,8 @@ Keep the customer-facing email clean, direct and Outlook-safe.
     overrideCopyButton();
     setPanelCountFromRoofs();
 
-    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v37';
-    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v37';
+    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v38';
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v38';
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindV35);
@@ -1548,7 +1548,263 @@ Keep the customer-facing email clean, direct and Outlook-safe.
     if(im) im.onchange = function(e){ importBackup((e.target.files || [])[0]); };
 
     if($('homeVersionSmall')) $('homeVersionSmall').textContent = 'v37';
-    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v37';
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v38';
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+
+
+/* v38 button repair, quote check and signature repair */
+(function(){
+  const VERSION = 'v38';
+  const $ = id => document.getElementById(id);
+
+  function money(n){
+    try{
+      if(window.money && window.money !== money) return window.money(n);
+    }catch(e){}
+    return '£' + Math.round(Number(n)||0).toLocaleString();
+  }
+
+  function showTab(tabId){
+    document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tabId));
+    document.querySelectorAll('main > section.panel').forEach(p => p.classList.toggle('on', p.id === tabId));
+    const panel = $(tabId);
+    if(panel) panel.classList.add('on');
+    window.scrollTo(0,0);
+  }
+
+  function safeQuote(){
+    try{
+      if(typeof quote === 'function') return quote();
+    }catch(e){}
+    return {total:0,kWp:0,batteryText:''};
+  }
+
+  function safePanelParts(){
+    try{
+      if(typeof panelParts === 'function') return panelParts();
+    }catch(e){}
+    return {name:($('panelModel')?.value||'Solar panel').split('|')[0]};
+  }
+
+  function roofPanelTotal(){
+    let total = 0;
+    try{
+      if(typeof getRoofs === 'function'){
+        getRoofs().forEach(r => {
+          const n = Number(r.panels || r.panelCount || r.panel_count || 0);
+          if(Number.isFinite(n)) total += n;
+        });
+      }
+    }catch(e){}
+    if(!total){
+      document.querySelectorAll('#roofPlanes input').forEach(inp => {
+        const text = ((inp.closest('label')?.textContent || '') + ' ' + (inp.id||'') + ' ' + (inp.name||'')).toLowerCase();
+        if(text.includes('panel')){
+          const n = Number(inp.value || 0);
+          if(Number.isFinite(n)) total += n;
+        }
+      });
+    }
+    return total;
+  }
+
+  function syncPanelCountFromRoofs(){
+    const total = roofPanelTotal();
+    if(total && $('panelCount')) $('panelCount').value = total;
+  }
+
+  function calculateQuote(){
+    syncPanelCountFromRoofs();
+    let q = safeQuote();
+    const p = safePanelParts();
+    const count = Number($('panelCount')?.value || 0);
+    const brand = $('batteryBrand')?.value || 'None';
+    const errors = [];
+    if($('solar')?.checked && !count) errors.push('No panel count entered.');
+    if($('solar')?.checked && !($('framingSelection')?.value)) errors.push('No roof mounting selected.');
+    if(($('battery')?.checked || brand !== 'None') && brand === 'None') errors.push('Battery selected but no battery brand chosen.');
+    if(brand === 'Sigenergy'){
+      const sigQty = Number($('sigModuleQty')?.value || $('sig6Qty')?.value || 0) + Number($('sig10Qty')?.value || 0);
+      if(!sigQty) errors.push('Sigenergy selected but no battery module quantity entered.');
+    }
+    if(brand === 'Tesla' && !$('pw3')?.checked && !$('dcExp')?.checked) errors.push('Tesla selected but no Powerwall option ticked.');
+
+    const box = $('quoteCheck');
+    if(box){
+      box.innerHTML = `<div class="${errors.length?'quoteWarn':'quoteGood'}">
+        <b>${errors.length?'Check before presenting':'Quote calculated'}</b>
+        <p>${count ? `${count} x ${p.name}` : 'No panels selected'} ${q.kWp ? ' • ' + q.kWp + ' kWp' : ''}</p>
+        <p>Battery: ${brand}</p>
+        <p class="quoteTotal">Proposal position: ${money(q.total || 0)}</p>
+        ${errors.length ? '<ul>' + errors.map(x=>'<li>'+x+'</li>').join('') + '</ul>' : '<p>No obvious missing build items found.</p>'}
+      </div>`;
+    }
+
+    try{ if(typeof refreshPresent === 'function') refreshPresent(); }catch(e){}
+    try{ if(typeof save === 'function') save(); }catch(e){}
+    return !errors.length;
+  }
+
+  function initSignaturePad(){
+    const canvas = $('signatureCanvas');
+    if(!canvas || canvas.dataset.v38Ready === 'yes') return;
+    canvas.dataset.v38Ready = 'yes';
+    const ctx = canvas.getContext('2d');
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#0b1f18';
+    let drawing = false;
+    let last = null;
+
+    function point(e){
+      const rect = canvas.getBoundingClientRect();
+      const touch = e.touches && e.touches[0];
+      const x = (touch ? touch.clientX : e.clientX) - rect.left;
+      const y = (touch ? touch.clientY : e.clientY) - rect.top;
+      return {x: x * (canvas.width / rect.width), y: y * (canvas.height / rect.height)};
+    }
+
+    function start(e){ e.preventDefault(); drawing = true; last = point(e); }
+    function move(e){
+      if(!drawing) return;
+      e.preventDefault();
+      const p = point(e);
+      ctx.beginPath();
+      ctx.moveTo(last.x,last.y);
+      ctx.lineTo(p.x,p.y);
+      ctx.stroke();
+      last = p;
+      window.signatureData = canvas.toDataURL('image/png');
+    }
+    function end(e){
+      if(!drawing) return;
+      e.preventDefault();
+      drawing = false;
+      window.signatureData = canvas.toDataURL('image/png');
+      try{ if(typeof save === 'function') save(); }catch(err){}
+    }
+
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', end);
+    canvas.addEventListener('touchstart', start, {passive:false});
+    canvas.addEventListener('touchmove', move, {passive:false});
+    canvas.addEventListener('touchend', end, {passive:false});
+
+    const clear = $('clearSignature');
+    if(clear){
+      clear.onclick = function(e){
+        e.preventDefault();
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        window.signatureData = '';
+        try{ if(typeof save === 'function') save(); }catch(err){}
+      };
+    }
+
+    if(window.signatureData){
+      const img = new Image();
+      img.onload = () => ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      img.src = window.signatureData;
+    }
+  }
+
+  function signatureCaptured(){
+    const canvas = $('signatureCanvas');
+    if(!canvas) return false;
+    if(window.signatureData && window.signatureData.length > 1000) return true;
+    try{
+      const data = canvas.toDataURL('image/png');
+      if(data && data.length > 1000){
+        window.signatureData = data;
+        return true;
+      }
+    }catch(e){}
+    return false;
+  }
+
+  function acceptFormalQuote(){
+    if(!signatureCaptured()){
+      alert('Please ask the customer to sign before accepting.');
+      return;
+    }
+    const name = $('customerName')?.value || 'Customer';
+    const likelihood = $('customerLikelihood')?.value || 'Not recorded';
+    const note = $('acceptanceNote')?.value || '';
+    const stamp = `${name} signed to confirm they would like the formal quote prepared on ${new Date().toLocaleString()}. Customer response: ${likelihood}. ${note}`;
+    if($('acceptanceStamp')) $('acceptanceStamp').innerText = stamp;
+    if($('salesStatus')) $('salesStatus').value = 'Formal quote needed';
+    if($('nextAction')) $('nextAction').value = 'Prepare formal quote';
+    try{ if(typeof save === 'function') save(); }catch(e){}
+    alert('Accepted for formal quote and saved.');
+  }
+
+  function updateLikelihoodWording(){
+    const ans = $('customerLikelihood')?.value || '';
+    const p = $('blockerPrompt');
+    if(!p) return;
+    if(!ans){
+      p.textContent = 'Choose the closest answer above.';
+      p.className = 'blockerPrompt';
+      return;
+    }
+    if(ans.includes('route I want')){
+      p.textContent = 'Great. I will prepare the formal quote for review and e-signing based on this recommendation.';
+      p.className = 'blockerPrompt good';
+      if($('salesStatus')) $('salesStatus').value = 'Formal quote needed';
+      if($('mainBlocker')) $('mainBlocker').value = 'None known';
+    } else if(ans.includes('question') || ans.includes('concern')){
+      p.textContent = 'That is useful to know. What would you want changed, clarified or confirmed before this feels right?';
+      p.className = 'blockerPrompt warn';
+      if($('salesStatus')) $('salesStatus').value = 'Proposal to prepare';
+      if($('mainBlocker') && $('mainBlocker').value === 'None known') $('mainBlocker').value = 'Needs more information';
+    } else {
+      p.textContent = 'Thanks for being direct. What is the main reason this does not feel like the right route?';
+      p.className = 'blockerPrompt danger';
+      if($('salesStatus')) $('salesStatus').value = 'Closed lost';
+    }
+    try{ if(typeof save === 'function') save(); }catch(e){}
+  }
+
+  function bind(){
+    // navigation
+    document.querySelectorAll('nav button[data-tab]').forEach(btn => {
+      btn.onclick = function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        showTab(btn.dataset.tab);
+        if(btn.dataset.tab === 'present'){
+          calculateQuote();
+          initSignaturePad();
+        }
+      };
+    });
+
+    // site panel count syncing
+    document.addEventListener('input', e => {
+      if(e.target && e.target.closest && e.target.closest('#roofPlanes')) syncPanelCountFromRoofs();
+    }, true);
+
+    // build
+    const calc = $('calculateQuote');
+    if(calc) calc.onclick = e => { e.preventDefault(); calculateQuote(); };
+
+    // present
+    const refresh = $('refreshPresent');
+    if(refresh) refresh.onclick = e => { e.preventDefault(); calculateQuote(); };
+    const likelihood = $('customerLikelihood');
+    if(likelihood) likelihood.onchange = updateLikelihoodWording;
+    const accept = $('stampAccept');
+    if(accept) accept.onclick = e => { e.preventDefault(); acceptFormalQuote(); };
+
+    initSignaturePad();
+
+    if($('homeVersionSmall')) $('homeVersionSmall').textContent = VERSION;
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: ' + VERSION;
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);

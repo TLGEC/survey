@@ -34,7 +34,7 @@
 
 <section id="home" class="panel on landingPage">
   <div class="landingHero">
-    <div id="homeVersionSmall" class="homeVersionSmall">v37</div>
+    <div id="homeVersionSmall" class="homeVersionSmall">v38</div>
     <div>
       <div class="heroKicker">Survey Sync</div>
       <h2>Saved surveys</h2>
@@ -108,9 +108,9 @@
   <details class="internalGroup">
     <summary>Saved surveys</summary>
     <label>Survey name<input id="saveName" placeholder="Customer name"></label>
-    <button id="saveSurvey" class="primary">Save survey</button>
-    <button id="saveAndNew" class="secondary">Save and start new survey</button>
-    <button id="newSurveySaved" class="secondary">Start blank new survey</button>
+    <button id="saveSurvey" class="primary" type="button">Save survey</button>
+    <button id="saveAndNew" class="secondary" type="button">Save and start new survey</button>
+    <button id="newSurveySaved" class="secondary" type="button">Start blank new survey</button>
     <div id="saveStatus" class="guide">This survey is currently only a draft.</div>
     <div id="savedList" class="savedList"></div>
   </details>
@@ -141,7 +141,7 @@
   <details class="internalGroup">
     <summary>App tools</summary>
     <button id="updateApp" class="secondary" type="button">Update app / clear cache</button>
-    <div id="appVersionBadge" class="versionBadge">App version: v37</div>
+    <div id="appVersionBadge" class="versionBadge">App version: v38</div>
   </details>
 </section>
 
@@ -310,6 +310,12 @@
   <button id="calcQuote" class="primary">Calculate quote</button>
   <div id="quoteTotal" class="totalBox">Quote total will appear here.</div>
 
+  
+  <div class="quoteCheckBox">
+    <button id="calculateQuote" class="primary" type="button">Calculate quote</button>
+    <div id="quoteCheck" class="quoteCheck">Quote not calculated yet.</div>
+  </div>
+
   <div class="bottomNav"><button class="primary continueBtn" data-next="present" type="button">Refresh proposal and present</button></div>
 </section>
 
@@ -323,7 +329,7 @@
   <div id="batteryImagePanel" class="batteryImagePanel"></div>
   <div id="paybackSummary" class="paybackSummary"></div>
   <div id="presentSummary" class="summaryBox presenterSummary"></div>
-  <button id="refreshPresent" class="primary">Refresh summary</button>
+  <button id="refreshPresent" class="primary" type="button">Refresh summary</button>
 
   
   <div class="closingCheck customerClose">
@@ -351,10 +357,8 @@
       <button id="clearSignature" class="secondary" type="button">Clear signature</button>
     </div>
   </div>
-  <button id="stampAccept" class="primary">Accept and proceed to formal quote</button>
+  <button id="stampAccept" class="primary" type="button">Accept and proceed to formal quote</button>
   <div id="acceptanceStamp" class="guide">No acceptance stamped yet.</div>
-
-  <div class="bottomNav"><button class="primary continueBtn" data-next="internal" type="button">Save and open Internal</button></div>
 </section>
 
 
