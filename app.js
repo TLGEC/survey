@@ -1,6 +1,6 @@
 const KEY='tlgec_current_draft_v1'; const SURVEYS_KEY='tlgec_surveys_saved_v1';
 let selectedFiles=[]; let currentSavedId=null; let signatureData=''; let signaturePadDirty=false;
-const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','solarSelfUsePct','panelModel','panelCount','systemOverride','framingSelection','tigoPrice','batteryBrand','sigBatteryModel','sigModuleQty','sigBatteryOnlyController','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut'];
+const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','solarSelfUsePct','panelModel','panelCount','systemOverride','framingSelection','tigoPrice','batteryBrand','sigBatteryModel','sigModuleQty','sigBatteryOnlyController','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut','salesStatus','mainBlocker','customerLikelihood','blockerReason'];
 const checks=['heatPump','highEvening','backupNeeded','askBill','askDecisionMaker','askCompetitors','askTiming','askBackup','askBudget','solar','battery','ev','tigo','bird','spds','pw3','gateway','dcExp','sigGateway'];
 function $(x){return document.getElementById(x)}
 
@@ -992,7 +992,7 @@ function bindCriticalButtons(){
   if(monday) monday.onchange=e=>readCSVFileAndSave((e.target.files||[])[0]);
 }
 
-document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v33';load();initSignaturePad();
+document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v34';load();initSignaturePad();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
@@ -1118,10 +1118,121 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const f=el('homeOpenFresh');
     if(f) f.onclick=function(e){e.preventDefault();openFreshCopy();};
 
-    if(el('homeVersionBadge')) el('homeVersionBadge').textContent='App version: v33';
-    if(el('appVersionBadge')) el('appVersionBadge').textContent='App version: v33';
+    if(el('homeVersionBadge')) el('homeVersionBadge').textContent='App version: v34';
+    if(el('appVersionBadge')) el('appVersionBadge').textContent='App version: v34';
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bindUpdateButtons);
   else bindUpdateButtons();
+})();
+
+
+/* v34 sales flow */
+(function(){
+  const $ = id => document.getElementById(id);
+
+  function openTab(tabId){
+    document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tabId));
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('on', p.id === tabId));
+    window.scrollTo(0,0);
+  }
+
+  function val(id){ return ($(id)?.value || '').trim(); }
+
+  function missingItems(){
+    const m = [];
+    if(!val('customerName')) m.push('Customer name');
+    if(!val('address')) m.push('Address');
+    if(!val('phone') && !val('email')) m.push('Phone or email');
+    if(!val('annualKwh') && !val('dailyKwh')) m.push('Annual or daily usage');
+    if(!val('peak') && !val('annualSpend')) m.push('Peak rate or annual spend');
+    if(!val('wants')) m.push('What the customer wants');
+    if(!val('decisionMakers')) m.push('Decision maker');
+    if(val('batteryBrand') && val('batteryBrand') !== 'None' && !val('batteryLoc')) m.push('Battery location');
+    if(!val('meter')) m.push('Meter / CU / supply notes');
+    if(!val('cable')) m.push('Cable route');
+    if(!val('access')) m.push('Access / scaffold notes');
+    if(!val('nextAction')) m.push('Next action');
+    if(!val('followUp')) m.push('Follow-up date');
+    let roofs = 0;
+    try { if(typeof getRoofs === 'function') roofs = getRoofs().length; } catch(e){}
+    if(!roofs && !val('roof1Width') && !val('dims')) m.push('Roof dimensions / elevations');
+    return m;
+  }
+
+  function checkReadiness(){
+    const m = missingItems();
+    const box = $('readinessBox');
+    if(!box) return m;
+    if(m.length){
+      box.innerHTML = '<div class="readyWarn"><b>Missing before proposal</b><ul>' + m.map(x => '<li>'+x+'</li>').join('') + '</ul></div>';
+    } else {
+      box.innerHTML = '<div class="readyGood"><b>Ready for proposal</b><p>Core survey information is captured.</p></div>';
+    }
+    return m;
+  }
+
+  function saveIt(){
+    try { if(typeof saveCurrentSurvey === 'function') return saveCurrentSurvey(); } catch(e){}
+    try { if(typeof save === 'function') save(); } catch(e){}
+  }
+
+  function updateLikelihood(){
+    const ans = val('customerLikelihood');
+    const p = $('blockerPrompt');
+    if(!p) return;
+
+    if(!ans){
+      p.textContent = 'Select the customer likelihood to reveal the next question.';
+      p.className = 'blockerPrompt';
+      return;
+    }
+
+    if(ans === 'Highly likely'){
+      p.textContent = 'Good signal. Confirm the formal quote next step and signature.';
+      p.className = 'blockerPrompt good';
+      if($('salesStatus')) $('salesStatus').value = 'Formal quote needed';
+      if($('mainBlocker')) $('mainBlocker').value = 'None known';
+    } else if(ans === 'Not likely yet'){
+      p.textContent = 'Ask: “What would need to change for this to become a yes?” Capture the answer below.';
+      p.className = 'blockerPrompt warn';
+      if($('salesStatus')) $('salesStatus').value = 'Proposal to prepare';
+      if($('mainBlocker') && $('mainBlocker').value === 'None known') $('mainBlocker').value = 'Needs more information';
+    } else {
+      p.textContent = 'Ask: “Is that mainly price, timing, system design, or another quote?” Capture the reason below.';
+      p.className = 'blockerPrompt danger';
+      if($('salesStatus')) $('salesStatus').value = 'Closed lost';
+      if($('mainBlocker') && $('mainBlocker').value === 'None known') $('mainBlocker').value = 'Price';
+    }
+    saveIt();
+  }
+
+  function markComplete(){
+    const m = checkReadiness();
+    if($('salesStatus')) $('salesStatus').value = m.length ? 'Proposal to prepare' : 'Survey completed';
+    if($('nextAction') && !$('nextAction').value) $('nextAction').value = 'Prepare formal quote';
+    saveIt();
+    alert(m.length ? 'Survey saved. Some items still need checking before proposal.' : 'Survey marked complete and saved.');
+  }
+
+  function bind(){
+    document.querySelectorAll('.continueBtn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        if(btn.dataset.next === 'present' && typeof refreshPresent === 'function') refreshPresent();
+        saveIt();
+        openTab(btn.dataset.next);
+      });
+    });
+
+    if($('customerLikelihood')) $('customerLikelihood').addEventListener('change', updateLikelihood);
+    if($('checkReadiness')) $('checkReadiness').addEventListener('click', e => { e.preventDefault(); checkReadiness(); });
+    if($('markSurveyComplete')) $('markSurveyComplete').addEventListener('click', e => { e.preventDefault(); markComplete(); });
+
+    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v34';
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v34';
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
 })();

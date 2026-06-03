@@ -167,3 +167,15 @@ pre{background:#062819;color:#effff4;border-radius:20px;padding:18px;white-space
 .homeVersionBadge{background:#eef6e8;border:1px solid #cfe2cf;border-radius:999px;padding:10px 14px;text-align:center;font-weight:950;color:#0b7a46;margin:12px 0}
 #homeUpdateApp{border:2px solid #79ac20!important}
 #homeOpenFresh{font-size:15px}
+
+.bottomNav{position:sticky;bottom:0;background:linear-gradient(180deg,rgba(255,255,255,.78),#fff);padding:12px 0;margin-top:18px;z-index:2}
+.continueBtn{font-size:17px;padding:15px 18px}
+.closingCheck{background:#f7faf4;border:1px solid #d9e2da;border-radius:24px;padding:16px;margin:16px 0}
+.blockerPrompt{background:#eef3ef;border:1px solid #d9e2da;border-radius:16px;padding:12px;margin:10px 0;font-weight:850;color:#3d5248}
+.blockerPrompt.good{background:#edf8ed;border-color:#b8d7bf;color:#0b7a46}
+.blockerPrompt.warn{background:#fff7e6;border-color:#efd092;color:#7a4f00}
+.blockerPrompt.danger{background:#fff0f0;border-color:#e2b0b0;color:#8a1d1d}
+.readinessBox{margin:12px 0}
+.readyGood,.readyWarn{border-radius:20px;padding:14px;border:1px solid #d9e2da;background:#f7faf4}
+.readyGood b{color:#0b7a46}.readyWarn b{color:#8a5a00}
+.readyWarn ul{margin:8px 0 0;padding-left:22px}
