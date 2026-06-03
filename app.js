@@ -992,7 +992,7 @@ function bindCriticalButtons(){
   if(monday) monday.onchange=e=>readCSVFileAndSave((e.target.files||[])[0]);
 }
 
-document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v36';load();initSignaturePad();
+document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v37';load();initSignaturePad();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
@@ -1118,8 +1118,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const f=el('homeOpenFresh');
     if(f) f.onclick=function(e){e.preventDefault();openFreshCopy();};
 
-    if(el('homeVersionBadge')) el('homeVersionBadge').textContent='App version: v36';
-    if(el('appVersionBadge')) el('appVersionBadge').textContent='App version: v36';
+    if(el('homeVersionBadge')) el('homeVersionBadge').textContent='App version: v37';
+    if(el('appVersionBadge')) el('appVersionBadge').textContent='App version: v37';
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bindUpdateButtons);
@@ -1229,8 +1229,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if($('checkReadiness')) $('checkReadiness').addEventListener('click', e => { e.preventDefault(); checkReadiness(); });
     if($('markSurveyComplete')) $('markSurveyComplete').addEventListener('click', e => { e.preventDefault(); markComplete(); });
 
-    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v36';
-    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v36';
+    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v37';
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v37';
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
@@ -1372,8 +1372,8 @@ Keep the customer-facing email clean, direct and Outlook-safe.
     overrideCopyButton();
     setPanelCountFromRoofs();
 
-    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v36';
-    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v36';
+    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v37';
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v37';
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindV35);
@@ -1465,4 +1465,92 @@ Keep the customer-facing email clean, direct and Outlook-safe.
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
+})();
+
+
+/* v37 backup restore */
+(function(){
+  const SAVED_KEY='tlgec_surveys_saved_v1';
+  const DRAFT_KEY='tlgec_current_draft_v1';
+  const $ = id => document.getElementById(id);
+
+  function getSaved(){
+    try { return JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); }
+    catch(e){ return []; }
+  }
+
+  function setSaved(arr){
+    localStorage.setItem(SAVED_KEY, JSON.stringify(arr));
+  }
+
+  function downloadFile(name, text, type){
+    const blob = new Blob([text], {type:type || 'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 500);
+  }
+
+  function exportBackup(){
+    const backup = {
+      app: 'TLGEC Survey Sync',
+      backupVersion: 'v1',
+      exportedAt: new Date().toISOString(),
+      savedSurveys: getSaved(),
+      currentDraft: (() => {
+        try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); }
+        catch(e){ return null; }
+      })()
+    };
+    downloadFile('tlgec_survey_backup_' + new Date().toISOString().slice(0,10) + '.json', JSON.stringify(backup, null, 2));
+  }
+
+  function importBackup(file){
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        const incoming = Array.isArray(data.savedSurveys) ? data.savedSurveys : [];
+        if(!incoming.length){
+          alert('No saved surveys found in this backup file.');
+          return;
+        }
+
+        const existing = getSaved();
+        const byId = new Map(existing.map(s => [s.id, s]));
+        incoming.forEach(s => {
+          if(!s.id) s.id = 'svy_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+          byId.set(s.id, s);
+        });
+
+        setSaved([...byId.values()]);
+        try { if(typeof renderSavedList === 'function') renderSavedList(); } catch(e){}
+        try { if(typeof renderHomeSavedList === 'function') renderHomeSavedList(); } catch(e){}
+        alert('Saved survey backup imported.');
+      } catch(e) {
+        alert('Could not import this backup file.');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function bind(){
+    const ex = $('exportBackup');
+    if(ex) ex.onclick = function(e){ e.preventDefault(); exportBackup(); };
+
+    const im = $('importBackup');
+    if(im) im.onchange = function(e){ importBackup((e.target.files || [])[0]); };
+
+    if($('homeVersionSmall')) $('homeVersionSmall').textContent = 'v37';
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v37';
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
 })();
