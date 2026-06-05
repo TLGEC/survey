@@ -1,7 +1,7 @@
 const KEY='tlgec_current_draft_v1'; const SURVEYS_KEY='tlgec_surveys_saved_v1';
 let selectedFiles=[]; let currentSavedId=null; let signatureData=''; let signaturePadDirty=false;
-const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','solarSelfUsePct','panelModel','panelCount','systemOverride','framingSelection','tigoPrice','batteryBrand','sigBatteryModel','sigModuleQty','sigBatteryOnlyController','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut','salesStatus','mainBlocker','customerLikelihood','blockerReason'];
-const checks=['heatPump','highEvening','backupNeeded','askBill','askDecisionMaker','askCompetitors','askTiming','askBackup','askBudget','solar','battery','ev','tigo','bird','spds','pw3','gateway','dcExp','sigGateway'];
+const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','photoNotes','siteRiskNotes','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','solarSelfUsePct','panelModel','panelCount','systemOverride','framingSelection','tigoPrice','batteryBrand','sigBatteryModel','sigModuleQty','sigBatteryOnlyController','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut','salesStatus','mainBlocker','customerLikelihood','blockerReason'];
+const checks=['heatPump','highEvening','backupNeeded','askBill','askDecisionMaker','askCompetitors','askTiming','askBackup','askBudget','solar','battery','ev','tigo','bird','spds','pw3','gateway','dcExp','sigGateway','photoRoofFront','photoRoofRear','photoMeter','photoCU','photoFuse','photoBatteryLoc','photoInverterLoc','photoCableRoute','photoAccess','customerRouteAgreed'];
 function $(x){return document.getElementById(x)}
 
 function migrateOldStorageKeys(){
@@ -70,7 +70,7 @@ const framingDayBands = {
 function num(v){return Number(v||0)||0}
 
 function money(n){return '£'+Number(n||0).toLocaleString('en-GB',{maximumFractionDigits:0})}
-function panelParts(){let [name,watt,dim,weight]=($('panelModel').value||'AIKO 540W|540||').split('|');return {name,watt:+watt,dim,weight}}
+function panelParts(){let [name,watt,dim,weight]=($('panelModel').value||'AIKO 495W|495|1762 x 1134 x 30 mm|20.6 kg').split('|');return {name,watt:+watt,dim,weight}}
 function kWp(){let p=panelParts();return ((+($('panelCount').value||0)*p.watt)/1000).toFixed(2)}
 function scope(){return [ $('solar').checked?'Solar':null,$('battery').checked?'Battery':null,$('ev').checked?'EV':null].filter(Boolean).join(', ')}
 function flags(){return [ $('heatPump').checked?'Heat pump':null,$('highEvening').checked?'High evening use':null,$('backupNeeded').checked?'Backup wanted':null].filter(Boolean).join(', ')}
@@ -306,6 +306,10 @@ function batteryUsableKwhForPayback(){
     return total;
   }
   if(brand==='Sigenergy'){
+    if($('sigBatteryModel')){
+      const qty=getNumber('sigModuleQty',0);
+      return qty*(($('sigBatteryModel').value==='6')?5.84:8.76);
+    }
     const six=getNumber('sig6Qty',0);
     const ten=getNumber('sig10Qty',0);
     return six*5.84 + ten*8.76;
@@ -992,7 +996,7 @@ function bindCriticalButtons(){
   if(monday) monday.onchange=e=>readCSVFileAndSave((e.target.files||[])[0]);
 }
 
-document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v38';load();initSignaturePad();
+document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v39';load();initSignaturePad();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
@@ -1018,8 +1022,8 @@ if($('exportBackup'))$('exportBackup').onclick=exportSurveyBackup;
 if($('importBackup'))$('importBackup').onchange=e=>importSurveyBackup((e.target.files||[])[0]);
 if($('addRoofPlane'))$('addRoofPlane').onclick=()=>{addRoofPlane({});save()};
 if($('saveAndNew'))$('saveAndNew').onclick=saveAndStartNew;
-$('reset').onclick=()=>{if(confirm('Clear local survey?')){localStorage.removeItem(KEY);location.reload()}};
-$('filesInput').onchange=e=>{selectedFiles=Array.from(e.target.files||[]);$('preview').innerHTML='';selectedFiles.forEach(f=>{if(f.type.startsWith('image/')){let img=document.createElement('img');img.src=URL.createObjectURL(f);$('preview').appendChild(img)}});$('fileNames').textContent=selectedFiles.map(f=>f.name).join('\n');save()};
+if($('reset'))$('reset').onclick=()=>{if(confirm('Clear local survey?')){localStorage.removeItem(KEY);location.reload()}};
+if($('filesInput'))$('filesInput').onchange=e=>{selectedFiles=Array.from(e.target.files||[]);if($('preview'))$('preview').innerHTML='';selectedFiles.forEach(f=>{if(f.type.startsWith('image/')&&$('preview')){let img=document.createElement('img');img.src=URL.createObjectURL(f);$('preview').appendChild(img)}});if($('fileNames'))$('fileNames').textContent=selectedFiles.length?selectedFiles.map(f=>f.name).join('\n'):'No photos selected yet.';save()};
 if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.js');
 });
 
@@ -1118,8 +1122,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const f=el('homeOpenFresh');
     if(f) f.onclick=function(e){e.preventDefault();openFreshCopy();};
 
-    if(el('homeVersionBadge')) el('homeVersionBadge').textContent='App version: v38';
-    if(el('appVersionBadge')) el('appVersionBadge').textContent='App version: v38';
+    if(el('homeVersionBadge')) el('homeVersionBadge').textContent='App version: v39';
+    if(el('appVersionBadge')) el('appVersionBadge').textContent='App version: v39';
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bindUpdateButtons);
@@ -1229,8 +1233,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if($('checkReadiness')) $('checkReadiness').addEventListener('click', e => { e.preventDefault(); checkReadiness(); });
     if($('markSurveyComplete')) $('markSurveyComplete').addEventListener('click', e => { e.preventDefault(); markComplete(); });
 
-    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v38';
-    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v38';
+    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v39';
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v39';
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
@@ -1372,8 +1376,8 @@ Keep the customer-facing email clean, direct and Outlook-safe.
     overrideCopyButton();
     setPanelCountFromRoofs();
 
-    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v38';
-    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v38';
+    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v39';
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v39';
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindV35);
@@ -1548,7 +1552,7 @@ Keep the customer-facing email clean, direct and Outlook-safe.
     if(im) im.onchange = function(e){ importBackup((e.target.files || [])[0]); };
 
     if($('homeVersionSmall')) $('homeVersionSmall').textContent = 'v37';
-    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v38';
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v39';
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
@@ -1556,9 +1560,9 @@ Keep the customer-facing email clean, direct and Outlook-safe.
 })();
 
 
-/* v38 button repair, quote check and signature repair */
+/* v39 button repair, quote check and signature repair */
 (function(){
-  const VERSION = 'v38';
+  const VERSION = 'v39';
   const $ = id => document.getElementById(id);
 
   function money(n){
@@ -1651,8 +1655,8 @@ Keep the customer-facing email clean, direct and Outlook-safe.
 
   function initSignaturePad(){
     const canvas = $('signatureCanvas');
-    if(!canvas || canvas.dataset.v38Ready === 'yes') return;
-    canvas.dataset.v38Ready = 'yes';
+    if(!canvas || canvas.dataset.v39Ready === 'yes') return;
+    canvas.dataset.v39Ready = 'yes';
     const ctx = canvas.getContext('2d');
     ctx.lineWidth = 4;
     ctx.lineCap = 'round';
@@ -1805,6 +1809,284 @@ Keep the customer-facing email clean, direct and Outlook-safe.
 
     if($('homeVersionSmall')) $('homeVersionSmall').textContent = VERSION;
     if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: ' + VERSION;
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+
+
+/* v39 local-only survey quality, evidence checklist and safer handover */
+(function(){
+  const VERSION = 'v39';
+  const $ = id => document.getElementById(id);
+
+  const REQUIRED = [
+    ['customerName','Customer name'],
+    ['address','Address'],
+    ['phone','Phone number'],
+    ['email','Email address'],
+    ['wants','Customer goal'],
+    ['annualKwh','Annual usage or daily average', () => val('annualKwh') || val('dailyKwh')],
+    ['roof','Roof notes'],
+    ['roofPlanes','At least one roof/elevation with dimensions', () => hasRoofPlane()],
+    ['dims','Reference measurement / dimension notes'],
+    ['shade','Obstructions / shading notes'],
+    ['meter','Meter / CU / incoming supply notes'],
+    ['batteryLoc','Battery location'],
+    ['invLoc','Inverter/controller location'],
+    ['cable','Cable route'],
+    ['access','Access / scaffold notes'],
+    ['photoRoofFront','Roof front/access photo ticked', () => checked('photoRoofFront')],
+    ['photoRoofRear','Roof rear/main plane photo ticked', () => checked('photoRoofRear')],
+    ['photoMeter','Meter photo ticked', () => checked('photoMeter')],
+    ['photoCU','Consumer unit photo ticked', () => checked('photoCU')],
+    ['photoFuse','Incoming supply/fuse photo ticked', () => checked('photoFuse')],
+    ['photoBatteryLoc','Battery location photo ticked', () => checked('photoBatteryLoc')],
+    ['photoInverterLoc','Inverter/controller location photo ticked', () => checked('photoInverterLoc')],
+    ['photoCableRoute','Cable route photo ticked', () => checked('photoCableRoute')],
+    ['photoAccess','Access/scaffold photo ticked', () => checked('photoAccess')],
+    ['customerRouteAgreed','Customer route/location agreement ticked', () => checked('customerRouteAgreed')],
+    ['panelCount','Panel count entered', () => Number(val('panelCount')) > 0 || !checked('solar')],
+    ['framingSelection','Roof mounting selected'],
+    ['nextAction','Next action'],
+    ['followUp','Follow-up date']
+  ];
+
+  const IMPORTANT = [
+    ['decisionMakers','Decision maker confirmed'],
+    ['competitors','Competitor context'],
+    ['whyNow','Why now'],
+    ['tariff','Current tariff'],
+    ['peak','Peak rate'],
+    ['offpeak','Off-peak rate'],
+    ['photoNotes','Photo notes'],
+    ['siteRiskNotes','Site risk/blocker notes'],
+    ['customerLikelihood','Customer close temperature captured']
+  ];
+
+  function val(id){ return ($(id)?.value || '').toString().trim(); }
+  function checked(id){ return !!$(id)?.checked; }
+
+  function hasRoofPlane(){
+    try{
+      if(typeof getRoofPlanes === 'function'){
+        return getRoofPlanes().some(r => (r.width && r.slope) || r.panels || r.pitch || r.azimuth);
+      }
+    }catch(e){}
+    const rows = Array.from(document.querySelectorAll('.roofPlaneRow'));
+    return rows.some(row => {
+      const w = row.querySelector('.roofWidth')?.value;
+      const s = row.querySelector('.roofSlope')?.value;
+      const p = row.querySelector('.roofPanels')?.value;
+      return (w && s) || p;
+    });
+  }
+
+  function missingFrom(list){
+    return list.filter(([id,label,test]) => {
+      try{
+        if(test) return !test();
+        const el = $(id);
+        if(!el) return false;
+        if(el.type === 'checkbox') return !el.checked;
+        return !val(id);
+      }catch(e){ return false; }
+    }).map(x => x[1]);
+  }
+
+  function readiness(){
+    const missingRequired = missingFrom(REQUIRED);
+    const missingImportant = missingFrom(IMPORTANT);
+    const requiredDone = REQUIRED.length - missingRequired.length;
+    const importantDone = IMPORTANT.length - missingImportant.length;
+    const score = Math.round(((requiredDone * 2) + importantDone) / ((REQUIRED.length * 2) + IMPORTANT.length) * 100);
+    return {score, missingRequired, missingImportant};
+  }
+
+  function readinessClass(score){
+    if(score >= 90) return 'readyGood';
+    if(score >= 70) return 'readyWarn';
+    return 'readyBad';
+  }
+
+  function renderReadiness(){
+    const r = readiness();
+    const html = `<div class="readinessScore ${readinessClass(r.score)}">
+      <div><span class="smallCaps">Survey readiness</span><b>${r.score}%</b></div>
+      <p>${r.missingRequired.length ? 'Missing critical items before proposal handover.' : 'Critical handover items captured.'}</p>
+    </div>
+    ${r.missingRequired.length ? `<b>Critical missing</b><ul>${r.missingRequired.slice(0,12).map(x=>`<li>${x}</li>`).join('')}</ul>` : '<p class="goodText">No critical survey gaps found.</p>'}
+    ${r.missingImportant.length ? `<details><summary>Useful improvements</summary><ul>${r.missingImportant.map(x=>`<li>${x}</li>`).join('')}</ul></details>` : ''}`;
+
+    ['readinessBox','homeReadinessCard'].forEach(id => {
+      const box = $(id);
+      if(box) box.innerHTML = html;
+    });
+    return r;
+  }
+
+  function updateAgreementSummary(){
+    const box = $('customerAgreementSummary');
+    if(!box) return;
+    const battery = val('batteryLoc') || 'Battery location not yet captured';
+    const inverter = val('invLoc') || 'Inverter/controller location not yet captured';
+    const cable = val('cable') || 'Cable route not yet captured';
+    const access = val('access') || 'Access/scaffold notes not yet captured';
+    const next = val('nextAction') || 'Prepare formal quote for review and e-signing';
+    box.innerHTML = `<b>Customer confirmation</b>
+      <p>I confirm the proposed battery/inverter location, cable route, access notes and next step have been discussed. Final design remains subject to measured survey, DNO approval where needed and design checks.</p>
+      <ul>
+        <li><b>Battery location:</b> ${escapeHtml(battery)}</li>
+        <li><b>Inverter/controller:</b> ${escapeHtml(inverter)}</li>
+        <li><b>Cable route:</b> ${escapeHtml(cable)}</li>
+        <li><b>Access/scaffold:</b> ${escapeHtml(access)}</li>
+        <li><b>Next step:</b> ${escapeHtml(next)}</li>
+      </ul>`;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+  }
+
+  function updatePhotoNames(){
+    const input = $('filesInput');
+    const names = $('fileNames');
+    if(!input || !names) return;
+    const files = Array.from(input.files || []);
+    names.textContent = files.length ? files.map(f => f.name).join('\n') : 'No photos selected yet.';
+  }
+
+  function localPhotoPreview(e){
+    const files = Array.from(e?.target?.files || []);
+    if(typeof selectedFiles !== 'undefined') selectedFiles = files;
+    const preview = $('preview');
+    if(preview) preview.innerHTML = '';
+    files.forEach(f => {
+      if(f.type && f.type.startsWith('image/') && preview){
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(f);
+        img.alt = f.name;
+        preview.appendChild(img);
+      }
+    });
+    updatePhotoNames();
+    try{ if(typeof save === 'function') save(); }catch(e){}
+    renderReadiness();
+  }
+
+  function defaultAcceptanceText(){
+    const note = $('acceptanceNote');
+    if(note && !note.value.trim()){
+      note.value = 'Customer agreed to proceed to formal quote based on the recommendation, proposed equipment locations and cable route discussed today. Subject to final design, survey checks and DNO approval where required.';
+    }
+  }
+
+  function markCompleteV39(){
+    const r = renderReadiness();
+    updateAgreementSummary();
+    if($('salesStatus')) $('salesStatus').value = r.missingRequired.length ? 'Proposal to prepare' : 'Survey completed';
+    if($('nextAction') && !$('nextAction').value) $('nextAction').value = r.missingRequired.length ? 'Resolve missing survey items' : 'Prepare formal quote';
+    try{ if(typeof save === 'function') save(); }catch(e){}
+    alert(r.missingRequired.length ? `Survey saved at ${r.score}%. Resolve critical items before a clean handover.` : 'Survey marked complete. Critical handover items are captured.');
+  }
+
+  function makeCheckReadinessVisible(){
+    const oldCheck = window.checkReadiness;
+    window.tlgecReadinessV39 = readiness;
+    window.checkReadiness = function(){
+      const r = renderReadiness();
+      if(typeof oldCheck === 'function'){
+        try{ oldCheck(); }catch(e){}
+      }
+      return r.missingRequired;
+    };
+  }
+
+  function patchPrompt(){
+    const oldPrompt = window.prompt;
+    window.prompt = function(){
+      let base = '';
+      try{ base = typeof oldPrompt === 'function' ? oldPrompt() : ''; }catch(e){ base = ''; }
+      const r = readiness();
+      const evidence = [
+        ['Roof front/access', checked('photoRoofFront')],
+        ['Roof rear/main plane', checked('photoRoofRear')],
+        ['Meter position', checked('photoMeter')],
+        ['Consumer unit', checked('photoCU')],
+        ['Incoming supply/fuse', checked('photoFuse')],
+        ['Battery location', checked('photoBatteryLoc')],
+        ['Inverter/controller location', checked('photoInverterLoc')],
+        ['Cable route', checked('photoCableRoute')],
+        ['Access/scaffold', checked('photoAccess')]
+      ].map(([name,ok]) => `${ok ? '✓' : '✗'} ${name}`).join('\n');
+
+      return `${base}
+
+Survey Sync v39 local readiness:
+Survey readiness score: ${r.score}%
+Critical missing items:
+${r.missingRequired.length ? r.missingRequired.map(x=>'- '+x).join('\n') : 'None'}
+
+Photo/evidence checklist:
+${evidence}
+
+Customer route/location agreement: ${checked('customerRouteAgreed') ? 'Yes' : 'No'}
+Photo notes: ${val('photoNotes')}
+Site risk/blocker notes: ${val('siteRiskNotes')}`;
+    };
+  }
+
+  function setDefaultPanelForNewDraft(){
+    const panel = $('panelModel');
+    if(panel && !localStorage.getItem('tlgec_current_draft_v1')){
+      const opt = Array.from(panel.options).find(o => o.value.startsWith('AIKO 495W|'));
+      if(opt) panel.value = opt.value;
+    }
+  }
+
+  function bind(){
+    setDefaultPanelForNewDraft();
+
+    const file = $('filesInput');
+    if(file) file.onchange = localPhotoPreview;
+
+    ['checkReadiness','markSurveyComplete'].forEach(id => {
+      const btn = $(id);
+      if(!btn) return;
+      btn.onclick = e => {
+        e.preventDefault();
+        if(id === 'checkReadiness') renderReadiness();
+        if(id === 'markSurveyComplete') markCompleteV39();
+      };
+    });
+
+    document.addEventListener('input', e => {
+      if(e.target && (e.target.matches('input, textarea, select') || e.target.closest('#roofPlanes'))){
+        renderReadiness();
+        updateAgreementSummary();
+      }
+    }, true);
+    document.addEventListener('change', e => {
+      if(e.target && (e.target.matches('input, textarea, select') || e.target.closest('#roofPlanes'))){
+        renderReadiness();
+        updateAgreementSummary();
+      }
+    }, true);
+
+    const stamp = $('stampAccept');
+    if(stamp){
+      stamp.addEventListener('click', defaultAcceptanceText, true);
+    }
+
+    if($('homeVersionSmall')) $('homeVersionSmall').textContent = VERSION;
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: ' + VERSION;
+
+    renderReadiness();
+    updateAgreementSummary();
+    updatePhotoNames();
+    makeCheckReadinessVisible();
+    patchPrompt();
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);

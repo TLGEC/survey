@@ -219,3 +219,77 @@ nav button{touch-action:manipulation}
 .quoteTotal{font-size:20px;font-weight:950;color:#062819}
 .quoteWarn ul{margin:8px 0 0;padding-left:22px}
 #signatureCanvas{touch-action:none}
+
+
+/* v39 local-only survey quality and evidence checklist */
+.photoCaptureBox,.photoChecklist,.agreementSummary,.homeReadinessCard{
+  background:#f7faf4;
+  border:1px solid #d9e2da;
+  border-radius:22px;
+  padding:16px;
+  margin:14px 0;
+}
+.fileNames{
+  white-space:pre-wrap;
+  font-size:14px;
+  color:#5f6e66;
+  background:white;
+  border:1px dashed #cad6ce;
+  border-radius:14px;
+  padding:10px;
+  margin-top:8px;
+}
+.photoChecks label,.agreementCheck label{
+  background:white;
+  min-width:230px;
+}
+.readinessBox ul,.agreementSummary ul{
+  margin:10px 0 0;
+  padding-left:22px;
+}
+.readinessScore{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:center;
+  border-radius:18px;
+  padding:14px;
+  margin-bottom:12px;
+}
+.readinessScore b{
+  display:block;
+  font-size:34px;
+  line-height:1;
+}
+.readinessScore p{
+  margin:0;
+  font-weight:800;
+}
+.readyGood{
+  background:#e6f7ec;
+  border:1px solid #b9dfc4;
+}
+.readyWarn{
+  background:#fff7df;
+  border:1px solid #ead08d;
+}
+.readyBad{
+  background:#fff0ed;
+  border:1px solid #e5b0a5;
+}
+.goodText{
+  color:#0b7a46;
+  font-weight:850;
+}
+.smallCaps{
+  display:block;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  font-size:12px;
+  color:#5f6e66;
+  font-weight:950;
+}
+@media(max-width:640px){
+  .readinessScore{display:block}
+  .readinessScore p{margin-top:8px}
+}

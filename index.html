@@ -34,7 +34,7 @@
 
 <section id="home" class="panel on landingPage">
   <div class="landingHero">
-    <div id="homeVersionSmall" class="homeVersionSmall">v38</div>
+    <div id="homeVersionSmall" class="homeVersionSmall">v39</div>
     <div>
       <div class="heroKicker">Survey Sync</div>
       <h2>Saved surveys</h2>
@@ -53,6 +53,7 @@
   </div>
 
   <div id="homeProcessNote" class="syncNotice"><b>Today’s flow</b><p>Customer, Usage, Site, Build, Present, ask likelihood, signature, then mark survey complete.</p></div>
+  <div id="homeReadinessCard" class="readinessBox homeReadinessCard">Readiness score will appear once a survey is started.</div>
   <div id="homeSavedList" class="savedList"></div>
 </section>
 
@@ -98,6 +99,22 @@
     <div id="importStatus" class="guide">No CRM data imported yet.</div>
 
     <div class="two">
+      <label>monday item ID<input id="mondayId" placeholder="Imported from monday where available"></label>
+      <label>Lead source<input id="leadSource" placeholder="Referral, web, showroom, event..."></label>
+    </div>
+    <label>Pre-survey interest<textarea id="preInterest" placeholder="Solar, battery, EV, Tesla, Sigenergy, backup, budget or reason for enquiry."></textarea></label>
+    <label>Promises already made<textarea id="promisesMade" placeholder="Anything already promised before survey."></textarea></label>
+    <label>Customer timescale<input id="timing" placeholder="ASAP, this month, quote comparison, future planning..."></label>
+    <div class="checks">
+      <label><input id="askBill" type="checkbox"> Confirm usage/tariff</label>
+      <label><input id="askDecisionMaker" type="checkbox"> Confirm decision maker</label>
+      <label><input id="askCompetitors" type="checkbox"> Ask competitors</label>
+      <label><input id="askTiming" type="checkbox"> Confirm timing</label>
+      <label><input id="askBackup" type="checkbox"> Clarify backup</label>
+      <label><input id="askBudget" type="checkbox"> Test budget comfort</label>
+    </div>
+
+    <div class="two">
       <label>Appointment time<input id="appointmentTime" type="datetime-local"></label>
       <label>Current CRM status<input id="crmStatus" placeholder="Survey booked, quote sent..."></label>
     </div>
@@ -113,6 +130,41 @@
     <button id="newSurveySaved" class="secondary" type="button">Start blank new survey</button>
     <div id="saveStatus" class="guide">This survey is currently only a draft.</div>
     <div id="savedList" class="savedList"></div>
+  </details>
+
+  <details class="internalGroup" open>
+    <summary>Next action and sales status</summary>
+    <div class="two">
+      <label>Sales status<select id="salesStatus">
+        <option value="">Select status</option>
+        <option>Survey booked</option>
+        <option>Survey completed</option>
+        <option>Proposal to prepare</option>
+        <option>Formal quote needed</option>
+        <option>Quote sent</option>
+        <option>Follow-up required</option>
+        <option>Closed won</option>
+        <option>Closed lost</option>
+      </select></label>
+      <label>Main blocker<select id="mainBlocker">
+        <option>None known</option>
+        <option>Price</option>
+        <option>Timing</option>
+        <option>Needs more information</option>
+        <option>Competitor quote</option>
+        <option>Technical/design concern</option>
+        <option>DNO or survey blocker</option>
+      </select></label>
+      <label>Next action<input id="nextAction" placeholder="Prepare formal quote"></label>
+      <label>Follow-up date<input id="followUp" type="date"></label>
+      <label>Confidence<select id="confidence">
+        <option value="">Select confidence</option>
+        <option>High</option>
+        <option>Medium</option>
+        <option>Low</option>
+      </select></label>
+    </div>
+    <label>Gut feel / internal sales note<textarea id="gut" placeholder="Buying signals, objections, urgency, household decision dynamic, quote risk."></textarea></label>
   </details>
 
   <details class="internalGroup">
@@ -141,7 +193,7 @@
   <details class="internalGroup">
     <summary>App tools</summary>
     <button id="updateApp" class="secondary" type="button">Update app / clear cache</button>
-    <div id="appVersionBadge" class="versionBadge">App version: v38</div>
+    <div id="appVersionBadge" class="versionBadge">App version: v39</div>
   </details>
 </section>
 
@@ -178,7 +230,30 @@
 
 <section id="site" class="panel">
   <h2>Site notes</h2>
-  <div class="simpleRoofPhoto"><b>Roof photos</b><p>Use Internal > Files and checklist for roof photos. Capture measurements here using Add roof/elevation.</p></div>
+  <div class="simpleRoofPhoto"><b>Local survey evidence</b><p>Capture the key site photos and tick each item as complete. Photos are available in the current offline session; saved survey records keep the filenames and checklist status on this device.</p></div>
+
+  <div class="photoCaptureBox">
+    <label>Survey photos<input id="filesInput" type="file" accept="image/*,.pdf" multiple></label>
+    <div id="fileNames" class="fileNames">No photos selected yet.</div>
+    <div id="preview" class="photos"></div>
+  </div>
+
+  <div class="photoChecklist">
+    <h3>Required evidence checklist</h3>
+    <div class="checks photoChecks">
+      <label><input id="photoRoofFront" type="checkbox"> Roof front / access</label>
+      <label><input id="photoRoofRear" type="checkbox"> Roof rear / main plane</label>
+      <label><input id="photoMeter" type="checkbox"> Meter position</label>
+      <label><input id="photoCU" type="checkbox"> Consumer unit</label>
+      <label><input id="photoFuse" type="checkbox"> Incoming supply / fuse</label>
+      <label><input id="photoBatteryLoc" type="checkbox"> Battery location</label>
+      <label><input id="photoInverterLoc" type="checkbox"> Inverter/controller location</label>
+      <label><input id="photoCableRoute" type="checkbox"> Cable route</label>
+      <label><input id="photoAccess" type="checkbox"> Scaffold/access</label>
+    </div>
+    <label>Photo / evidence notes<textarea id="photoNotes" placeholder="Any missing photos, why missing, or extra files captured."></textarea></label>
+  </div>
+
   <label>Roof notes<textarea id="roof" placeholder="Tile/slate, pitch, azimuth, roof planes..."></textarea></label>
   <h2>Roof dimensions</h2>
   <p class="hint">Add each elevation or roof plane separately. Use metres. These feed the design brief and layout check.</p>
@@ -191,6 +266,10 @@
   <label>Meter / CU / incoming supply<textarea id="meter"></textarea></label>
   <label>Cable route<textarea id="cable"></textarea></label>
   <label>Access / scaffold<textarea id="access"></textarea></label>
+  <label>Site risk / blocker notes<textarea id="siteRiskNotes" placeholder="Anything that could delay design, DNO, survey sign-off, scaffold, cable run or install."></textarea></label>
+  <div class="checks agreementCheck">
+    <label><input id="customerRouteAgreed" type="checkbox"> Customer has agreed the proposed equipment locations and cable route, subject to final design and survey checks</label>
+  </div>
 
   <div class="bottomNav"><button class="primary continueBtn" data-next="build" type="button">Continue to Build</button></div>
 </section>
@@ -205,8 +284,8 @@
 
   <h2>Solar</h2>
   <label>Panel model<select id="panelModel">
-    <option value="AIKO 540W|540|1954 x 1134 x 30 mm|27.1 kg" selected>AIKO 540W</option>
-    <option value="AIKO 495W|495|1762 x 1134 x 30 mm|20.6 kg">AIKO 495W</option>
+    <option value="AIKO 540W|540|1954 x 1134 x 30 mm|27.1 kg">AIKO 540W</option>
+    <option value="AIKO 495W|495|1762 x 1134 x 30 mm|20.6 kg" selected>AIKO 495W</option>
     <option value="SunPower P7 500W|500|1996 x 1134 x 30 mm|27.5 kg">SunPower P7 500W</option>
     <option value="SunPower P7 450W|450|1790 x 1134 x 30 mm|24.8 kg">SunPower P7 450W</option>
   </select></label>
@@ -349,6 +428,7 @@
 
   <h2>Confirm next step</h2>
   <p class="hint">Please sign below to confirm you would like this recommendation prepared as a formal quote for review and e-signing.</p>
+  <div id="customerAgreementSummary" class="agreementSummary">Agreement summary will refresh from the survey details.</div>
   <label>Acceptance note<textarea id="acceptanceNote" placeholder="Customer agreed to proceed to formal quote based on this recommendation."></textarea></label>
   <div class="signatureBox">
     <div class="signatureTitle">Customer signature</div>
