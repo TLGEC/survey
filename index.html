@@ -129,7 +129,7 @@
 </div>
 <div class="simpleRoofPhoto"><b>Local survey evidence</b><p>Capture the key site photos and tick each item as complete. Photos are available in the current offline session; saved survey records keep the filenames and checklist status on this device.</p></div>
 <div class="photoCaptureBox">
-<label>Survey photos<input accept="image/*,.pdf" id="filesInput" multiple="" type="file"/></label>
+<label>Survey photos<input accept="image/*,video/*,.pdf,application/pdf" id="filesInput" multiple="" type="file"/></label>
 <div class="fileNames" id="fileNames">No photos selected yet.</div>
 <div class="photos" id="preview"></div>
 </div>
@@ -405,8 +405,10 @@
     <button class="secondary" id="printRecommendationTemplate" type="button">Print / save as PDF</button>
     <button class="secondary" id="downloadRecommendationTemplate" type="button">Download HTML copy</button>
     <button class="secondary" id="openShortRecommendationEmail" type="button">Open Outlook email draft</button>
+    <button class="primary" id="exportSurveyPackZip" type="button">Export full survey pack ZIP</button>
   </div>
   <div class="guide templateNotice" id="templateNotice">The recommendation will use the selected battery brand, panel model, extras, bird protection and SPDs.</div>
+  <div class="guide" id="exportPackNotice">Export pack creates a local ZIP with the recommendation, survey prompt, internal brief, data file, signature and selected site photos/videos.</div>
 </div>
 
 </section>
@@ -482,6 +484,12 @@
 <div class="readinessBox" id="readinessBox">Readiness check not run yet.</div>
 <button class="primary" id="markSurveyComplete" type="button">Mark survey complete</button>
 </details>
+<details class="internalGroup" open="">
+<summary>Export pack</summary>
+<p class="hint">Creates one local ZIP for the job: recommendation document, short email text, ChatGPT survey pack prompt, internal brief, data file, signature and selected photos/videos from this session.</p>
+<button class="primary" id="toolsExportSurveyPackZip" type="button">Export full survey pack ZIP</button>
+<div class="guide" id="toolsExportPackNotice">No export pack created yet.</div>
+</details>
 <details class="internalGroup">
 <summary>ChatGPT handover</summary>
 <p class="hint">Copy this into a new ChatGPT chat for that customer. Start the chat with the customer name so ChatGPT titles it clearly.</p>
@@ -500,7 +508,7 @@
 <details class="internalGroup">
 <summary>App tools</summary>
 <button class="secondary" id="updateApp" type="button">Update app / clear cache</button>
-<div class="versionBadge" id="appVersionBadge">App version: v51</div>
+<div class="versionBadge" id="appVersionBadge">App version: v52</div>
 </details>
 </section>
 </main>

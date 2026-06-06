@@ -3566,3 +3566,435 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
   else bind();
 })();
+
+
+/* v52 export pack, local media pack and completion workflow */
+(function(){
+  const VERSION = 'v52';
+  const $ = id => document.getElementById(id);
+  const EMAIL_SUBJECT = 'Your Little Green Energy survey recommendation';
+
+  function escText(v){
+    return String(v == null ? '' : v);
+  }
+
+  function safeFilePart(v, fallback){
+    const base = escText(v || fallback || 'LG Survey').trim() || 'LG Survey';
+    return base.replace(/[^a-z0-9 £._-]+/gi,' ').replace(/\s+/g,' ').trim().replace(/\s/g,'_').slice(0,80) || fallback || 'LG_Survey';
+  }
+
+  function todayStamp(){
+    const d = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+  }
+
+  function fullNameSafe(){
+    try{
+      if(typeof fullName === 'function') return fullName();
+    }catch(e){}
+    const el = $('customerName');
+    return el ? (el.value || 'Customer') : 'Customer';
+  }
+
+  function firstNameSafe(){
+    try{
+      if(typeof firstName === 'function') return firstName();
+    }catch(e){}
+    return (fullNameSafe().trim().split(/\s+/)[0] || 'there');
+  }
+
+  function valSafe(id){
+    const el = $(id);
+    return el ? (el.value || '') : '';
+  }
+
+  function currentSurveyData(){
+    try{
+      if(typeof getData === 'function') return getData();
+    }catch(e){}
+    return {};
+  }
+
+  function currentPrompt(){
+    try{
+      if(typeof window.prompt === 'function') return window.prompt();
+    }catch(e){}
+    return 'LG Survey customer pack could not be generated on this device.';
+  }
+
+  function currentInternalBrief(){
+    try{
+      if(typeof internalBrief === 'function') return internalBrief();
+    }catch(e){}
+    return 'Internal brief could not be generated on this device.';
+  }
+
+  function currentRecommendationHTML(){
+    try{
+      if(window.LGSurveyRecommendationTemplate && typeof window.LGSurveyRecommendationTemplate.html === 'function'){
+        return window.LGSurveyRecommendationTemplate.html();
+      }
+    }catch(e){}
+    return `<!doctype html><html><head><meta charset="utf-8"><title>LG Survey Recommendation</title></head><body><pre>${currentPrompt().replace(/[<>&]/g, ch => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]))}</pre></body></html>`;
+  }
+
+  function shortEmailText(){
+    const first = firstNameSafe();
+    return [
+      `Hi ${first},`,
+      '',
+      'Thank you for going through the survey today.',
+      '',
+      'I’ve attached your Little Green Energy survey recommendation based on what we reviewed at the property. This remains subject to final roof, electrical, DNO and design checks before the formal paperwork is issued.',
+      '',
+      'I’ll review the final details and come back to you with the full proposal and paperwork for review.',
+      '',
+      'Kind regards,',
+      'James Cooling',
+      'The Little Green Energy Company',
+      '01622 832834',
+      '07714292169'
+    ].join('\r\n');
+  }
+
+  function readSignatureBlob(){
+    return new Promise(resolve => {
+      try{
+        let data = '';
+        if(typeof signatureData !== 'undefined' && signatureData) data = signatureData;
+        if(!data && window.signatureData) data = window.signatureData;
+        const canvas = $('signatureCanvas');
+        if(!data && canvas){
+          try{ data = canvas.toDataURL('image/png'); }catch(e){}
+        }
+        if(!data || !data.startsWith('data:image')) return resolve(null);
+        const parts = data.split(',');
+        const mime = (parts[0].match(/data:([^;]+)/)||[])[1] || 'image/png';
+        const binary = atob(parts[1] || '');
+        const u8 = new Uint8Array(binary.length);
+        for(let i=0;i<binary.length;i++) u8[i]=binary.charCodeAt(i);
+        resolve(new Blob([u8], {type:mime}));
+      }catch(e){ resolve(null); }
+    });
+  }
+
+  function filesFromSession(){
+    try{
+      if(typeof selectedFiles !== 'undefined' && selectedFiles && selectedFiles.length) return Array.from(selectedFiles);
+    }catch(e){}
+    const input = $('filesInput');
+    return input && input.files ? Array.from(input.files) : [];
+  }
+
+  function extForType(file){
+    const n = file && file.name ? file.name : '';
+    if(n.includes('.')) return n.split('.').pop().toLowerCase();
+    const t = (file && file.type) || '';
+    if(t.includes('jpeg')) return 'jpg';
+    if(t.includes('png')) return 'png';
+    if(t.includes('webp')) return 'webp';
+    if(t.includes('pdf')) return 'pdf';
+    if(t.includes('mp4')) return 'mp4';
+    if(t.includes('quicktime')) return 'mov';
+    return 'bin';
+  }
+
+  function uniquePath(path, used){
+    let clean = path.replace(/[\\:*?"<>|]+/g,'_').replace(/^\/+/, '');
+    if(!used.has(clean)){ used.add(clean); return clean; }
+    const dot = clean.lastIndexOf('.');
+    const base = dot > -1 ? clean.slice(0,dot) : clean;
+    const ext = dot > -1 ? clean.slice(dot) : '';
+    let i = 2;
+    while(used.has(`${base}_${i}${ext}`)) i++;
+    const out = `${base}_${i}${ext}`;
+    used.add(out);
+    return out;
+  }
+
+  const crcTable = (() => {
+    const table = new Uint32Array(256);
+    for(let n=0;n<256;n++){
+      let c=n;
+      for(let k=0;k<8;k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+      table[n]=c >>> 0;
+    }
+    return table;
+  })();
+
+  function crc32(u8){
+    let c = 0xffffffff;
+    for(let i=0;i<u8.length;i++) c = crcTable[(c ^ u8[i]) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  }
+
+  function u16(n){ return [n & 255, (n >>> 8) & 255]; }
+  function u32(n){ return [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255]; }
+
+  function dosTimeDate(date){
+    const d = date || new Date();
+    const time = ((d.getHours() & 31) << 11) | ((d.getMinutes() & 63) << 5) | (Math.floor(d.getSeconds()/2) & 31);
+    const year = Math.max(1980, d.getFullYear());
+    const dateBits = (((year - 1980) & 127) << 9) | (((d.getMonth()+1) & 15) << 5) | (d.getDate() & 31);
+    return {time, date: dateBits};
+  }
+
+  async function entryFromText(name, text, type){
+    const data = new TextEncoder().encode(escText(text));
+    return {name, data, type: type || 'text/plain', date: new Date()};
+  }
+
+  async function entryFromBlob(name, blob){
+    const data = new Uint8Array(await blob.arrayBuffer());
+    return {name, data, type: blob.type || 'application/octet-stream', date: new Date()};
+  }
+
+  function buildZipBlob(entries){
+    const chunks = [];
+    const central = [];
+    let offset = 0;
+    const encoder = new TextEncoder();
+
+    entries.forEach(entry => {
+      const nameBytes = encoder.encode(entry.name);
+      const data = entry.data instanceof Uint8Array ? entry.data : new Uint8Array(entry.data || []);
+      const crc = crc32(data);
+      const dt = dosTimeDate(entry.date || new Date());
+      const flags = 0x0800; // UTF-8
+
+      const local = new Uint8Array([
+        ...u32(0x04034b50),
+        ...u16(20),
+        ...u16(flags),
+        ...u16(0),
+        ...u16(dt.time),
+        ...u16(dt.date),
+        ...u32(crc),
+        ...u32(data.length),
+        ...u32(data.length),
+        ...u16(nameBytes.length),
+        ...u16(0)
+      ]);
+      chunks.push(local, nameBytes, data);
+
+      const centralHeader = new Uint8Array([
+        ...u32(0x02014b50),
+        ...u16(20),
+        ...u16(20),
+        ...u16(flags),
+        ...u16(0),
+        ...u16(dt.time),
+        ...u16(dt.date),
+        ...u32(crc),
+        ...u32(data.length),
+        ...u32(data.length),
+        ...u16(nameBytes.length),
+        ...u16(0),
+        ...u16(0),
+        ...u16(0),
+        ...u16(0),
+        ...u32(0),
+        ...u32(offset)
+      ]);
+      central.push(centralHeader, nameBytes);
+      offset += local.length + nameBytes.length + data.length;
+    });
+
+    const centralSize = central.reduce((sum, c) => sum + c.length, 0);
+    const eocd = new Uint8Array([
+      ...u32(0x06054b50),
+      ...u16(0),
+      ...u16(0),
+      ...u16(entries.length),
+      ...u16(entries.length),
+      ...u32(centralSize),
+      ...u32(offset),
+      ...u16(0)
+    ]);
+    return new Blob([...chunks, ...central, eocd], {type:'application/zip'});
+  }
+
+  function downloadBlob(blob, filename){
+    const a = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 800);
+  }
+
+  function setNotice(id, message){
+    const el = $(id);
+    if(el) el.innerHTML = message;
+  }
+
+  async function createSurveyPackZip(downloadNow, source){
+    const used = new Set();
+    const name = safeFilePart(fullNameSafe(), 'LG_Survey');
+    const stamp = todayStamp();
+    const root = `${name}_LG_Survey_Pack_${stamp}`;
+    const entries = [];
+
+    entries.push(await entryFromText(uniquePath(`${root}/README.txt`, used), [
+      'LG Survey export pack',
+      '',
+      'This pack was generated locally on this device.',
+      '',
+      'Contents:',
+      '01_Customer_Recommendation.html - customer-facing recommendation. Open it in a browser and use Print / Save as PDF if a PDF copy is needed.',
+      '02_Outlook_Email.txt - short email body to send from James.',
+      '03_ChatGPT_Survey_Pack_Prompt.txt - full customer survey pack prompt for ChatGPT handover.',
+      '04_Internal_Brief.txt - internal operations brief.',
+      '05_Survey_Data.json - raw survey data backup.',
+      '06_Acceptance_Signature.png - signature where captured.',
+      '07_Site_Files - photos, videos, PDFs and files selected in this session.',
+      '',
+      'Note: mobile browsers cannot silently attach files to Outlook. Save/share this ZIP or attach the generated recommendation manually from Outlook.'
+    ].join('\r\n')));
+
+    entries.push(await entryFromText(uniquePath(`${root}/01_Customer_Recommendation.html`, used), currentRecommendationHTML(), 'text/html'));
+    entries.push(await entryFromText(uniquePath(`${root}/02_Outlook_Email.txt`, used), shortEmailText(), 'text/plain'));
+    entries.push(await entryFromText(uniquePath(`${root}/03_ChatGPT_Survey_Pack_Prompt.txt`, used), currentPrompt(), 'text/plain'));
+    entries.push(await entryFromText(uniquePath(`${root}/04_Internal_Brief.txt`, used), currentInternalBrief(), 'text/plain'));
+    entries.push(await entryFromText(uniquePath(`${root}/05_Survey_Data.json`, used), JSON.stringify(currentSurveyData(), null, 2), 'application/json'));
+
+    const sig = await readSignatureBlob();
+    if(sig) entries.push(await entryFromBlob(uniquePath(`${root}/06_Acceptance_Signature.png`, used), sig));
+
+    const files = filesFromSession();
+    for(let i=0;i<files.length;i++){
+      const f = files[i];
+      const fileName = safeFilePart(f.name || `site_file_${i+1}.${extForType(f)}`, `site_file_${i+1}.${extForType(f)}`);
+      entries.push(await entryFromBlob(uniquePath(`${root}/07_Site_Files/${String(i+1).padStart(2,'0')}_${fileName}`, used), f));
+    }
+
+    entries.push(await entryFromText(uniquePath(`${root}/07_Site_Files/_selected_files.txt`, used), files.length ? files.map((f,i) => `${i+1}. ${f.name || 'Unnamed file'} (${f.type || 'unknown type'}, ${Math.round((f.size||0)/1024)} KB)`).join('\r\n') : 'No site photos/videos were selected in this session.', 'text/plain'));
+
+    const zip = buildZipBlob(entries);
+    const filename = `${root}.zip`;
+    if(downloadNow !== false) downloadBlob(zip, filename);
+    const message = `<b>Export pack created.</b> ${entries.length} files included${files.length ? `, including ${files.length} selected site file${files.length===1?'':'s'}` : ''}.`;
+    setNotice('exportPackNotice', message);
+    setNotice('toolsExportPackNotice', message);
+    return {zip, filename, entries: entries.length, media: files.length};
+  }
+
+  function enhanceMediaPreview(){
+    const input = $('filesInput');
+    if(!input || input.dataset.v52MediaBound) return;
+    input.dataset.v52MediaBound = 'yes';
+    input.onchange = e => {
+      try{ selectedFiles = Array.from(e.target.files || []); }catch(err){}
+      const files = filesFromSession();
+      const preview = $('preview');
+      if(preview) preview.innerHTML = '';
+      files.forEach(f => {
+        if(!preview) return;
+        if((f.type || '').startsWith('image/')){
+          const img = document.createElement('img');
+          img.src = URL.createObjectURL(f);
+          img.alt = f.name || 'Survey photo';
+          preview.appendChild(img);
+        } else if((f.type || '').startsWith('video/')){
+          const wrap = document.createElement('div');
+          wrap.className = 'videoPreviewTile';
+          const vid = document.createElement('video');
+          vid.src = URL.createObjectURL(f);
+          vid.controls = true;
+          vid.muted = true;
+          vid.playsInline = true;
+          wrap.appendChild(vid);
+          const cap = document.createElement('small');
+          cap.textContent = f.name || 'Survey video';
+          wrap.appendChild(cap);
+          preview.appendChild(wrap);
+        } else {
+          const tile = document.createElement('div');
+          tile.className = 'filePreviewTile';
+          tile.textContent = f.name || 'Selected file';
+          preview.appendChild(tile);
+        }
+      });
+      const names = $('fileNames');
+      if(names) names.textContent = files.length ? files.map(f => `${f.name || 'Unnamed file'} (${Math.round((f.size||0)/1024)} KB)`).join('\n') : 'No photos selected yet.';
+      try{ if(typeof save === 'function') save(); }catch(err){}
+    };
+  }
+
+  function bindExportButtons(){
+    const ids = ['exportSurveyPackZip','toolsExportSurveyPackZip'];
+    ids.forEach(id => {
+      const btn = $(id);
+      if(btn && !btn.dataset.v52Bound){
+        btn.dataset.v52Bound = 'yes';
+        btn.onclick = async e => {
+          e.preventDefault();
+          btn.disabled = true;
+          const old = btn.textContent;
+          btn.textContent = 'Creating export pack…';
+          try{
+            await createSurveyPackZip(true, id);
+          }catch(err){
+            alert('Could not create the export pack on this device. Try closing other tabs or reducing very large video files.');
+            console.error(err);
+          }finally{
+            btn.disabled = false;
+            btn.textContent = old;
+          }
+        };
+      }
+    });
+  }
+
+  function patchAcceptanceExport(){
+    const btn = $('stampAccept');
+    if(!btn || btn.dataset.v52AcceptExport) return;
+    btn.dataset.v52AcceptExport = 'yes';
+    const old = btn.onclick;
+    btn.onclick = async e => {
+      if(e) e.preventDefault();
+      if(typeof old === 'function') old.call(btn, e);
+      setTimeout(() => {
+        createSurveyPackZip(true, 'accept').catch(err => console.error('Export pack failed', err));
+      }, 800);
+    };
+  }
+
+  function patchMarkCompleteExport(){
+    const btn = $('markSurveyComplete');
+    if(!btn || btn.dataset.v52CompleteExport) return;
+    btn.dataset.v52CompleteExport = 'yes';
+    const old = btn.onclick;
+    btn.onclick = async e => {
+      if(e) e.preventDefault();
+      if(typeof old === 'function') old.call(btn, e);
+      setTimeout(() => {
+        createSurveyPackZip(true, 'complete').catch(err => console.error('Export pack failed', err));
+      }, 650);
+    };
+  }
+
+  function bind(){
+    if($('homeVersionSmall')) $('homeVersionSmall').textContent = VERSION;
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: ' + VERSION;
+    enhanceMediaPreview();
+    bindExportButtons();
+    // Patch after earlier v51 binds have attached handlers.
+    setTimeout(() => {
+      patchAcceptanceExport();
+      patchMarkCompleteExport();
+      bindExportButtons();
+      enhanceMediaPreview();
+    }, 200);
+  }
+
+  window.LGSurveyExportPack = {
+    create: () => createSurveyPackZip(true, 'manual'),
+    blob: () => createSurveyPackZip(false, 'manual')
+  };
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();

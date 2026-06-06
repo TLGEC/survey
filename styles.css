@@ -1014,3 +1014,46 @@ label{font-size:15px;color:#263c31}
   .templateButtonGrid{grid-template-columns:1fr}
 }
 
+
+
+/* v52 export pack and media preview polish */
+.videoPreviewTile,.filePreviewTile{
+  min-height:120px;
+  border:1px solid #d9e2da;
+  border-radius:16px;
+  background:#f7faf4;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  color:#34463c;
+  font-weight:800;
+  text-align:center;
+  padding:8px;
+}
+.videoPreviewTile video{
+  width:100%;
+  max-height:180px;
+  border-radius:12px;
+  background:#0b1f18;
+}
+.videoPreviewTile small{
+  display:block;
+  margin-top:6px;
+  font-size:12px;
+  color:#5f6e66;
+  word-break:break-word;
+}
+.filePreviewTile{
+  aspect-ratio:1/1;
+  font-size:13px;
+  word-break:break-word;
+}
+.templateButtonGrid button.primary{
+  box-shadow:0 8px 20px rgba(121,172,32,.20);
+}
+#exportPackNotice,#toolsExportPackNotice{
+  background:#eef8ee;
+  border-color:#bfdfc1;
+}
