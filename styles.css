@@ -965,3 +965,24 @@ label{font-size:15px;color:#263c31}
 .emailCopyNotice{margin-top:12px;padding:12px 14px;border-radius:16px;background:#eef7ee;border:1px solid #cfe5d1;color:#0b5c38;font-weight:850}
 .enhancedThanks p{max-width:620px}
 @media(max-width:640px){.emailPreviewGrid,.emailPreviewActions{grid-template-columns:1fr}.emailPreviewHead b{font-size:18px}.emailPreviewHero b{font-size:23px}}
+
+
+.autoFitPanelCard{background:linear-gradient(135deg,#ffffff 0%,#f1f8ef 100%);border:1px solid #cfe0d3;border-radius:24px;padding:16px;margin:14px 0;box-shadow:0 8px 24px rgba(6,40,25,.08)}
+.autoFitPanelCard .hint{margin:6px 0 12px}
+.autoFitSummary,.roofFitResult{background:#f7faf4;border:1px solid #d9e2da;border-radius:16px;padding:12px;margin:10px 0;line-height:1.35}
+.autoFitResult b{display:block;color:#062819;margin-bottom:4px}
+.autoFitResult p{margin:4px 0;color:#486055}
+.roofFitResult{font-size:14px}
+.roofFitResult b{font-size:15px}
+.fitGood{color:#0b6b3b}
+.fitSqueeze{color:#8a5a00}
+.fitWarn{color:#6c5a00}
+.fitBad{color:#8a1d1d}
+.tigoQtyLabel{display:block}
+.quoteExtraLine{margin-top:8px;background:#eef7ef;border-radius:12px;padding:10px}
+@media(max-width:760px){.autoFitPanelCard .two{grid-template-columns:1fr}}
+
+
+.emailPreviewBattery{width:100%;display:block;border-radius:22px;margin:14px 0;border:1px solid #dbe6de;background:#f5f7f3;box-shadow:0 8px 22px rgba(6,40,25,.08)}
+.emailPreviewPasteHint{background:#eef7ee;border-left:5px solid #79ac20;border-radius:18px;padding:14px 16px;margin:14px 0;color:#0b1f18;font-weight:750;line-height:1.35}
+.emailPreviewPasteHint b{color:#062819}

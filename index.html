@@ -33,7 +33,7 @@
 </div>
 <main><section class="panel on landingPage" id="home">
 <div class="landingHero">
-<div class="homeVersionSmall" id="homeVersionSmall">v48</div>
+<div class="homeVersionSmall" id="homeVersionSmall">v50</div>
 <div class="heroCopy">
 <div class="heroKicker">LG Survey</div>
 <h2>Solar consultation</h2>
@@ -150,6 +150,28 @@
 </div>
 <h2>Roof dimensions</h2>
 <p class="hint">Add each elevation or roof plane separately. Use metres. These feed the design brief and layout check.</p>
+<div class="autoFitPanelCard">
+  <div class="panelSenseHead">
+    <b>Auto panel fit</b>
+    <button class="secondary smallBtn" id="autoFitRoofs" type="button">Auto fit best panel</button>
+  </div>
+  <p class="hint">Uses the roof dimensions, pitch/azimuth notes and the available AIKO/SunPower panel sizes to suggest the highest sensible panel count. It prefers 400 mm margins and can use a 300 mm squeeze target where that gives a better result. You can still edit “panels here” manually for obstructions.</p>
+  <div class="two">
+    <label>Panel fit choice<select id="autoPanelChoice">
+      <option selected value="AUTO">Auto select best output</option>
+      <option value="AIKO 495W|495|1762 x 1134 x 30 mm|20.6 kg">AIKO 495W</option>
+      <option value="AIKO 540W|540|1954 x 1134 x 30 mm|27.1 kg">AIKO 540W</option>
+      <option value="SunPower P7 500W|500|1996 x 1134 x 30 mm|27.5 kg">SunPower P7 500W</option>
+      <option value="SunPower P7 450W|450|1790 x 1134 x 30 mm|24.8 kg">SunPower P7 450W</option>
+    </select></label>
+    <label>Margin basis<select id="autoPanelMargin">
+      <option selected value="auto">Best 400 mm / 300 mm squeeze</option>
+      <option value="0.4">400 mm preferred only</option>
+      <option value="0.3">300 mm squeeze allowed</option>
+    </select></label>
+  </div>
+  <div class="autoFitSummary" id="autoFitSummary">Add roof dimensions to calculate the best panel option.</div>
+</div>
 <div id="roofPlanes"></div>
 <button class="secondary" id="addRoofPlane" type="button">Add roof/elevation</button>
 <details class="quickDetails">
@@ -220,6 +242,7 @@
 <details class="quickDetails advancedPricing">
 <summary>Advanced solar pricing</summary>
 <div class="two">
+<label>Tigo quantity<input id="tigoQty" inputmode="numeric" type="number" min="0" value="0"/><span class="fieldHint">Use only the number of optimisers actually needed.</span></label>
 <label>Tigo £/panel<input id="tigoPrice" inputmode="decimal" type="number" value="30"/></label>
 <label>Manual discount £<input id="manualDiscount" type="number" value="0"/></label>
 </div>
@@ -464,7 +487,7 @@
 <details class="internalGroup">
 <summary>App tools</summary>
 <button class="secondary" id="updateApp" type="button">Update app / clear cache</button>
-<div class="versionBadge" id="appVersionBadge">App version: v48</div>
+<div class="versionBadge" id="appVersionBadge">App version: v50</div>
 </details>
 </section>
 </main>
