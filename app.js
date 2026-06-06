@@ -1180,7 +1180,7 @@ function bindCriticalButtons(){
   if(monday) monday.onchange=e=>readCSVFileAndSave((e.target.files||[])[0]);
 }
 
-document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v42';load();initSignaturePad();
+document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v44';load();initSignaturePad();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}if(['annualKwh','dailyKwh','heatPump','highEvening','backupNeeded','ev','wants','preInterest'].includes(el.id))recommendBattery(false);if(['teslaSaleType','pw3Qty','dcExpQty','gateway','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','batteryBrand'].includes(el.id))syncTeslaOptions();if(['ev','wants','preInterest'].includes(el.id))toggleConditionalFields();save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
@@ -1214,7 +1214,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 
 /* v41 button repair, quote check and signature repair */
 (function(){
-  const VERSION = 'v43';
+  const VERSION = 'v44';
   const $ = id => document.getElementById(id);
 
   function money(n){
@@ -1487,7 +1487,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 
 /* v41 local-only survey quality, panel sense check, extras and safer handover */
 (function(){
-  const VERSION = 'v43';
+  const VERSION = 'v44';
   const $ = id => document.getElementById(id);
 
   const REQUIRED = [
@@ -1769,7 +1769,7 @@ Site risk/blocker notes: ${val('siteRiskNotes')}`;
 
 /* v41 panel-first roof sense check and manual extras */
 (function(){
-  const VERSION = 'v43';
+  const VERSION = 'v44';
   const $ = id => document.getElementById(id);
   const val = id => ($(id)?.value || '').toString().trim();
   const num = v => Number(v || 0) || 0;
@@ -2028,9 +2028,9 @@ Extras notes: ${val('extrasNote')}`;
 })();
 
 
-/* v43: repair Continue buttons and keep bottom buttons non-sticky */
+/* v43/v44: repair Continue buttons and keep bottom buttons non-sticky */
 (function(){
-  const VERSION = 'v43';
+  const VERSION = 'v44';
   const $ = id => document.getElementById(id);
 
   function showSurveySyncTab(tabId){
@@ -2082,6 +2082,111 @@ Extras notes: ${val('extrasNote')}`;
 
     if($('homeVersionSmall')) $('homeVersionSmall').textContent = VERSION;
     if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: ' + VERSION;
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+
+
+/* v44 premium guided consultation layer */
+(function(){
+  const VERSION = 'v44';
+  const $ = id => document.getElementById(id);
+  const order = ['home','customer','usage','site','build','present','agreement','internal'];
+  const journeyMap = {
+    customer:0,
+    usage:1,
+    site:2,
+    build:3,
+    present:4,
+    agreement:5
+  };
+
+  function afterTab(tabId){
+    if(tabId === 'present' || tabId === 'agreement'){
+      setTimeout(() => {
+        try{ if(typeof refreshPresent === 'function') refreshPresent(); }catch(e){}
+        try{ if(window.renderPanelSenseCheck) window.renderPanelSenseCheck(); }catch(e){}
+        try{ if(typeof initSignaturePad === 'function') initSignaturePad(); }catch(e){}
+      }, 25);
+    }
+    updateJourney(tabId);
+  }
+
+  function updateJourney(tabId){
+    const idx = journeyMap.hasOwnProperty(tabId) ? journeyMap[tabId] : -1;
+    document.querySelectorAll('.journeyStep[data-jump]').forEach((step,i) => {
+      step.classList.toggle('on', i === idx);
+      step.classList.toggle('done', idx > i);
+    });
+    document.body.dataset.activeTab = tabId || '';
+  }
+
+  function showTab(tabId){
+    if(!tabId) return;
+    document.querySelectorAll('nav button[data-tab]').forEach(btn => {
+      btn.classList.toggle('on', btn.dataset.tab === tabId);
+    });
+    document.querySelectorAll('main > section.panel').forEach(panel => {
+      panel.classList.toggle('on', panel.id === tabId);
+    });
+    const panel = $(tabId);
+    if(panel) panel.classList.add('on');
+    afterTab(tabId);
+    window.scrollTo({top:0,left:0,behavior:'smooth'});
+  }
+
+  function activeTab(){
+    const panel = document.querySelector('main > section.panel.on');
+    return panel ? panel.id : 'home';
+  }
+
+  function bindPremiumNavigation(){
+    document.addEventListener('click', function(e){
+      const navBtn = e.target && e.target.closest ? e.target.closest('nav button[data-tab]') : null;
+      const continueBtn = e.target && e.target.closest ? e.target.closest('.continueBtn[data-next]') : null;
+      const journeyBtn = e.target && e.target.closest ? e.target.closest('.journeyStep[data-jump]') : null;
+      const target = navBtn?.dataset.tab || continueBtn?.dataset.next || journeyBtn?.dataset.jump;
+      if(!target) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+      showTab(target);
+    }, true);
+  }
+
+  function addFastCustomerRefresh(){
+    document.addEventListener('input', function(e){
+      const id = e.target && e.target.id;
+      if(!id) return;
+      if(['customerName','wants','whyNow','annualKwh','dailyKwh','tariff','peak','offpeak','panelCount','batteryBrand','sigBatteryModel','sigModuleQty','pw3Qty','dcExpQty','cable','batteryLoc','invLoc','access','customerLikelihood','blockerReason'].includes(id)){
+        try{ if(activeTab()==='present' || activeTab()==='agreement') refreshPresent(); }catch(err){}
+      }
+    }, true);
+    document.addEventListener('change', function(e){
+      const id = e.target && e.target.id;
+      if(['solar','battery','ev','eddi','otherExtra','customerRouteAgreed','customerLikelihood','gateway','pw3','dcExp'].includes(id)){
+        try{ if(activeTab()==='present' || activeTab()==='agreement') refreshPresent(); }catch(err){}
+      }
+    }, true);
+  }
+
+  function polishDynamicCards(){
+    try{ if(typeof refreshPresent === 'function') refreshPresent(); }catch(e){}
+    try{ if(window.renderPanelSenseCheck) window.renderPanelSenseCheck(); }catch(e){}
+    updateJourney(activeTab());
+    if($('homeVersionSmall')) $('homeVersionSmall').textContent = VERSION;
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: ' + VERSION;
+  }
+
+  function bind(){
+    bindPremiumNavigation();
+    addFastCustomerRefresh();
+    document.querySelectorAll('.journeyStep[data-jump]').forEach(btn => {
+      btn.type = 'button';
+    });
+    polishDynamicCards();
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
