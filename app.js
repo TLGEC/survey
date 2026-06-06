@@ -665,7 +665,7 @@ function updateHeader(){
   const address=($('address')?.value||'').trim();
   const phone=($('phone')?.value||'').trim();
   const email=($('email')?.value||'').trim();
-  $('appTitle').textContent = name ? `Survey Sync - ${name}` : 'Survey Sync';
+  $('appTitle').textContent = name ? `LG Survey - ${name}` : 'LG Survey';
   let bits=[];
   if(address) bits.push(`<span>${address}</span>`);
   if(phone) bits.push(`<a href="tel:${cleanTel(phone)}">${phone}</a>`);
@@ -1039,7 +1039,7 @@ function renderHomeSavedList(){
 function exportSurveyBackup(){
   const backup={
     exportedAt:new Date().toISOString(),
-    app:'TLGEC Survey Sync',
+    app:'LG Survey',
     version:'storage-v1',
     savedSurveys:getSavedSurveys(),
     currentDraft:JSON.parse(localStorage.getItem(KEY)||'null')
@@ -1184,7 +1184,7 @@ function bindCriticalButtons(){
   if(monday) monday.onchange=e=>readCSVFileAndSave((e.target.files||[])[0]);
 }
 
-document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v46';load();initSignaturePad();
+document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v48';load();initSignaturePad();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}if(['annualKwh','dailyKwh','heatPump','highEvening','backupNeeded','ev','wants','preInterest'].includes(el.id))recommendBattery(false);if(['teslaSaleType','pw3Qty','dcExpQty','gateway','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','batteryBrand'].includes(el.id))syncTeslaOptions();if(['ev','wants','preInterest'].includes(el.id))toggleConditionalFields();save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
@@ -1218,7 +1218,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 
 /* v41 button repair, quote check and signature repair */
 (function(){
-  const VERSION = 'v46';
+  const VERSION = 'v48';
   const $ = id => document.getElementById(id);
 
   function money(n){
@@ -1491,7 +1491,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 
 /* v41 local-only survey quality, panel sense check, extras and safer handover */
 (function(){
-  const VERSION = 'v46';
+  const VERSION = 'v48';
   const $ = id => document.getElementById(id);
 
   const REQUIRED = [
@@ -1696,7 +1696,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 
       return `${base}
 
-Survey Sync v41 local readiness:
+LG Survey local readiness:
 Survey readiness score: ${r.score}%
 Critical missing items:
 ${r.missingRequired.length ? r.missingRequired.map(x=>'- '+x).join('\n') : 'None'}
@@ -1773,7 +1773,7 @@ Site risk/blocker notes: ${val('siteRiskNotes')}`;
 
 /* v41 panel-first roof sense check and manual extras */
 (function(){
-  const VERSION = 'v46';
+  const VERSION = 'v48';
   const $ = id => document.getElementById(id);
   const val = id => ($(id)?.value || '').toString().trim();
   const num = v => Number(v || 0) || 0;
@@ -1971,7 +1971,7 @@ Site risk/blocker notes: ${val('siteRiskNotes')}`;
       const q = typeof quote === 'function' ? quote() : {};
       return `${base}
 
-Survey Sync v41 panel-first sense check:
+LG Survey panel-first sense check:
 ${sense && sense.text ? sense.text : 'No panel sense check available yet.'}
 
 Manual extras:
@@ -2032,9 +2032,9 @@ Extras notes: ${val('extrasNote')}`;
 })();
 
 
-/* v43/v46: repair Continue buttons and keep bottom buttons non-sticky */
+/* v43/v48: repair Continue buttons and keep bottom buttons non-sticky */
 (function(){
-  const VERSION = 'v46';
+  const VERSION = 'v48';
   const $ = id => document.getElementById(id);
 
   function showSurveySyncTab(tabId){
@@ -2093,9 +2093,9 @@ Extras notes: ${val('extrasNote')}`;
 })();
 
 
-/* v46 premium guided consultation layer */
+/* v48 premium guided consultation layer */
 (function(){
-  const VERSION = 'v46';
+  const VERSION = 'v48';
   const $ = id => document.getElementById(id);
   const order = ['home','customer','usage','site','build','present','agreement','internal'];
   const journeyMap = {
@@ -2198,7 +2198,7 @@ Extras notes: ${val('extrasNote')}`;
 })();
 
 
-/* v46: open the Customer stage after Start new consultation reset */
+/* v48: open the Customer stage after Start new consultation reset */
 (function(){
   function openHashStage(){
     const hash=(location.hash||'').replace('#','');
@@ -2211,9 +2211,9 @@ Extras notes: ${val('extrasNote')}`;
 })();
 
 
-/* v46 acceptance flow, dynamic proof cards and email draft */
+/* v48 acceptance flow, dynamic proof cards and email draft */
 (function(){
-  const VERSION = 'v46';
+  const VERSION = 'v48';
   const $ = id => document.getElementById(id);
   const val = id => ($(id)?.value || '').toString().trim();
   const checked = id => !!$(id)?.checked;
@@ -2364,7 +2364,7 @@ Extras notes: ${val('extrasNote')}`;
       'Below is the recommendation we discussed. It is subject to final roof, electrical, DNO and design checks before the formal paperwork is issued.',
       '',
       'THE LITTLE GREEN ENERGY COMPANY',
-      'Survey Sync recommendation',
+      'LG Survey recommendation',
       '',
       '1. UNDERSTOOD',
       `Priorities: ${priorities}`,
@@ -2449,8 +2449,8 @@ Extras notes: ${val('extrasNote')}`;
   }
 
   function patchRefresh(){
-    if(window.__v46RefreshPatched) return;
-    window.__v46RefreshPatched = true;
+    if(window.__v48RefreshPatched) return;
+    window.__v48RefreshPatched = true;
     const original = window.refreshPresent;
     if(typeof original === 'function'){
       window.refreshPresent = function(){
@@ -2499,6 +2499,307 @@ Extras notes: ${val('extrasNote')}`;
     if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: ' + VERSION;
   }
 
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+
+
+/* v48: polished Little Green Energy recommendation email */
+(function(){
+  const VERSION = 'v48';
+  const LOGO_DATA_URI = "data:image/png;base64,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";
+  const EMAIL_SUBJECT = 'Your Little Green Energy survey recommendation';
+  const $ = id => document.getElementById(id);
+  const val = id => ($(id)?.value || '').toString().trim();
+  const checked = id => !!$(id)?.checked;
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+  const txt = s => String(s ?? '').replace(/\s+/g,' ').trim();
+  const clip = (s,n=150) => { const t=txt(s); return t.length>n ? t.slice(0,n-1).trim()+'…' : t; };
+
+  function qSafe(){ try{ return typeof quote === 'function' ? quote() : {total:0,kWp:'0.00'}; }catch(e){ return {total:0,kWp:'0.00'}; } }
+  function pSafe(){ try{ return typeof panelParts === 'function' ? panelParts() : {name:'Solar panel'}; }catch(e){ return {name:'Solar panel'}; } }
+  function paybackSafe(){ try{ return typeof estimatePayback === 'function' ? estimatePayback() : {ok:false}; }catch(e){ return {ok:false}; } }
+  function moneySafe(n){ try{ return typeof money === 'function' ? money(n) : '£'+Math.round(Number(n)||0).toLocaleString('en-GB'); }catch(e){ return '£'+Math.round(Number(n)||0).toLocaleString('en-GB'); } }
+  function firstName(){ const n=val('customerName') || 'there'; return n.split(/\s+/)[0] || n; }
+  function fullName(){ return val('customerName') || 'your home'; }
+  function batteryTitle(){ try{ return typeof customerBatteryTitle === 'function' ? customerBatteryTitle() : (val('batteryBrand') || 'Battery route to confirm'); }catch(e){ return val('batteryBrand') || 'Battery route to confirm'; } }
+  function storageText(){ try{ return typeof customerBatteryStorageText === 'function' ? customerBatteryStorageText() : ''; }catch(e){ return ''; } }
+  function extrasText(){ try{ return typeof customerExtrasTitle === 'function' ? customerExtrasTitle() : (checked('ev') ? 'Zappi EV charger' : 'None selected'); }catch(e){ return checked('ev') ? 'Zappi EV charger' : 'None selected'; } }
+  function roofSummary(){
+    try{
+      if(typeof getRoofPlanes === 'function'){
+        const planes=getRoofPlanes().filter(r => r.width || r.slope || r.pitch || r.azimuth || r.panels);
+        if(planes.length){
+          return planes.map(r => `${r.name || 'Roof'}: ${r.panels || '?'} panels, ${r.width || '?'}m x ${r.slope || '?'}m`).join(' | ');
+        }
+      }
+    }catch(e){}
+    return val('roof') || val('dims') || 'Roof and site details captured during survey.';
+  }
+  function recommendationData(){
+    const q=qSafe(), p=pSafe(), pb=paybackSafe();
+    const usage = val('annualKwh') ? `${Number(val('annualKwh')).toLocaleString('en-GB')} kWh/year` : (val('dailyKwh') ? `${val('dailyKwh')} kWh/day` : 'To be confirmed');
+    const solar = checked('solar') ? `${val('panelCount') || 0} x ${p.name}, ${q.kWp || '0.00'} kWp` : 'Not included at this stage';
+    const price = q.total ? moneySafe(q.total) : 'To be confirmed after final design checks';
+    const payback = (pb && pb.ok && pb.totalSaving) 
+      ? `${moneySafe(pb.totalSaving)} estimated first-year benefit, approx. ${pb.payback.toFixed(1)} year payback`
+      : 'Savings and payback are subject to final usage, tariff and design checks.';
+    return {
+      first:firstName(),
+      name:fullName(),
+      address:val('address'),
+      email:val('email'),
+      priorities: val('wants') || 'Lower bills and improved energy control',
+      reason: val('whyNow') || 'Noted during the survey',
+      concern: val('blockerReason') || val('mainBlocker') || '',
+      usage,
+      roof: roofSummary(),
+      route: val('cable') || 'Cable route to be confirmed within final design',
+      access: val('access') || 'Access/scaffold to be confirmed',
+      meter: val('meter') || 'Meter/CU details captured during survey',
+      solar,
+      battery: batteryTitle(),
+      storage: storageText(),
+      extras: extrasText(),
+      price,
+      payback,
+      next: 'A formal quote will now be prepared for review. Final roof, electrical, DNO and design checks still apply.'
+    };
+  }
+
+  function buildRecommendationEmailText(){
+    const d=recommendationData();
+    return [
+      `Hi ${d.first},`,
+      '',
+      'Thank you for going through the survey today.',
+      '',
+      'Here is your Little Green Energy survey recommendation. This is based on today’s survey guidance and remains subject to final roof, electrical, DNO and design checks before the formal paperwork is issued.',
+      '',
+      'UNDERSTOOD',
+      `Priorities: ${d.priorities}`,
+      d.reason ? `Reason for looking: ${d.reason}` : '',
+      '',
+      'CHECKED',
+      `Roof/access: ${d.roof}`,
+      `Meter/CU: ${d.meter}`,
+      `Cable route: ${d.route}`,
+      `Access/scaffold: ${d.access}`,
+      '',
+      'RIGHT-SIZED RECOMMENDATION',
+      `Solar PV: ${d.solar}`,
+      `Battery: ${d.battery}`,
+      d.storage ? `Storage: ${d.storage}` : '',
+      `Extras: ${d.extras}`,
+      `Proposal position: ${d.price}`,
+      d.payback,
+      '',
+      'PROTECTED NEXT STEP',
+      d.next,
+      d.concern ? `Question/change to note: ${d.concern}` : '',
+      '',
+      'Kind regards,',
+      'James Cooling',
+      'The Little Green Energy Company',
+      '01622 832834',
+      '07714292169'
+    ].filter(Boolean).join('\r\n');
+  }
+
+  function card(title, body, accent='#79ac20'){
+    return `<div style="border:1px solid #dbe6de;border-radius:18px;padding:18px;margin:12px 0;background:#ffffff;box-shadow:0 4px 18px rgba(6,40,25,.06);">
+      <div style="display:inline-block;background:#eef7ee;border:1px solid #cfe5d1;border-radius:999px;padding:7px 12px;color:#087347;font-weight:800;font-size:12px;letter-spacing:.08em;text-transform:uppercase;">${title}</div>
+      <div style="margin-top:12px;color:#0b1f18;font-size:15px;line-height:1.55;">${body}</div>
+    </div>`;
+  }
+
+  function buildRecommendationEmailHTML(){
+    const d=recommendationData();
+    const line = (label,value) => value ? `<p style="margin:7px 0;"><strong>${esc(label)}:</strong> ${esc(value)}</p>` : '';
+    const understood = `${line('Priorities', d.priorities)}${line('Reason for looking', d.reason)}`;
+    const checkedHtml = `${line('Roof/access', d.roof)}${line('Meter/CU', d.meter)}${line('Cable route', d.route)}${line('Access/scaffold', d.access)}`;
+    const designHtml = `${line('Solar PV', d.solar)}${line('Battery', d.battery)}${line('Storage', d.storage)}${line('Extras', d.extras)}${line('Proposal position', d.price)}${line('Indicative benefit', d.payback)}`;
+    const protectHtml = `<p style="margin:7px 0;">${esc(d.next)}</p>${d.concern ? line('Question/change to note', d.concern) : ''}`;
+    return `<!doctype html>
+<html>
+<body style="margin:0;padding:0;background:#f3f7f1;font-family:Arial,Helvetica,sans-serif;color:#0b1f18;">
+  <div style="max-width:680px;margin:0 auto;padding:22px;">
+    <div style="background:#ffffff;border:1px solid #dbe6de;border-radius:24px;overflow:hidden;box-shadow:0 8px 28px rgba(6,40,25,.10);">
+      <div style="padding:22px 24px;background:linear-gradient(135deg,#ffffff 0%,#eef7ee 100%);border-bottom:1px solid #dbe6de;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            <td style="width:76px;vertical-align:middle;">
+              <img src="${LOGO_DATA_URI}" alt="The Little Green Energy Company" width="64" height="64" style="display:block;border-radius:18px;background:#ffffff;border:1px solid #e4ece5;padding:6px;">
+            </td>
+            <td style="vertical-align:middle;padding-left:14px;">
+              <div style="font-size:13px;color:#637268;font-weight:700;">The Little Green Energy Company</div>
+              <div style="font-size:28px;line-height:1.05;font-weight:900;color:#062819;">Survey recommendation</div>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="padding:26px 24px;background:linear-gradient(135deg,#06391f 0%,#0b7a46 62%,#79ac20 100%);color:#ffffff;">
+        <div style="font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#e6f4d7;">Your Little Green Energy survey recommendation</div>
+        <h1 style="margin:8px 0 10px;font-size:30px;line-height:1.1;color:#ffffff;">Hi ${esc(d.first)}, here is the recommendation from today’s survey.</h1>
+        <p style="margin:0;font-size:16px;line-height:1.55;color:#efffed;">Built around the home, the usage and what matters most. Subject to final roof, electrical, DNO and design checks.</p>
+      </div>
+
+      <div style="padding:22px 24px;">
+        ${card('1. Understood', understood)}
+        ${card('2. Checked', checkedHtml)}
+        ${card('3. Right-sized', designHtml)}
+        ${card('4. Protected next step', protectHtml)}
+
+        <div style="margin-top:18px;padding:18px;border-radius:18px;background:#f0f7f0;border-left:5px solid #79ac20;">
+          <strong style="display:block;font-size:17px;color:#062819;margin-bottom:6px;">What happens next</strong>
+          <p style="margin:0;color:#34463c;line-height:1.55;">James will prepare the detailed proposal and paperwork for review. Nothing is treated as final installation design until the checks above are complete.</p>
+        </div>
+
+        <div style="margin-top:24px;color:#0b1f18;font-size:15px;line-height:1.5;">
+          <p style="margin:0 0 4px;">Kind regards,</p>
+          <p style="margin:0;font-weight:800;">James Cooling</p>
+          <p style="margin:0;">The Little Green Energy Company</p>
+          <p style="margin:8px 0 0;">01622 832834<br>07714292169</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+  }
+
+  async function copyStyledRecommendationEmail(showToast){
+    const html=buildRecommendationEmailHTML();
+    const text=buildRecommendationEmailText();
+    try{
+      if(navigator.clipboard && window.ClipboardItem){
+        await navigator.clipboard.write([new ClipboardItem({
+          'text/html': new Blob([html], {type:'text/html'}),
+          'text/plain': new Blob([text], {type:'text/plain'})
+        })]);
+      }else if(navigator.clipboard && navigator.clipboard.writeText){
+        await navigator.clipboard.writeText(text);
+      }
+      if(showToast) showEmailToast('Styled recommendation copied. Paste into the email draft to keep the logo and colours.');
+      return true;
+    }catch(e){
+      try{ if(navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(text); }catch(err){}
+      if(showToast) showEmailToast('Recommendation copied as plain text. The email draft is ready.');
+      return false;
+    }
+  }
+
+  function openRecommendationDraft(){
+    const email=val('email');
+    const body=buildRecommendationEmailText();
+    const href=`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(EMAIL_SUBJECT)}&body=${encodeURIComponent(body)}`;
+    window.location.href=href;
+  }
+
+  function emailPreviewHTML(){
+    const d=recommendationData();
+    return `<div class="emailPreviewCard">
+      <div class="emailPreviewHead">
+        <img src="tlgec-logo.png" alt="The Little Green Energy Company logo">
+        <div><span>The Little Green Energy Company</span><b>${esc(EMAIL_SUBJECT)}</b></div>
+      </div>
+      <div class="emailPreviewHero">
+        <span>Your survey recommendation</span>
+        <b>Ready for ${esc(d.first)}</b>
+        <p>Styled email copied. Outlook draft opened with the address and subject ready.</p>
+      </div>
+      <div class="emailPreviewGrid">
+        <div><b>Understood</b><small>${esc(clip(d.priorities,90))}</small></div>
+        <div><b>Checked</b><small>${esc(clip(d.roof,90))}</small></div>
+        <div><b>Right-sized</b><small>${esc(clip(d.solar + ' · ' + d.battery,90))}</small></div>
+        <div><b>Protected</b><small>Final roof, electrical, DNO and design checks apply.</small></div>
+      </div>
+      <div class="emailPreviewActions">
+        <button type="button" class="secondary" id="copyStyledEmailAgain">Copy styled email again</button>
+        <button type="button" class="secondary" id="openRecommendationDraftAgain">Open email draft again</button>
+      </div>
+    </div>`;
+  }
+
+  function showEmailToast(message){
+    const box=$('emailCopyNotice');
+    if(box) box.textContent=message;
+  }
+
+  function signatureCaptured(){
+    const canvas=$('signatureCanvas');
+    if(!canvas) return false;
+    try{
+      const ctx=canvas.getContext('2d');
+      const pixels=ctx.getImageData(0,0,canvas.width,canvas.height).data;
+      for(let i=3;i<pixels.length;i+=4){
+        if(pixels[i] > 10){
+          window.signatureData = canvas.toDataURL('image/png');
+          return true;
+        }
+      }
+    }catch(e){
+      return !!(window.signatureData && window.signatureData.length > 1000);
+    }
+    return false;
+  }
+
+  function setReadyChoice(){
+    const input=$('customerLikelihood');
+    if(input && !input.value) input.value='Ready to formalise the quote';
+    document.querySelectorAll('#likelihoodButtons button').forEach(btn => {
+      btn.classList.toggle('selected', btn.dataset.likelihood === 'Ready to formalise the quote');
+    });
+    if($('salesStatus')) $('salesStatus').value='Formal quote needed';
+    if($('mainBlocker') && !$('mainBlocker').value) $('mainBlocker').value='None known';
+    if($('nextAction')) $('nextAction').value='Prepare formal quote and send paperwork for review';
+  }
+
+  function acceptAndPrepareEmail(){
+    if(!signatureCaptured()){
+      alert('Please sign before accepting the survey guidance.');
+      return;
+    }
+    setReadyChoice();
+    const name=fullName();
+    const now=new Date().toLocaleString();
+    const stamp=$('acceptanceStamp');
+    if(stamp){
+      stamp.innerHTML = `<div class="thanksCard enhancedThanks">
+        <b>👍 Thank you.</b>
+        <p>Your recommendation email is prepared. A styled version with The Little Green Energy Company branding has been copied, and the email draft is opening with the address and subject ready.</p>
+        <small>${esc(name)} accepted the survey guidance on ${esc(now)}. Final design checks still apply.</small>
+        <div id="emailCopyNotice" class="emailCopyNotice">Preparing styled email…</div>
+      </div>` + emailPreviewHTML();
+    }
+    try{ if(typeof save === 'function') save(); }catch(e){}
+    copyStyledRecommendationEmail(false).then(ok => {
+      showEmailToast(ok ? 'Styled recommendation copied. Paste into Outlook if the draft opens as plain text.' : 'Recommendation copied as plain text. The draft is ready.');
+    });
+    setTimeout(openRecommendationDraft, 250);
+    setTimeout(bindEmailPreviewButtons, 350);
+  }
+
+  function bindEmailPreviewButtons(){
+    const copy=$('copyStyledEmailAgain');
+    if(copy) copy.onclick = e => { e.preventDefault(); copyStyledRecommendationEmail(true); };
+    const open=$('openRecommendationDraftAgain');
+    if(open) open.onclick = e => { e.preventDefault(); openRecommendationDraft(); };
+  }
+
+  function bind(){
+    if($('homeVersionSmall')) $('homeVersionSmall').textContent=VERSION;
+    if($('appVersionBadge')) $('appVersionBadge').textContent='App version: '+VERSION;
+    const accept=$('stampAccept');
+    if(accept){
+      accept.textContent='Accept and prepare recommendation email';
+      accept.onclick = e => { e.preventDefault(); acceptAndPrepareEmail(); };
+    }
+  }
+
+  window.copyStyledRecommendationEmail = copyStyledRecommendationEmail;
+  window.openRecommendationDraft = openRecommendationDraft;
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
   else bind();
 })();
