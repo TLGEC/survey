@@ -27,14 +27,14 @@
   <button data-tab="site">Site</button>
   <button data-tab="build">Build</button>
   <button data-tab="present">Present</button>
-  <button data-tab="internal">Internal</button>
+  <button data-tab="internal">James tools</button>
 </nav>
 
 <main>
 
 <section id="home" class="panel on landingPage">
   <div class="landingHero">
-    <div id="homeVersionSmall" class="homeVersionSmall">v39</div>
+    <div id="homeVersionSmall" class="homeVersionSmall">v41</div>
     <div>
       <div class="heroKicker">Survey Sync</div>
       <h2>Saved surveys</h2>
@@ -43,13 +43,12 @@
     <button id="homeNewSurvey" class="primary" type="button">New survey</button>
   </div>
   <div class="quickActions simpleHomeActions">
-<button id="homeSaveCurrent" class="secondary" type="button">Save survey</button>
-    <button id="homeUpdateApp" class="secondary" type="button">Update app / clear cache</button>
+    <button id="homeSaveCurrent" class="secondary" type="button">Save survey</button>
   </div>
 
   <div class="syncNotice">
     <b>Local saved surveys</b>
-    <p>These saved surveys are stored on this device. Cross-device sync needs a login/database backend. The app is now structured for that next step.</p>
+    <p>Saved surveys are stored on this device for fast offline use. Export backups regularly from James tools.</p>
   </div>
 
   <div id="homeProcessNote" class="syncNotice"><b>Today’s flow</b><p>Customer, Usage, Site, Build, Present, ask likelihood, signature, then mark survey complete.</p></div>
@@ -69,8 +68,13 @@
     <label>Phone<input id="phone" inputmode="tel" autocomplete="tel"></label>
     <label>Email<input id="email" inputmode="email" autocomplete="email"></label>
   </div>
-  <label>Decision makers<input id="decisionMakers" placeholder="Partner, landlord, parent, business partner..."></label>
-  <label>Competitors<input id="competitors" placeholder="Who else are they comparing?"></label>
+
+  <details class="quickDetails decisionDetails">
+    <summary>Decision and objections</summary>
+    <label>Decision makers<input id="decisionMakers" placeholder="Partner, landlord, parent, business partner..."></label>
+    <label>Competitors / other quotes<input id="competitors" placeholder="Who else are they comparing?"></label>
+  </details>
+
   <h2>Customer goal</h2>
   <div class="chips" data-target="wants">
     <button>Lower bills</button><button>Future-proofing</button><button>EV charging</button><button>Backup</button>
@@ -87,8 +91,8 @@
 
 
 <section id="internal" class="panel internalPanel">
-  <h2>Internal</h2>
-  <p class="hint">This is for James only. Keep it light on site: import, save, backup or copy the ChatGPT prompt.</p>
+  <h2>James tools</h2>
+  <p class="hint">Internal tools only. Keep survey flow fast on site: import, backup, copy handover or update the local app.</p>
 
   <details class="internalGroup" open>
     <summary>Pre-survey import</summary>
@@ -122,15 +126,6 @@
     <label>Known usage / bill notes<textarea id="preUsage" placeholder="Annual kWh, tariff, EV miles, heat pump, bill received..."></textarea></label>
   </details>
 
-  <details class="internalGroup">
-    <summary>Saved surveys</summary>
-    <label>Survey name<input id="saveName" placeholder="Customer name"></label>
-    <button id="saveSurvey" class="primary" type="button">Save survey</button>
-    <button id="saveAndNew" class="secondary" type="button">Save and start new survey</button>
-    <button id="newSurveySaved" class="secondary" type="button">Start blank new survey</button>
-    <div id="saveStatus" class="guide">This survey is currently only a draft.</div>
-    <div id="savedList" class="savedList"></div>
-  </details>
 
   <details class="internalGroup" open>
     <summary>Next action and sales status</summary>
@@ -193,7 +188,7 @@
   <details class="internalGroup">
     <summary>App tools</summary>
     <button id="updateApp" class="secondary" type="button">Update app / clear cache</button>
-    <div id="appVersionBadge" class="versionBadge">App version: v39</div>
+    <div id="appVersionBadge" class="versionBadge">App version: v41</div>
   </details>
 </section>
 
@@ -212,8 +207,7 @@
   </div>
   <div class="two">
     <label>Annual spend £<input id="annualSpend" type="number" inputmode="decimal"></label>
-    <label>Night rate p/kWh for payback<input id="paybackNightRate" type="number" inputmode="decimal" value="5"></label>
-    <label>EV miles/year<input id="miles" type="number" inputmode="numeric"></label>
+    <label id="evMilesWrap" class="conditionalField">EV miles/year<input id="miles" type="number" inputmode="numeric"></label>
     <label>Export rate p/kWh<input id="exportRate" type="number" inputmode="decimal" value="15"></label>
   </div>
   <div class="scope">
@@ -222,8 +216,7 @@
     <label><input id="backupNeeded" type="checkbox"> Backup wanted</label>
   </div>
   <label>Estimated solar self-use %<input id="solarSelfUsePct" type="number" inputmode="decimal" value="75"></label>
-  <button id="batteryGuideBtn" class="primary">Recommend battery guide</button>
-  <div id="batteryGuide" class="guide">Enter annual or daily usage, then tap recommend.</div>
+  <div id="batteryGuide" class="guide">Enter annual or daily usage to see the battery guide automatically.</div>
 
   <div class="bottomNav"><button class="primary continueBtn" data-next="site" type="button">Continue to Site</button></div>
 </section>
@@ -254,12 +247,17 @@
     <label>Photo / evidence notes<textarea id="photoNotes" placeholder="Any missing photos, why missing, or extra files captured."></textarea></label>
   </div>
 
-  <label>Roof notes<textarea id="roof" placeholder="Tile/slate, pitch, azimuth, roof planes..."></textarea></label>
   <h2>Roof dimensions</h2>
   <p class="hint">Add each elevation or roof plane separately. Use metres. These feed the design brief and layout check.</p>
   <div id="roofPlanes"></div>
   <button id="addRoofPlane" class="secondary" type="button">Add roof/elevation</button>
-  <label>Reference measurement / roof dimension notes<textarea id="dims" placeholder="Laser measure notes, tile count, Google Earth check, sketch notes..."></textarea></label>
+
+  <details class="quickDetails">
+    <summary>Advanced roof notes</summary>
+    <label>Roof notes<textarea id="roof" placeholder="Tile/slate, pitch, azimuth, roof planes..."></textarea></label>
+    <label>Reference measurement / roof dimension notes<textarea id="dims" placeholder="Laser measure notes, tile count, Google Earth check, sketch notes..."></textarea></label>
+  </details>
+
   <label>Obstructions / shading<textarea id="shade" placeholder="Chimney, trees, dormers, skylights, neighbour shading..."></textarea></label>
   <label>Battery location<textarea id="batteryLoc"></textarea></label>
   <label>Inverter/controller location<textarea id="invLoc"></textarea></label>
@@ -279,7 +277,6 @@
   <div class="scope">
     <label><input id="solar" type="checkbox"> Solar</label>
     <label><input id="battery" type="checkbox"> Battery</label>
-    <label><input id="ev" type="checkbox"> EV</label>
   </div>
 
   <h2>Solar</h2>
@@ -294,6 +291,13 @@
     <label>System override price £<input id="systemOverride" type="number" inputmode="decimal" value="0"></label>
   </div>
   <p class="hint">Pricing follows Residential Pricing V8.6 cost build. Use system override only for an approved final proposal position.</p>
+  <div class="panelSenseCard">
+    <div class="panelSenseHead">
+      <b>Panel-first roof sense check</b>
+      <button id="runPanelSenseCheck" class="secondary smallBtn" type="button">Sense check</button>
+    </div>
+    <div id="panelSenseCheck" class="panelSenseCheck">Enter roof dimensions and panel count to sense check the fit. This does not block the survey.</div>
+  </div>
   <label>Roof mounting / framing<select id="framingSelection">
     <option value="Plain Tile" selected>Plain Tile</option>
     <option value="Pantile">Pantile</option>
@@ -311,10 +315,13 @@
     <label><input id="bird" type="checkbox" checked> Bird protection</label>
     <label><input id="spds" type="checkbox" checked> SPDs</label>
   </div>
-  <div class="two">
-    <label>Tigo £/panel<input id="tigoPrice" type="number" inputmode="decimal" value="30"></label>
-    <label>Manual discount £<input id="manualDiscount" type="number" value="0"></label>
-  </div>
+  <details class="quickDetails advancedPricing">
+    <summary>Advanced solar pricing</summary>
+    <div class="two">
+      <label>Tigo £/panel<input id="tigoPrice" type="number" inputmode="decimal" value="30"></label>
+      <label>Manual discount £<input id="manualDiscount" type="number" value="0"></label>
+    </div>
+  </details>
 
   <h2>Battery</h2>
   <label>Battery brand<select id="batteryBrand">
@@ -330,12 +337,15 @@
       <label><input id="gateway" type="checkbox"> Backup Gateway</label>
       <label><input id="dcExp" type="checkbox"> DC Expansion</label>
     </div>
-    <div class="two">
-      <label>Powerwall 3 £<input id="pw3Price" type="number" value="6500"></label>
-      <label>Gateway £<input id="gatewayPrice" type="number" value="1000"></label>
-      <label>DC Expansion £<input id="dcPrice" type="number" value="5200"></label>
-      <label>Rebate / LG discounts £<input id="teslaDiscounts" type="number" value="0"></label>
-    </div>
+    <details class="quickDetails advancedPricing">
+      <summary>Advanced Tesla pricing</summary>
+      <div class="two">
+        <label>Powerwall 3 £<input id="pw3Price" type="number" value="6500"></label>
+        <label>Gateway £<input id="gatewayPrice" type="number" value="1000"></label>
+        <label>DC Expansion £<input id="dcPrice" type="number" value="5200"></label>
+        <label>Rebate / LG discounts £<input id="teslaDiscounts" type="number" value="0"></label>
+      </div>
+    </details>
   </div>
 
   <div id="sigBox" class="quoteBox batteryChoiceCard sigChoice sigCleanCard">
@@ -359,8 +369,8 @@
       <div class="sigPreviewSub">1 module, gateway included</div>
     </div>
 
-    <div class="batteryOnlyBox">
-      <h3>Battery-only controller</h3>
+    <details class="quickDetails batteryOnlyBox advancedPricing">
+      <summary>Battery-only controller</summary>
       <p class="hint">Use this only when there is no solar PV in the proposal.</p>
       <label>Controller<select id="sigBatteryOnlyController">
         <option value="0|None">None</option>
@@ -375,21 +385,26 @@
         <option value="1976|Sigenstor Controller 20kW">20 kW</option>
         <option value="2289.1|Sigenstor Controller 25kW">25 kW</option>
       </select></label>
-    </div>
+    </details>
   </div>
 
   <h2>Extras</h2>
+  <div class="scope extrasScope">
+    <label><input id="ev" type="checkbox"> Zappi EV charger</label>
+    <label><input id="eddi" type="checkbox"> Eddi / hot water diverter</label>
+    <label><input id="otherExtra" type="checkbox"> Other extra</label>
+  </div>
   <div class="two">
     <label>Scaffold lifts<input id="scaffoldLifts" type="number" value="0"></label>
     <label>Zappi EV charger cost £<input id="zappiPrice" type="number" value="900"></label>
+    <label>Eddi / diverter manual cost £<input id="eddiPrice" type="number" value="0"></label>
+    <label>Other extra name<input id="otherExtraName" placeholder="Immersion timer, extra socket, monitoring..."></label>
+    <label>Other extra manual cost £<input id="otherExtraPrice" type="number" value="0"></label>
   </div>
+  <label>Extras notes<textarea id="extrasNote" placeholder="Eddi, EV charger, extra electrical work, customer-requested add-ons..."></textarea></label>
+  <p class="hint">Extras use manual pricing. They are included in the proposal total when ticked, but are not treated as blockers.</p>
   <p class="hint">Scaffolding follows the internal pricing sheet. No customer-facing scaffold total is itemised.</p>
   <label>Commercial note<textarea id="commercialNote" placeholder="Month-end position, customer supplying cable, quote includes..."></textarea></label>
-
-  <button id="calcQuote" class="primary">Calculate quote</button>
-  <div id="quoteTotal" class="totalBox">Quote total will appear here.</div>
-
-  
   <div class="quoteCheckBox">
     <button id="calculateQuote" class="primary" type="button">Calculate quote</button>
     <div id="quoteCheck" class="quoteCheck">Quote not calculated yet.</div>

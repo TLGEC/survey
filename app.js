@@ -1,7 +1,7 @@
 const KEY='tlgec_current_draft_v1'; const SURVEYS_KEY='tlgec_surveys_saved_v1';
 let selectedFiles=[]; let currentSavedId=null; let signatureData=''; let signaturePadDirty=false;
-const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','photoNotes','siteRiskNotes','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','solarSelfUsePct','panelModel','panelCount','systemOverride','framingSelection','tigoPrice','batteryBrand','sigBatteryModel','sigModuleQty','sigBatteryOnlyController','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut','salesStatus','mainBlocker','customerLikelihood','blockerReason'];
-const checks=['heatPump','highEvening','backupNeeded','askBill','askDecisionMaker','askCompetitors','askTiming','askBackup','askBudget','solar','battery','ev','tigo','bird','spds','pw3','gateway','dcExp','sigGateway','photoRoofFront','photoRoofRear','photoMeter','photoCU','photoFuse','photoBatteryLoc','photoInverterLoc','photoCableRoute','photoAccess','customerRouteAgreed'];
+const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','photoNotes','siteRiskNotes','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','solarSelfUsePct','panelModel','panelCount','systemOverride','framingSelection','tigoPrice','batteryBrand','sigBatteryModel','sigModuleQty','sigBatteryOnlyController','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','eddiPrice','otherExtraName','otherExtraPrice','extrasNote','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut','salesStatus','mainBlocker','customerLikelihood','blockerReason'];
+const checks=['heatPump','highEvening','backupNeeded','askBill','askDecisionMaker','askCompetitors','askTiming','askBackup','askBudget','solar','battery','ev','eddi','otherExtra','tigo','bird','spds','pw3','gateway','dcExp','sigGateway','photoRoofFront','photoRoofRear','photoMeter','photoCU','photoFuse','photoBatteryLoc','photoInverterLoc','photoCableRoute','photoAccess','customerRouteAgreed'];
 function $(x){return document.getElementById(x)}
 
 function migrateOldStorageKeys(){
@@ -132,9 +132,11 @@ function roofLines(){
 
 function getData(){let d={};ids.forEach(i=>d[i]=$(i)?.value||'');checks.forEach(i=>d[i]=$(i)?.checked||false);d.scope=scope();d.flags=flags();d.files=selectedFiles.map(f=>f.name);d.roofPlanes=getRoofPlanes();d.batteryGuide=$('batteryGuide').textContent;d.quote=quote();d.present=$('presentSummary').innerText||'';d.acceptance=$('acceptanceStamp').innerText||'';d.signatureData=signatureData;d.currentSavedId=currentSavedId;return d}
 function save(){localStorage.setItem(KEY,JSON.stringify(getData()));render();renderSavedList();renderHomeSavedList()}
-function load(){let raw=localStorage.getItem(KEY);if(raw){try{let d=JSON.parse(raw);ids.forEach(i=>{if($(i))$(i).value=d[i]||''});checks.forEach(i=>{if($(i))$(i).checked=!!d[i]}); if(d.acceptance)$('acceptanceStamp').innerText=d.acceptance; currentSavedId=d.currentSavedId||null; signatureData=d.signatureData||''; setRoofPlanes(d.roofPlanes||[]);}catch(e){}}if(!document.querySelector('.roofPlaneRow')) setRoofPlanes([]);if(!$('surveyDate').value)$('surveyDate').value=today();if(!$('nextAction').value)$('nextAction').value='Send formal quote';if($('customerName').value && $('saveName')) $('saveName').value=$('customerName').value;render();updateSigPreview();refreshPresent();renderSavedList();renderHomeSavedList();updateSaveStatus()}
+function load(){let raw=localStorage.getItem(KEY);if(raw){try{let d=JSON.parse(raw);ids.forEach(i=>{if($(i))$(i).value=d[i]||''});checks.forEach(i=>{if($(i))$(i).checked=!!d[i]}); if(d.acceptance)$('acceptanceStamp').innerText=d.acceptance; currentSavedId=d.currentSavedId||null; signatureData=d.signatureData||''; setRoofPlanes(d.roofPlanes||[]);}catch(e){}}if(!document.querySelector('.roofPlaneRow')) setRoofPlanes([]);if(!$('surveyDate').value)$('surveyDate').value=today();if(!$('nextAction').value)$('nextAction').value='Send formal quote';if($('customerName').value && $('saveName')) $('saveName').value=$('customerName').value;render();updateSigPreview();refreshPresent();renderSavedList();renderHomeSavedList();updateSaveStatus();toggleConditionalFields();recommendBattery(false)}
 function syncUsage(changed){let a=parseFloat($('annualKwh').value||0), d=parseFloat($('dailyKwh').value||0);if(changed==='annual' && a>0)$('dailyKwh').value=(a/365).toFixed(1);if(changed==='daily' && d>0)$('annualKwh').value=Math.round(d*365)}
-function recommendBattery(){let k=parseFloat($('annualKwh').value||0), daily=parseFloat($('dailyKwh').value||0), hp=$('heatPump').checked, ev=$('ev').checked, backup=$('backupNeeded').checked;let txt='Enter annual or daily usage to guide battery sizing.';if(k||daily){if(!daily)daily=k/365;if(!k)k=daily*365;let rec='';if(daily<10)rec='Sigenergy 6.0 or Sigenergy 10.0.';else if(daily<18)rec='Sigenergy 10.0 as the clean default, or Powerwall 3 if Tesla/backup route is preferred.';else if(daily<28)rec='Powerwall 3 or 2 x Sigenergy 10.0.';else rec='Powerwall 3 + DC Expansion, or a larger Sigenergy stack.';if(ev||hp)rec+=' EV/heat pump usage may justify stepping up storage once the load profile is reviewed.';if(backup)rec+=' Backup requirement pushes the design toward a Gateway/backup-capable route.';txt=`Guide: ${rec} Average use is about ${daily.toFixed(1)} kWh/day (${Math.round(k)} kWh/year).`;}$('batteryGuide').textContent=txt;save()}
+function recommendBattery(shouldSave=true){let k=parseFloat($('annualKwh')?.value||0), daily=parseFloat($('dailyKwh')?.value||0), hp=$('heatPump')?.checked, ev=$('ev')?.checked, backup=$('backupNeeded')?.checked;let txt='Enter annual or daily usage to guide battery sizing.';if(k||daily){if(!daily)daily=k/365;if(!k)k=daily*365;let rec='';if(daily<10)rec='Sigenergy 6.0 or Sigenergy 10.0.';else if(daily<18)rec='Sigenergy 10.0 as the clean default, or Powerwall 3 if Tesla/backup route is preferred.';else if(daily<28)rec='Powerwall 3 or 2 x Sigenergy 10.0.';else rec='Powerwall 3 + DC Expansion, or a larger Sigenergy stack.';if(ev||hp)rec+=' EV/heat pump usage may justify stepping up storage once the load profile is reviewed.';if(backup)rec+=' Backup requirement pushes the design toward a Gateway/backup-capable route.';txt=`Guide: ${rec} Average use is about ${daily.toFixed(1)} kWh/day (${Math.round(k)} kWh/year).`;}if($('batteryGuide'))$('batteryGuide').textContent=txt;if(shouldSave)save()}
+function toggleConditionalFields(){const wants=(($('wants')?.value||'')+' '+($('preInterest')?.value||'')).toLowerCase();const evRelevant=!!$('ev')?.checked||wants.includes('ev')||wants.includes('electric vehicle')||wants.includes('zappi');const wrap=$('evMilesWrap');if(wrap)wrap.style.display=evRelevant?'block':'none';}
+
 function panelCost(){
   const p=panelParts();
   return PRICE_GUIDE.panelCosts[p.name] ?? 84;
@@ -249,8 +251,16 @@ function quote(){
   let spds = $('spds').checked ? PRICE_GUIDE.spdSingle : 0;
   let sundries = spds;
   let bird = (hasSolar && $('bird').checked) ? panelCount*PRICE_GUIDE.birdPerPanel : 0;
-  let ev = $('ev').checked ? (num($('zappiPrice').value)||PRICE_GUIDE.evCharger) : 0;
-  let optional = bird+ev;
+  let ev = $('ev')?.checked ? (num($('zappiPrice')?.value)||PRICE_GUIDE.evCharger) : 0;
+  let eddi = $('eddi')?.checked ? num($('eddiPrice')?.value) : 0;
+  let otherExtra = $('otherExtra')?.checked ? num($('otherExtraPrice')?.value) : 0;
+  let extras = eddi + otherExtra;
+  let extrasList = [];
+  if($('ev')?.checked) extrasList.push('Zappi EV charger');
+  if($('eddi')?.checked) extrasList.push('Eddi / hot water diverter');
+  if($('otherExtra')?.checked) extrasList.push(($('otherExtraName')?.value||'Other extra').trim());
+  let extrasText = extrasList.length ? extrasList.join(', ') : 'No manual extras selected';
+  let optional = bird+ev+extras;
 
   let totalCost = keyMaterials+labour+logistics+access+other+sundries+optional;
   let discount=num($('manualDiscount').value);
@@ -258,9 +268,9 @@ function quote(){
   let override=num($('systemOverride').value);
   let total = override>0 ? override : calculatedTotal;
 
-  return {panels,optimisers,framing,inverter,battery,batteryText:batteryObj.text,controllerText:batteryObj.controllerText,scaff:access,ev,discount,total,totalCost,calculatedTotal,override,spds,bird,keyMaterials,labour,logistics,access,other,sundries,optional,kWp:kWp(),panel:panelParts(),sigNominal:sigStorage().toFixed(2),sigUsable:sigUsable().toFixed(2),framingSelection:frame};
+  return {panels,optimisers,framing,inverter,battery,batteryText:batteryObj.text,controllerText:batteryObj.controllerText,scaff:access,ev,eddi,otherExtra,extras,extrasText,discount,total,totalCost,calculatedTotal,override,spds,bird,keyMaterials,labour,logistics,access,other,sundries,optional,kWp:kWp(),panel:panelParts(),sigNominal:sigStorage().toFixed(2),sigUsable:sigUsable().toFixed(2),framingSelection:frame};
 }
-function calculate(){let q=quote();let overrideText=q.override>0?'Approved override used. Included items are listed without cost breakdown.':'Calculated from Residential Pricing V8.6 logic.';$('quoteTotal').innerHTML=`<b>Total: ${money(q.total)}</b><br>${overrideText}<br>${$('panelCount').value||0} x ${q.panel.name}, ${q.kWp} kWp<br>Battery: ${q.batteryText}<br>${q.controllerText?('Controller: '+q.controllerText+'<br>'):''}Bird protection: ${$('bird').checked&&$('solar').checked?'Included':'Not included'} | SPDs: ${$('spds').checked?'Included':'Not included'} | Scaffold: ${$('scaffoldLifts').value||0} lift(s) included`;refreshPresent();save()}
+function calculate(){let q=quote();let overrideText=q.override>0?'Approved override used. Included items are listed without cost breakdown.':'Calculated from Residential Pricing V8.6 logic.';if($('quoteTotal'))$('quoteTotal').innerHTML=`<b>Total: ${money(q.total)}</b><br>${overrideText}<br>${$('panelCount').value||0} x ${q.panel.name}, ${q.kWp} kWp<br>Battery: ${q.batteryText}<br>${q.controllerText?('Controller: '+q.controllerText+'<br>'):''}Bird protection: ${$('bird').checked&&$('solar').checked?'Included':'Not included'} | SPDs: ${$('spds').checked?'Included':'Not included'} | Scaffold: ${$('scaffoldLifts').value||0} lift(s) included<br>Extras: ${q.extrasText||'No manual extras selected'}`;try{renderPanelSenseCheck()}catch(e){}refreshPresent();save()}
 
 
 
@@ -384,7 +394,7 @@ function refreshPresent(){
     <div class="summaryItem"><b>Solar PV</b><span>${$('solar')?.checked?`${$('panelCount')?.value||0} x ${p.name}, ${q.kWp} kWp`:'Not included'}</span></div>
     <div class="summaryItem"><b>Battery</b><span>${customerBatteryTitle()}</span></div>
     <div class="summaryItem"><b>Storage</b><span>${customerBatteryStorageText()}</span></div>
-    <div class="summaryItem"><b>EV charger</b><span>${$('ev')?.checked?'Included':'Not included'}</span></div>
+    <div class="summaryItem"><b>Extras</b><span>${typeof customerExtrasTitle==='function'?customerExtrasTitle():($('ev')?.checked?'Zappi EV charger':'No extras included')}</span></div>
   </div>
   <div class="includedBox"><b>Included in this recommendation</b><ul>${included.map(x=>`<li>${x}</li>`).join('')}</ul></div>
   ${cleanCommercialLine()}
@@ -461,6 +471,10 @@ Sig storage: ${q.sigNominal} kWh nominal / ${q.sigUsable} kWh usable
 Sigenergy controller/PV inverter: ${q.controllerText||''}
 Scaffold: ${d.scaffoldLifts} lift(s) included
 EV: ${d.ev?'Zappi':'No'}
+Manual extras: ${q.extrasText||'No manual extras selected'}
+Eddi/manual diverter: ${d.eddi?'Yes at £'+(d.eddiPrice||0):'No'}
+Other extra: ${d.otherExtra?(d.otherExtraName||'Other extra')+' at £'+(d.otherExtraPrice||0):'No'}
+Extras notes: ${d.extrasNote}
 Commercial note: ${d.commercialNote}
 Calculated proposal position: ${money(q.total)}
 Estimated payback: ${estimatePayback().ok?estimatePayback().payback.toFixed(1)+' years':'Not calculated'}
@@ -744,7 +758,7 @@ function customerVisuals(){
   let storage=brand==='Sigenergy'?q.sigUsable:brand==='Tesla'?'13.5':'0';
   let storageLabel=brand==='Sigenergy'?'usable SigenStor storage':brand==='Tesla'?'Powerwall storage per unit':'battery storage';
   return `<div class="visualCard"><h3>Solar array</h3><span class="brandBadge brandAiko">${p.name||'Solar PV'}</span><div class="panelStack">${panelVisualHTML($('panelCount').value)}</div><div class="summaryGrid"><div class="summaryItem"><b>${$('panelCount').value||0} panels</b><span>${p.name}</span></div><div class="summaryItem"><b>${q.kWp} kWp</b><span>Proposed array size</span></div></div></div>
-  <div class="visualCard"><h3>Storage and control</h3>${batteryBadge}<div class="bigMetric">${storage} kWh</div><div class="metricLabel">${storageLabel}</div><div class="summaryGrid"><div class="summaryItem"><b>${$('ev').checked?'EV included':'EV not included'}</b><span>Zappi option</span></div><div class="summaryItem"><b>${$('scaffoldLifts').value||0} lift(s)</b><span>Scaffold allowance</span></div></div></div>`;
+  <div class="visualCard"><h3>Storage and control</h3>${batteryBadge}<div class="bigMetric">${storage} kWh</div><div class="metricLabel">${storageLabel}</div><div class="summaryGrid"><div class="summaryItem"><b>${typeof customerExtrasTitle==='function'?customerExtrasTitle():'Extras'}</b><span>Customer-selected extras</span></div><div class="summaryItem"><b>${$('scaffoldLifts').value||0} lift(s)</b><span>Scaffold allowance</span></div></div></div>`;
 }
 
 
@@ -806,6 +820,19 @@ function customerVisuals(){
   return `<div class="visualCard solarVisual"><h3>Your solar array</h3><span class="brandBadge brandAiko">${p.name||'Solar PV'}</span><div class="panelStack">${panelVisualHTML($('panelCount')?.value)}</div><div class="summaryGrid"><div class="summaryItem"><b>${$('panelCount')?.value||0} panels</b><span>${p.name}</span></div><div class="summaryItem"><b>${q.kWp} kWp</b><span>Proposed system size</span></div></div></div>
   <div class="visualCard"><h3>Battery storage</h3><span class="brandBadge ${brand==='Tesla'?'brandTesla':brand==='Sigenergy'?'brandSig':'brandAiko'}">${brand==='None'?'Storage':brand}</span><div class="bigMetric">${customerBatteryStorageText().split(' ')[0]}</div><div class="metricLabel">${customerBatteryStorageText()}</div><div class="summaryGrid"><div class="summaryItem"><b>${$('ev')?.checked?'EV charger included':'EV charger not included'}</b><span>Zappi option</span></div><div class="summaryItem"><b>${$('solar')?.checked?'Bird protection included':'No solar roof works'}</b><span>Solar protection</span></div></div></div>`;
 }
+
+function customerExtrasList(){
+  const items=[];
+  if($('ev')?.checked) items.push('Zappi EV charger');
+  if($('eddi')?.checked) items.push('Eddi / hot water diverter');
+  if($('otherExtra')?.checked) items.push(($('otherExtraName')?.value||'Other extra').trim());
+  return items.filter(Boolean);
+}
+function customerExtrasTitle(){
+  const items = customerExtrasList();
+  return items.length ? items.join(' + ') : 'No extras included';
+}
+
 function cleanIncludedList(){
   const items=[];
   if($('solar')?.checked){
@@ -817,7 +844,7 @@ function cleanIncludedList(){
     if($('spd')?.checked || $('spds')?.checked) items.push('SPDs');
   }
   if(($('batteryBrand')?.value||'None')!=='None') items.push(customerBatteryTitle());
-  if($('ev')?.checked) items.push('Zappi EV charger');
+  if(typeof customerExtrasList === 'function') customerExtrasList().forEach(x=>items.push(x));
   const roofs = (typeof getRoofs === 'function') ? getRoofs() : [];
   if(roofs.length) items.push(`${roofs.length} roof elevation${roofs.length>1?'s':''} captured`);
   return items;
@@ -839,7 +866,7 @@ function renderHomeSavedList(){
   if(!$('homeSavedList')) return;
   const list=getSavedSurveys().sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''));
   if(!list.length){
-    $('homeSavedList').innerHTML='<div class="emptyState"><b>No saved surveys yet</b><p>Tap New survey, complete the customer details, then save it from Internal.</p></div>';
+    $('homeSavedList').innerHTML='<div class="emptyState"><b>No saved surveys yet</b><p>Tap New survey, complete the customer details, then press Save survey on Home.</p></div>';
     return;
   }
   $('homeSavedList').innerHTML=list.map(s=>`<div class="savedCard homeCard"><b>${s.customerName||s.name||'Untitled survey'}</b><div class="savedMeta">${s.address||''}<br>${s.phone?`<a href="tel:${cleanTel(s.phone)}">${s.phone}</a>`:''}${s.email?` • <a href="mailto:${s.email}">${s.email}</a>`:''}<br>Updated ${new Date(s.updatedAt).toLocaleString()}${s.quote&&s.quote.total?` • ${money(s.quote.total)}`:''}</div><div class="savedActions"><button class="primaryMini" data-home-load="${s.id}">Open survey</button><button data-home-duplicate="${s.id}">Duplicate</button><button data-home-delete="${s.id}">Delete</button></div></div>`).join('');
@@ -996,11 +1023,11 @@ function bindCriticalButtons(){
   if(monday) monday.onchange=e=>readCSVFileAndSave((e.target.files||[])[0]);
 }
 
-document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v39';load();initSignaturePad();
-document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}save()}));
+document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v41';load();initSignaturePad();
+document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}if(['annualKwh','dailyKwh','heatPump','highEvening','backupNeeded','ev','wants','preInterest'].includes(el.id))recommendBattery(false);if(['ev','wants','preInterest'].includes(el.id))toggleConditionalFields();save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
-$('batteryGuideBtn').onclick=recommendBattery;$('calcQuote').onclick=calculate;$('refreshPresent').onclick=refreshPresent;
+if($('batteryGuideBtn'))$('batteryGuideBtn').onclick=()=>recommendBattery(true);if($('calcQuote'))$('calcQuote').onclick=calculate;$('refreshPresent').onclick=refreshPresent;
 $('stampAccept').onclick=()=>{
   if(!hasSignature()){alert('Please ask the customer to sign with their finger before accepting.');return;}
   let name = $('customerName').value || 'Customer';
@@ -1028,541 +1055,9 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 });
 
 
+/* v41 button repair, quote check and signature repair */
 (function(){
-const KEY='tlgec_current_draft_v1', SAVED='tlgec_surveys_saved_v1';
-const $=id=>document.getElementById(id);
-function tab(t){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('on',p.id===t));scrollTo(0,0)}
-function loadS(){try{return JSON.parse(localStorage.getItem(SAVED)||'[]')}catch(e){return[]}}
-function saveS(a){localStorage.setItem(SAVED,JSON.stringify(a))}
-function data(){try{if(window.getData)return getData()}catch(e){};let d={};['customerName','address','phone','email','surveyDate','wants','crmNotes','preInterest','preUsage'].forEach(id=>d[id]=$(id)?.value||'');return d}
-function saveSurvey(){let d=data(), name=($('customerName')?.value||d.customerName||'Untitled survey').trim()||'Untitled survey', now=new Date().toISOString(), arr=loadS(), id=d.currentSavedId||window.currentSavedId||('svy_'+Date.now()), old=arr.find(s=>s.id===id), rec={...d,id,name,customerName:name,currentSavedId:id,createdAt:old?.createdAt||now,updatedAt:now};saveS(old?arr.map(s=>s.id===id?rec:s):[...arr,rec]);localStorage.setItem(KEY,JSON.stringify(rec));window.currentSavedId=id;if($('saveName'))$('saveName').value=name;try{render()}catch(e){}try{renderSavedList()}catch(e){}try{renderHomeSavedList()}catch(e){}try{updateSaveStatus()}catch(e){}return rec}
-function clearAll(){document.querySelectorAll('input,textarea,select').forEach(x=>{if(x.type==='file')return;if(x.id==='surveyDate'){x.value=new Date().toISOString().slice(0,10);return}if(x.type==='checkbox'||x.type==='radio'){x.checked=false;return}if(x.tagName==='SELECT'){x.selectedIndex=0;return}x.value=''}); if($('solarPerPanel'))$('solarPerPanel').value='304'; if($('paybackNightRate'))$('paybackNightRate').value='5'; if($('exportRate'))$('exportRate').value='15'; if($('bird'))$('bird').checked=true; if($('nextAction'))$('nextAction').value='Send formal quote'}
-function newSurvey(){let has=['customerName','address','phone','email'].some(id=>($(id)?.value||'').trim()); if(has && confirm('Save the current survey before starting a new one? Press OK to save, or Cancel to start fresh without saving.'))saveSurvey(); localStorage.removeItem(KEY); window.currentSavedId=null; clearAll(); tab('customer')}
-function parseCSV(t){let rows=[],r=[],c='',q=false;for(let i=0;i<t.length;i++){let ch=t[i],n=t[i+1];if(ch=='"'&&q&&n=='"'){c+='"';i++;continue}if(ch=='"'){q=!q;continue}if(ch==','&&!q){r.push(c);c='';continue}if((ch=='\n'||ch=='\r')&&!q){if(c!==''||r.length){r.push(c);rows.push(r);r=[];c=''}if(ch=='\r'&&n=='\n')i++;continue}c+=ch}if(c!==''||r.length){r.push(c);rows.push(r)}return rows}
-const norm=s=>(s||'').toString().toLowerCase().replace(/[^a-z0-9]/g,'');
-function find(o,ns){let ks=Object.keys(o);for(let n of ns){let w=norm(n),k=ks.find(x=>norm(x)===w||norm(x).includes(w)||w.includes(norm(x)));if(k&&o[k])return o[k]}return''}
-function objFrom(t){let rows=parseCSV(t.trim());if(!rows.length)return null;let o={},h0=(rows[0][0]||'').trim().toLowerCase(),h1=(rows[0][1]||'').trim().toLowerCase();if(h0==='field'&&h1==='value'){rows.slice(1).forEach(r=>{if(r[0])o[r[0].trim()]=r.slice(1).join(',').trim()});return o}let hs=rows[0].map(h=>h.trim()), ds=rows.slice(1).filter(r=>r.some(x=>(x||'').trim())), cur=($('customerName')?.value||'').toLowerCase(), chosen=ds[0]||[];if(cur){let m=ds.find(r=>r.join(' ').toLowerCase().includes(cur));if(m)chosen=m}hs.forEach((h,i)=>o[h]=chosen[i]||'');return o}
-function fill(o){[['customerName',['Name','Customer name','Contact Name']],['phone',['Contact Number','Phone','Mobile']],['email',['Contact Email','Email']],['crmStatus',['Lead Status','Status']],['preInterest',['Lead Type','System interest','Specific Brand Requested']],['crmNotes',['Qualification Notes','Lead Notes','Notes']],['wants',['Reason for Install','Motivation']],['competitors',['Other quotes','Competitors']],['timing',['Timescale','Timing']]].forEach(([id,ns])=>{let v=find(o,ns);if(v&&$(id))$(id).value=v});let addr=[find(o,['Site Address','Address']),find(o,['Site Post Code','Postcode'])].filter(Boolean).join(', ');if(addr&&$('address'))$('address').value=addr;let ap=find(o,['Survey Scheduled','Appointment time']);if(ap&&$('appointmentTime'))$('appointmentTime').value=ap.replace(' ','T').slice(0,16);let u=find(o,['Energy Usage','Annual kWh']);if(u&&$('annualKwh')){let n=parseFloat(u);if(Number.isFinite(n)){$('annualKwh').value=n;if($('dailyKwh'))$('dailyKwh').value=(n/365).toFixed(1)}}}
-function importPaste(){let text=$('crmPaste')?.value||'';if(!text.trim()){alert('Paste the monday CSV text first.');return}let o=objFrom(text);if(!o){alert('Could not read the pasted monday data.');return}fill(o);let rec=saveSurvey();if($('importStatus'))$('importStatus').textContent='Imported and saved as '+rec.customerName+'.';tab('customer')}
-function importFile(f){if(!f)return;let r=new FileReader();r.onload=()=>{let o=objFrom(r.result||'');if(!o){alert('Could not read the CSV file.');return}fill(o);let rec=saveSurvey();if($('importStatus'))$('importStatus').textContent='Imported and saved as '+rec.customerName+'.';tab('customer')};r.readAsText(f)}
-function bind(){document.addEventListener('click',e=>{let b=e.target.closest('button');if(!b)return;if(['homeNewSurvey','newSurveyTop','newSurveySaved'].includes(b.id)){e.preventDefault();e.stopImmediatePropagation();newSurvey()}if(b.id==='importPastedCRM'){e.preventDefault();e.stopImmediatePropagation();importPaste()}},true);let mi=$('mondayImport');if(mi)mi.addEventListener('change',e=>importFile((e.target.files||[])[0]),true)}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
-})();
-
-
-/* v32 remove roof markup UI guard */
-(function(){
-  function removeRoofMarkupUI(){
-    document.querySelectorAll('button').forEach(b=>{
-      if((b.textContent||'').toLowerCase().includes('roof markup')) b.remove();
-    });
-    document.querySelectorAll('.panel, section, div').forEach(el=>{
-      const txt=(el.textContent||'').slice(0,200).toLowerCase();
-      const id=(el.id||'').toLowerCase();
-      if((id.includes('roof') && id.includes('markup')) || txt.includes('roof markup editor')){
-        el.remove();
-      }
-    });
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', removeRoofMarkupUI);
-  else removeRoofMarkupUI();
-})();
-
-
-/* v33 home update button */
-(function(){
-  function el(id){ return document.getElementById(id); }
-
-  async function clearCacheAndUpdate(){
-    try{
-      if(el('homeVersionBadge')) el('homeVersionBadge').textContent='Updating... saved surveys stay safe.';
-      if(el('appVersionBadge')) el('appVersionBadge').textContent='Updating... saved surveys stay safe.';
-
-      if('serviceWorker' in navigator){
-        const regs = await navigator.serviceWorker.getRegistrations();
-        for(const reg of regs){
-          try{ await reg.update(); }catch(e){}
-          try{ await reg.unregister(); }catch(e){}
-        }
-      }
-
-      if(window.caches){
-        const keys = await caches.keys();
-        await Promise.all(keys.map(k => caches.delete(k)));
-      }
-
-      // Do not clear localStorage. Saved surveys remain in tlgec_surveys_saved_v1.
-      sessionStorage.setItem('tlgec_cache_cleared_at', new Date().toISOString());
-
-      const cleanPath = location.pathname.replace(/index\.html$/,'');
-      location.href = location.origin + cleanPath + '?fresh=' + Date.now();
-    }catch(err){
-      alert('Cache clear attempted. Close the app and reopen it from the browser link if the old version still shows.');
-      location.href = location.href.split('?')[0] + '?fresh=' + Date.now();
-    }
-  }
-
-  function openFreshCopy(){
-    const cleanPath = location.pathname.replace(/index\.html$/,'');
-    location.href = location.origin + cleanPath + '?fresh=' + Date.now();
-  }
-
-  function bindUpdateButtons(){
-    ['homeUpdateApp','updateApp'].forEach(id=>{
-      const b=el(id);
-      if(b){
-        b.onclick=function(e){
-          e.preventDefault();
-          clearCacheAndUpdate();
-        };
-      }
-    });
-    const h=el('homeHardRefresh');
-    if(h) h.onclick=function(e){e.preventDefault();openFreshCopy();};
-    const f=el('homeOpenFresh');
-    if(f) f.onclick=function(e){e.preventDefault();openFreshCopy();};
-
-    if(el('homeVersionBadge')) el('homeVersionBadge').textContent='App version: v39';
-    if(el('appVersionBadge')) el('appVersionBadge').textContent='App version: v39';
-  }
-
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bindUpdateButtons);
-  else bindUpdateButtons();
-})();
-
-
-/* v34 sales flow */
-(function(){
-  const $ = id => document.getElementById(id);
-
-  function openTab(tabId){
-    document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tabId));
-    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('on', p.id === tabId));
-    window.scrollTo(0,0);
-  }
-
-  function val(id){ return ($(id)?.value || '').trim(); }
-
-  function missingItems(){
-    const m = [];
-    if(!val('customerName')) m.push('Customer name');
-    if(!val('address')) m.push('Address');
-    if(!val('phone') && !val('email')) m.push('Phone or email');
-    if(!val('annualKwh') && !val('dailyKwh')) m.push('Annual or daily usage');
-    if(!val('peak') && !val('annualSpend')) m.push('Peak rate or annual spend');
-    if(!val('wants')) m.push('What the customer wants');
-    if(!val('decisionMakers')) m.push('Decision maker');
-    if(val('batteryBrand') && val('batteryBrand') !== 'None' && !val('batteryLoc')) m.push('Battery location');
-    if(!val('meter')) m.push('Meter / CU / supply notes');
-    if(!val('cable')) m.push('Cable route');
-    if(!val('access')) m.push('Access / scaffold notes');
-    if(!val('nextAction')) m.push('Next action');
-    if(!val('followUp')) m.push('Follow-up date');
-    let roofs = 0;
-    try { if(typeof getRoofs === 'function') roofs = getRoofs().length; } catch(e){}
-    if(!roofs && !val('roof1Width') && !val('dims')) m.push('Roof dimensions / elevations');
-    return m;
-  }
-
-  function checkReadiness(){
-    const m = missingItems();
-    const box = $('readinessBox');
-    if(!box) return m;
-    if(m.length){
-      box.innerHTML = '<div class="readyWarn"><b>Missing before proposal</b><ul>' + m.map(x => '<li>'+x+'</li>').join('') + '</ul></div>';
-    } else {
-      box.innerHTML = '<div class="readyGood"><b>Ready for proposal</b><p>Core survey information is captured.</p></div>';
-    }
-    return m;
-  }
-
-  function saveIt(){
-    try { if(typeof saveCurrentSurvey === 'function') return saveCurrentSurvey(); } catch(e){}
-    try { if(typeof save === 'function') save(); } catch(e){}
-  }
-
-  function updateLikelihood(){
-    const ans = val('customerLikelihood');
-    const p = $('blockerPrompt');
-    if(!p) return;
-
-    if(!ans){
-      p.textContent = 'Select the customer likelihood to reveal the next question.';
-      p.className = 'blockerPrompt';
-      return;
-    }
-
-    if(ans === 'Highly likely'){
-      p.textContent = 'Good signal. Confirm the formal quote next step and signature.';
-      p.className = 'blockerPrompt good';
-      if($('salesStatus')) $('salesStatus').value = 'Formal quote needed';
-      if($('mainBlocker')) $('mainBlocker').value = 'None known';
-    } else if(ans === 'Not likely yet'){
-      p.textContent = 'Ask: “What would need to change for this to become a yes?” Capture the answer below.';
-      p.className = 'blockerPrompt warn';
-      if($('salesStatus')) $('salesStatus').value = 'Proposal to prepare';
-      if($('mainBlocker') && $('mainBlocker').value === 'None known') $('mainBlocker').value = 'Needs more information';
-    } else {
-      p.textContent = 'Ask: “Is that mainly price, timing, system design, or another quote?” Capture the reason below.';
-      p.className = 'blockerPrompt danger';
-      if($('salesStatus')) $('salesStatus').value = 'Closed lost';
-      if($('mainBlocker') && $('mainBlocker').value === 'None known') $('mainBlocker').value = 'Price';
-    }
-    saveIt();
-  }
-
-  function markComplete(){
-    const m = checkReadiness();
-    if($('salesStatus')) $('salesStatus').value = m.length ? 'Proposal to prepare' : 'Survey completed';
-    if($('nextAction') && !$('nextAction').value) $('nextAction').value = 'Prepare formal quote';
-    saveIt();
-    alert(m.length ? 'Survey saved. Some items still need checking before proposal.' : 'Survey marked complete and saved.');
-  }
-
-  function bind(){
-    document.querySelectorAll('.continueBtn').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.preventDefault();
-        if(btn.dataset.next === 'present' && typeof refreshPresent === 'function') refreshPresent();
-        saveIt();
-        openTab(btn.dataset.next);
-      });
-    });
-
-    if($('customerLikelihood')) $('customerLikelihood').addEventListener('change', updateLikelihood);
-    if($('checkReadiness')) $('checkReadiness').addEventListener('click', e => { e.preventDefault(); checkReadiness(); });
-    if($('markSurveyComplete')) $('markSurveyComplete').addEventListener('click', e => { e.preventDefault(); markComplete(); });
-
-    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v39';
-    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v39';
-  }
-
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
-  else bind();
-})();
-
-
-/* v35 slick survey flow */
-(function(){
-  const $ = id => document.getElementById(id);
-  const val = id => ($(id)?.value || '').trim();
-
-  function setPanelCountFromRoofs(){
-    let total = 0;
-    try {
-      if(typeof getRoofs === 'function'){
-        const roofs = getRoofs();
-        roofs.forEach(r => {
-          const n = Number(r.panels || r.panelCount || r.panel_count || 0);
-          if(Number.isFinite(n)) total += n;
-        });
-      }
-    } catch(e){}
-
-    if(!total){
-      document.querySelectorAll('#roofPlanes input').forEach(inp => {
-        const label = (inp.closest('label')?.textContent || '').toLowerCase();
-        const id = (inp.id || '').toLowerCase();
-        const name = (inp.name || '').toLowerCase();
-        if(label.includes('panel') || id.includes('panel') || name.includes('panel')){
-          const n = Number(inp.value || 0);
-          if(Number.isFinite(n)) total += n;
-        }
-      });
-    }
-
-    if(total && $('panelCount')){
-      $('panelCount').value = total;
-      try { if(typeof save === 'function') save(); } catch(e){}
-    }
-  }
-
-  function updateLikelihoodWording(){
-    const ans = val('customerLikelihood');
-    const p = $('blockerPrompt');
-    if(!p) return;
-
-    if(!ans){
-      p.textContent = 'Choose the closest answer above.';
-      p.className = 'blockerPrompt';
-      return;
-    }
-
-    if(ans === 'Yes, this is the route I want to move forward with' || ans === 'Highly likely'){
-      p.textContent = 'Great. I will prepare the formal quote for review and e-signing based on this recommendation.';
-      p.className = 'blockerPrompt good';
-      if($('salesStatus')) $('salesStatus').value = 'Formal quote needed';
-      if($('mainBlocker')) $('mainBlocker').value = 'None known';
-    } else if(ans === 'Interested, but I have a question or concern' || ans === 'Not likely yet'){
-      p.textContent = 'That is useful to know. What would you want changed, clarified or confirmed before this feels right?';
-      p.className = 'blockerPrompt warn';
-      if($('salesStatus')) $('salesStatus').value = 'Proposal to prepare';
-      if($('mainBlocker') && $('mainBlocker').value === 'None known') $('mainBlocker').value = 'Needs more information';
-    } else {
-      p.textContent = 'Thanks for being direct. What is the main reason this does not feel like the right route?';
-      p.className = 'blockerPrompt danger';
-      if($('salesStatus')) $('salesStatus').value = 'Closed lost';
-    }
-
-    try { if(typeof save === 'function') save(); } catch(e){}
-  }
-
-  function buildCustomerPackPrompt(){
-    if(typeof prompt !== 'function') return '';
-    let base = prompt();
-    const name = val('customerName') || 'Customer';
-    return `Customer board: ${name}
-
-Use this as the working customer board for ${name}. Keep outputs practical and ready for James to use after the survey.
-
-Create or update:
-1. Survey summary
-2. OpenSolar/PandaDoc proposal brief
-3. Customer follow-up email
-4. Sales strategy
-5. Next action list
-6. monday CRM note
-
-Keep the customer-facing email clean, direct and Outlook-safe.
-
-` + base;
-  }
-
-  function overrideCopyButton(){
-    const copy = $('copy');
-    if(copy){
-      copy.onclick = async function(e){
-        e.preventDefault();
-        const text = buildCustomerPackPrompt();
-        try {
-          await navigator.clipboard.writeText(text);
-          alert('Customer pack copied. Paste it into a new ChatGPT chat named with the customer.');
-        } catch(err){
-          alert('Could not copy automatically. Use the preview text instead.');
-        }
-      };
-    }
-
-    const out = $('out');
-    if(out){
-      try { out.textContent = buildCustomerPackPrompt(); } catch(e){}
-    }
-  }
-
-  function bindV35(){
-    document.addEventListener('input', e => {
-      if(e.target && e.target.closest && e.target.closest('#roofPlanes')) setPanelCountFromRoofs();
-    }, true);
-
-    const addRoof = $('addRoofPlane');
-    if(addRoof){
-      addRoof.addEventListener('click', () => setTimeout(setPanelCountFromRoofs, 150));
-    }
-
-    const like = $('customerLikelihood');
-    if(like){
-      like.addEventListener('change', updateLikelihoodWording);
-    }
-
-    const oldRefresh = window.refreshPresent;
-    if(typeof oldRefresh === 'function'){
-      window.refreshPresent = function(){
-        setPanelCountFromRoofs();
-        oldRefresh();
-        updateLikelihoodWording();
-      }
-    }
-
-    overrideCopyButton();
-    setPanelCountFromRoofs();
-
-    if($('homeVersionBadge')) $('homeVersionBadge').textContent = 'App version: v39';
-    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v39';
-  }
-
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindV35);
-  else bindV35();
-})();
-
-
-/* v36 navigation and home update fix */
-(function(){
-  const VERSION = 'v36';
-  const $ = id => document.getElementById(id);
-
-  function showTab(tabId){
-    document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tabId));
-    document.querySelectorAll('main > section.panel').forEach(p => p.classList.toggle('on', p.id === tabId));
-    const panel = document.getElementById(tabId);
-    if(panel) panel.classList.add('on');
-    window.scrollTo(0,0);
-  }
-
-  function bindNav(){
-    document.querySelectorAll('nav button[data-tab]').forEach(btn => {
-      btn.onclick = function(e){
-        e.preventDefault();
-        e.stopPropagation();
-        showTab(btn.dataset.tab);
-        if(btn.dataset.tab === 'present' && typeof refreshPresent === 'function'){
-          try { refreshPresent(); } catch(err){}
-        }
-      };
-    });
-  }
-
-  async function clearCacheAndUpdate(){
-    try{
-      if($('homeVersionSmall')) $('homeVersionSmall').textContent = 'updating...';
-      if($('appVersionBadge')) $('appVersionBadge').textContent = 'Updating...';
-      if('serviceWorker' in navigator){
-        const regs = await navigator.serviceWorker.getRegistrations();
-        for(const reg of regs){
-          try { await reg.update(); } catch(e){}
-          try { await reg.unregister(); } catch(e){}
-        }
-      }
-      if(window.caches){
-        const keys = await caches.keys();
-        await Promise.all(keys.map(k => caches.delete(k)));
-      }
-      const cleanPath = location.pathname.replace(/index\.html$/,'');
-      location.href = location.origin + cleanPath + '?fresh=' + Date.now();
-    }catch(e){
-      alert('Update attempted. Saved surveys are not deleted. Close and reopen the app if the old version remains.');
-      location.href = location.href.split('?')[0] + '?fresh=' + Date.now();
-    }
-  }
-
-  function bindHomeButtons(){
-    const update = $('homeUpdateApp');
-    if(update){
-      update.onclick = function(e){
-        e.preventDefault();
-        clearCacheAndUpdate();
-      };
-    }
-    const internalUpdate = $('updateApp');
-    if(internalUpdate){
-      internalUpdate.onclick = function(e){
-        e.preventDefault();
-        clearCacheAndUpdate();
-      };
-    }
-
-    if($('homeVersionSmall')) $('homeVersionSmall').textContent = VERSION;
-    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: ' + VERSION;
-  }
-
-  function removeOldHomeButtons(){
-    ['homeContinueDraft','homeHardRefresh','homeOpenFresh'].forEach(id => {
-      const b = $(id);
-      if(b) b.remove();
-    });
-  }
-
-  function init(){
-    removeOldHomeButtons();
-    bindNav();
-    bindHomeButtons();
-  }
-
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
-})();
-
-
-/* v37 backup restore */
-(function(){
-  const SAVED_KEY='tlgec_surveys_saved_v1';
-  const DRAFT_KEY='tlgec_current_draft_v1';
-  const $ = id => document.getElementById(id);
-
-  function getSaved(){
-    try { return JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); }
-    catch(e){ return []; }
-  }
-
-  function setSaved(arr){
-    localStorage.setItem(SAVED_KEY, JSON.stringify(arr));
-  }
-
-  function downloadFile(name, text, type){
-    const blob = new Blob([text], {type:type || 'application/json'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      URL.revokeObjectURL(a.href);
-      a.remove();
-    }, 500);
-  }
-
-  function exportBackup(){
-    const backup = {
-      app: 'TLGEC Survey Sync',
-      backupVersion: 'v1',
-      exportedAt: new Date().toISOString(),
-      savedSurveys: getSaved(),
-      currentDraft: (() => {
-        try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); }
-        catch(e){ return null; }
-      })()
-    };
-    downloadFile('tlgec_survey_backup_' + new Date().toISOString().slice(0,10) + '.json', JSON.stringify(backup, null, 2));
-  }
-
-  function importBackup(file){
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const data = JSON.parse(reader.result);
-        const incoming = Array.isArray(data.savedSurveys) ? data.savedSurveys : [];
-        if(!incoming.length){
-          alert('No saved surveys found in this backup file.');
-          return;
-        }
-
-        const existing = getSaved();
-        const byId = new Map(existing.map(s => [s.id, s]));
-        incoming.forEach(s => {
-          if(!s.id) s.id = 'svy_' + Date.now() + '_' + Math.random().toString(16).slice(2);
-          byId.set(s.id, s);
-        });
-
-        setSaved([...byId.values()]);
-        try { if(typeof renderSavedList === 'function') renderSavedList(); } catch(e){}
-        try { if(typeof renderHomeSavedList === 'function') renderHomeSavedList(); } catch(e){}
-        alert('Saved survey backup imported.');
-      } catch(e) {
-        alert('Could not import this backup file.');
-      }
-    };
-    reader.readAsText(file);
-  }
-
-  function bind(){
-    const ex = $('exportBackup');
-    if(ex) ex.onclick = function(e){ e.preventDefault(); exportBackup(); };
-
-    const im = $('importBackup');
-    if(im) im.onchange = function(e){ importBackup((e.target.files || [])[0]); };
-
-    if($('homeVersionSmall')) $('homeVersionSmall').textContent = 'v37';
-    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: v39';
-  }
-
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
-  else bind();
-})();
-
-
-/* v39 button repair, quote check and signature repair */
-(function(){
-  const VERSION = 'v39';
+  const VERSION = 'v41';
   const $ = id => document.getElementById(id);
 
   function money(n){
@@ -1816,9 +1311,9 @@ Keep the customer-facing email clean, direct and Outlook-safe.
 })();
 
 
-/* v39 local-only survey quality, evidence checklist and safer handover */
+/* v41 local-only survey quality, panel sense check, extras and safer handover */
 (function(){
-  const VERSION = 'v39';
+  const VERSION = 'v41';
   const $ = id => document.getElementById(id);
 
   const REQUIRED = [
@@ -1828,9 +1323,7 @@ Keep the customer-facing email clean, direct and Outlook-safe.
     ['email','Email address'],
     ['wants','Customer goal'],
     ['annualKwh','Annual usage or daily average', () => val('annualKwh') || val('dailyKwh')],
-    ['roof','Roof notes'],
     ['roofPlanes','At least one roof/elevation with dimensions', () => hasRoofPlane()],
-    ['dims','Reference measurement / dimension notes'],
     ['shade','Obstructions / shading notes'],
     ['meter','Meter / CU / incoming supply notes'],
     ['batteryLoc','Battery location'],
@@ -1854,6 +1347,8 @@ Keep the customer-facing email clean, direct and Outlook-safe.
   ];
 
   const IMPORTANT = [
+    ['roof','Roof notes'],
+    ['dims','Reference measurement / dimension notes'],
     ['decisionMakers','Decision maker confirmed'],
     ['competitors','Competitor context'],
     ['whyNow','Why now'],
@@ -2023,7 +1518,7 @@ Keep the customer-facing email clean, direct and Outlook-safe.
 
       return `${base}
 
-Survey Sync v39 local readiness:
+Survey Sync v41 local readiness:
 Survey readiness score: ${r.score}%
 Critical missing items:
 ${r.missingRequired.length ? r.missingRequired.map(x=>'- '+x).join('\n') : 'None'}
@@ -2085,8 +1580,269 @@ Site risk/blocker notes: ${val('siteRiskNotes')}`;
     renderReadiness();
     updateAgreementSummary();
     updatePhotoNames();
+    toggleConditionalFields();
+    recommendBattery(false);
     makeCheckReadinessVisible();
     patchPrompt();
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+
+
+/* v41 panel-first roof sense check and manual extras */
+(function(){
+  const VERSION = 'v41';
+  const $ = id => document.getElementById(id);
+  const val = id => ($(id)?.value || '').toString().trim();
+  const num = v => Number(v || 0) || 0;
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+
+  function panelDimsM(){
+    let dim = '';
+    try{ dim = (typeof panelParts === 'function' ? panelParts().dim : '') || ''; }catch(e){}
+    const found = dim.match(/(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)/i);
+    if(!found) return {long:1.762, short:1.134, text:'1762 x 1134 mm assumed'};
+    const a = Number(found[1]) / 1000;
+    const b = Number(found[2]) / 1000;
+    return {long:Math.max(a,b), short:Math.min(a,b), text:dim};
+  }
+
+  function bestLayoutFor(n, roofW, roofS, across, up, margin){
+    const gap = 0.02;
+    const availW = Math.max(0, roofW - (margin * 2));
+    const availS = Math.max(0, roofS - (margin * 2));
+    let best = null;
+    for(let cols=1; cols<=Math.max(1,n); cols++){
+      const rows = Math.ceil(n / cols);
+      const arrW = (cols * across) + (Math.max(0,cols-1) * gap);
+      const arrS = (rows * up) + (Math.max(0,rows-1) * gap);
+      const fits = arrW <= availW && arrS <= availS;
+      const spill = Math.max(0, arrW-availW) + Math.max(0, arrS-availS);
+      const waste = Math.max(0, availW-arrW) + Math.max(0, availS-arrS);
+      const score = (fits ? -1000 : spill*100) + rows*2 + cols*0.1 + waste*0.01;
+      if(!best || score < best.score) best = {cols, rows, arrW, arrS, fits, spill, score};
+    }
+    return best;
+  }
+
+  function capacity(roofW, roofS, across, up, margin){
+    const gap = 0.02;
+    const availW = Math.max(0, roofW - (margin * 2));
+    const availS = Math.max(0, roofS - (margin * 2));
+    const cols = Math.max(0, Math.floor((availW + gap) / (across + gap)));
+    const rows = Math.max(0, Math.floor((availS + gap) / (up + gap)));
+    return {cols, rows, count:cols*rows};
+  }
+
+  function checkPlane(plane, panels, dims){
+    const roofW = num(plane.width);
+    const roofS = num(plane.slope);
+    const name = plane.name || 'Roof';
+    if(!roofW || !roofS){
+      return {level:'warn', html:`<div class="senseItem senseWarn"><b>${esc(name)}</b><p>Add roof width and slope length to sense check this elevation.</p></div>`};
+    }
+
+    const orientations = [
+      {name:'portrait', across:dims.short, up:dims.long},
+      {name:'landscape', across:dims.long, up:dims.short}
+    ];
+
+    if(!panels){
+      const cap = orientations.map(o => {
+        const c400 = capacity(roofW, roofS, o.across, o.up, 0.4);
+        const c150 = capacity(roofW, roofS, o.across, o.up, 0.15);
+        return `${o.name}: ${c400.count} panels with preferred 400 mm margins, ${c150.count} panels with tight 150 mm margins`;
+      }).join('<br>');
+      return {level:'warn', html:`<div class="senseItem senseWarn"><b>${esc(name)}</b><p>No panel allocation entered for this roof. Capacity guide only:</p><p>${cap}</p></div>`};
+    }
+
+    const results = orientations.map(o => ({
+      ...o,
+      preferred: bestLayoutFor(panels, roofW, roofS, o.across, o.up, 0.4),
+      tight: bestLayoutFor(panels, roofW, roofS, o.across, o.up, 0.15),
+      raw: bestLayoutFor(panels, roofW, roofS, o.across, o.up, 0)
+    }));
+
+    let chosen = results.find(r => r.preferred.fits) || results.find(r => r.tight.fits) || results.find(r => r.raw.fits) || results[0];
+    let status = 'Does not look to fit from the entered dims';
+    let cls = 'senseBad';
+    let note = 'Review roof dimensions, margins, split across elevations or reduce panel count.';
+    let layout = chosen.preferred;
+    if(chosen.preferred.fits){
+      status = 'Looks sensible with preferred 400 mm margins';
+      cls = 'senseGood';
+      note = 'Still subject to measured survey, fixing positions and obstruction clearance.';
+      layout = chosen.preferred;
+    }else if(chosen.tight.fits){
+      status = 'Likely tight. Reduced margins may be needed';
+      cls = 'senseWarn';
+      note = 'Treat as a survey target only. Flag reduced edge margins and check rail/fixing positions.';
+      layout = chosen.tight;
+    }else if(chosen.raw.fits){
+      status = 'Borderline. Fits only before proper margins';
+      cls = 'senseWarn';
+      note = 'Do not rely on this without a measured layout. Consider fewer panels or another roof plane.';
+      layout = chosen.raw;
+    }
+
+    const rowsCols = `${layout.cols} col x ${layout.rows} row`;
+    return {level:cls.includes('Bad')?'bad':cls.includes('Warn')?'warn':'good', html:`<div class="senseItem ${cls}">
+      <b>${esc(name)}: ${panels} panel${panels===1?'':'s'} ${esc(chosen.name)}</b>
+      <p>${status}</p>
+      <p>Roof ${roofW.toFixed(2)} m wide x ${roofS.toFixed(2)} m slope. Indicative array ${layout.arrW.toFixed(2)} m x ${layout.arrS.toFixed(2)} m, ${rowsCols}.</p>
+      <p>${note}</p>
+    </div>`};
+  }
+
+  function renderPanelSenseCheck(){
+    const box = $('panelSenseCheck');
+    if(!box) return null;
+    let planes = [];
+    try{ planes = typeof getRoofPlanes === 'function' ? getRoofPlanes() : []; }catch(e){}
+    const totalPanels = num(val('panelCount'));
+    const dims = panelDimsM();
+
+    if(!planes.length){
+      box.innerHTML = '<div class="senseItem senseWarn"><b>No roof dimensions yet</b><p>Add roof width and slope length in Site, then run the sense check. This will not block the survey.</p></div>';
+      return null;
+    }
+
+    const allocated = planes.reduce((sum,r)=>sum+num(r.panels),0);
+    let checkPlanes = planes.map((r,i) => {
+      let p = num(r.panels);
+      if(!allocated && planes.length === 1) p = totalPanels;
+      return checkPlane(r, p, dims);
+    });
+
+    const issues = checkPlanes.filter(x => x.level !== 'good').length;
+    const summary = `<div class="senseSummary ${issues?'senseWarn':'senseGood'}">
+      <b>Panel-first sense check</b>
+      <p>Using ${esc((typeof panelParts === 'function' ? panelParts().name : 'selected panel') || 'selected panel')} dimensions: ${esc(dims.text)}. Preferred margin check is 400 mm. Tight check is 150 mm. This is advisory only and does not block the survey.</p>
+      ${allocated ? `<p>${allocated} panel${allocated===1?'':'s'} allocated across roof elevations. Build panel count is ${totalPanels || 0}.</p>` : `<p>${totalPanels || 0} panel${totalPanels===1?'':'s'} in build. Add “panels here” on each roof for a better split check.</p>`}
+    </div>`;
+
+    box.innerHTML = summary + checkPlanes.map(x=>x.html).join('');
+    return {issues, allocated, totalPanels, text:box.innerText};
+  }
+
+  function syncPanelSenseEvents(){
+    const ids = ['panelModel','panelCount','solar'];
+    ids.forEach(id => {
+      const el = $(id);
+      if(el && !el.dataset.v41Sense){
+        el.dataset.v41Sense='yes';
+        el.addEventListener('input', renderPanelSenseCheck);
+        el.addEventListener('change', renderPanelSenseCheck);
+      }
+    });
+
+    document.querySelectorAll('.roofPlaneRow input').forEach(el => {
+      if(el.dataset.v41Sense) return;
+      el.dataset.v41Sense='yes';
+      el.addEventListener('input', () => {
+        try{
+          const total = Array.from(document.querySelectorAll('.roofPanels')).reduce((sum,input)=>sum + num(input.value),0);
+          if(total > 0 && $('panelCount')) $('panelCount').value = total;
+        }catch(e){}
+        renderPanelSenseCheck();
+      });
+      el.addEventListener('change', renderPanelSenseCheck);
+    });
+  }
+
+  function customerExtrasListV40(){
+    const items=[];
+    if($('ev')?.checked) items.push('Zappi EV charger');
+    if($('eddi')?.checked) items.push('Eddi / hot water diverter');
+    if($('otherExtra')?.checked) items.push((val('otherExtraName') || 'Other extra'));
+    return items;
+  }
+
+  // Keep extras wording available even if earlier functions loaded before v41.
+  window.customerExtrasList = customerExtrasListV40;
+  window.customerExtrasTitle = function(){
+    const items = customerExtrasListV40();
+    return items.length ? items.join(' + ') : 'No extras included';
+  };
+  window.renderPanelSenseCheck = renderPanelSenseCheck;
+
+  function patchCalculateQuote(){
+    const old = window.calculateQuote;
+    window.calculateQuote = function(){
+      const result = typeof old === 'function' ? old.apply(this, arguments) : true;
+      renderPanelSenseCheck();
+      const q = typeof quote === 'function' ? quote() : {};
+      const box = $('quoteCheck');
+      if(box && q.extrasText && !box.innerHTML.includes('Manual extras')){
+        box.innerHTML += `<div class="quoteExtraLine"><b>Manual extras:</b> ${esc(q.extrasText)}</div>`;
+      }
+      return result;
+    };
+  }
+
+  function patchPrompt(){
+    const oldPrompt = window.prompt;
+    window.prompt = function(){
+      let base = '';
+      try{ base = typeof oldPrompt === 'function' ? oldPrompt() : ''; }catch(e){}
+      const sense = renderPanelSenseCheck();
+      const q = typeof quote === 'function' ? quote() : {};
+      return `${base}
+
+Survey Sync v41 panel-first sense check:
+${sense && sense.text ? sense.text : 'No panel sense check available yet.'}
+
+Manual extras:
+${q.extrasText || window.customerExtrasTitle()}
+Extras notes: ${val('extrasNote')}`;
+    };
+  }
+
+  function bind(){
+    syncPanelSenseEvents();
+    const run = $('runPanelSenseCheck');
+    if(run && !run.dataset.v41Ready){
+      run.dataset.v41Ready='yes';
+      run.onclick = e => { e.preventDefault(); syncPanelSenseEvents(); renderPanelSenseCheck(); };
+    }
+    document.addEventListener('input', e => {
+      if(e.target && (e.target.closest('#roofPlanes') || ['panelModel','panelCount','ev','eddi','otherExtra','eddiPrice','otherExtraName','otherExtraPrice','extrasNote'].includes(e.target.id))){
+        syncPanelSenseEvents();
+        renderPanelSenseCheck();
+      }
+    }, true);
+    document.addEventListener('change', e => {
+      if(e.target && (e.target.closest('#roofPlanes') || ['panelModel','panelCount','ev','eddi','otherExtra','eddiPrice','otherExtraName','otherExtraPrice','extrasNote'].includes(e.target.id))){
+        syncPanelSenseEvents();
+        renderPanelSenseCheck();
+        try{ if(typeof refreshPresent === 'function') refreshPresent(); }catch(err){}
+      }
+    }, true);
+    if($('homeVersionSmall')) $('homeVersionSmall').textContent = VERSION;
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: ' + VERSION;
+    ['calculateQuote','refreshPresent','calcQuote'].forEach(id => {
+      const btn = $(id);
+      if(btn && !btn.dataset.v41Extras){
+        btn.dataset.v41Extras = 'yes';
+        btn.addEventListener('click', () => {
+          setTimeout(() => {
+            renderPanelSenseCheck();
+            try{
+              const q = typeof quote === 'function' ? quote() : {};
+              const box = $('quoteCheck');
+              if(box && q.extrasText && !box.innerHTML.includes('Manual extras')){
+                box.innerHTML += `<div class="quoteExtraLine"><b>Manual extras:</b> ${esc(q.extrasText)}</div>`;
+              }
+            }catch(e){}
+          }, 0);
+        });
+      }
+    });
+    patchCalculateQuote();
+    patchPrompt();
+    renderPanelSenseCheck();
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
