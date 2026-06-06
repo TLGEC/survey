@@ -1214,7 +1214,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 
 /* v41 button repair, quote check and signature repair */
 (function(){
-  const VERSION = 'v42';
+  const VERSION = 'v43';
   const $ = id => document.getElementById(id);
 
   function money(n){
@@ -1487,7 +1487,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 
 /* v41 local-only survey quality, panel sense check, extras and safer handover */
 (function(){
-  const VERSION = 'v42';
+  const VERSION = 'v43';
   const $ = id => document.getElementById(id);
 
   const REQUIRED = [
@@ -1769,7 +1769,7 @@ Site risk/blocker notes: ${val('siteRiskNotes')}`;
 
 /* v41 panel-first roof sense check and manual extras */
 (function(){
-  const VERSION = 'v42';
+  const VERSION = 'v43';
   const $ = id => document.getElementById(id);
   const val = id => ($(id)?.value || '').toString().trim();
   const num = v => Number(v || 0) || 0;
@@ -2021,6 +2021,67 @@ Extras notes: ${val('extrasNote')}`;
     patchCalculateQuote();
     patchPrompt();
     renderPanelSenseCheck();
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+
+
+/* v43: repair Continue buttons and keep bottom buttons non-sticky */
+(function(){
+  const VERSION = 'v43';
+  const $ = id => document.getElementById(id);
+
+  function showSurveySyncTab(tabId){
+    if(!tabId) return;
+
+    document.querySelectorAll('nav button[data-tab]').forEach(btn => {
+      btn.classList.toggle('on', btn.dataset.tab === tabId);
+    });
+
+    document.querySelectorAll('main > section.panel').forEach(panel => {
+      panel.classList.toggle('on', panel.id === tabId);
+    });
+
+    const target = $(tabId);
+    if(target) target.classList.add('on');
+
+    if(tabId === 'present'){
+      setTimeout(() => {
+        try{ if(typeof calculateQuote === 'function') calculateQuote(); }catch(e){}
+        try{ if(typeof refreshPresent === 'function') refreshPresent(); }catch(e){}
+        try{ if(typeof initSignaturePad === 'function') initSignaturePad(); }catch(e){}
+      }, 0);
+    }
+
+    window.scrollTo({top:0, left:0, behavior:'smooth'});
+  }
+
+  function bindContinueButtons(){
+    document.querySelectorAll('.continueBtn[data-next]').forEach(btn => {
+      if(btn.dataset.v43ContinueBound === 'yes') return;
+      btn.dataset.v43ContinueBound = 'yes';
+      btn.addEventListener('click', function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        showSurveySyncTab(btn.dataset.next);
+      });
+    });
+  }
+
+  function bind(){
+    bindContinueButtons();
+    document.addEventListener('click', function(e){
+      const btn = e.target && e.target.closest ? e.target.closest('.continueBtn[data-next]') : null;
+      if(!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      showSurveySyncTab(btn.dataset.next);
+    }, true);
+
+    if($('homeVersionSmall')) $('homeVersionSmall').textContent = VERSION;
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: ' + VERSION;
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);

@@ -315,7 +315,7 @@ nav button{touch-action:manipulation}
 .quoteCheckBox{margin-top:14px}
 
 
-/* v42 premium customer presentation */
+/* v43 premium customer presentation */
 .legacyTeslaChecks{position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden}
 .teslaConfigGuide{margin:12px 0}
 .quoteGood,.quoteWarn{border-radius:18px;padding:14px;border:1px solid #d9e2da;background:#f7faf4;line-height:1.35}
@@ -342,3 +342,17 @@ nav button{touch-action:manipulation}
 .agreementGrid b{display:block;color:#062819;margin-bottom:4px}
 .agreementGrid span{color:#3d5248;font-size:15px;line-height:1.35}
 @media(max-width:760px){.agreementGrid{grid-template-columns:1fr}.confidenceCard b{font-size:36px}}
+
+
+/* v43: continue buttons should sit at the bottom of each page, not float on screen */
+.bottomNav{
+  position:static!important;
+  bottom:auto!important;
+  z-index:auto!important;
+  background:transparent!important;
+  padding:14px 0 0!important;
+  margin-top:24px!important;
+}
+.continueBtn{
+  width:100%;
+}
