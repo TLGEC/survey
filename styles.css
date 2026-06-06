@@ -986,3 +986,31 @@ label{font-size:15px;color:#263c31}
 .emailPreviewBattery{width:100%;display:block;border-radius:22px;margin:14px 0;border:1px solid #dbe6de;background:#f5f7f3;box-shadow:0 8px 22px rgba(6,40,25,.08)}
 .emailPreviewPasteHint{background:#eef7ee;border-left:5px solid #79ac20;border-radius:18px;padding:14px 16px;margin:14px 0;color:#0b1f18;font-weight:750;line-height:1.35}
 .emailPreviewPasteHint b{color:#062819}
+
+
+/* v51 recommendation document actions */
+.templateActionCard{
+  margin:18px 0 0;
+  padding:20px;
+  border-radius:24px;
+  border:1px solid #dbe8dd;
+  background:linear-gradient(135deg,#ffffff 0%,#f0faec 100%);
+  box-shadow:0 8px 24px rgba(6,40,25,.08);
+}
+.templateActionCard h2{margin-bottom:8px}
+.templateButtonGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:14px;
+}
+.templateButtonGrid button{width:100%;margin:0}
+.templateNotice{
+  margin-top:14px;
+  background:#eaf7e6;
+  border-color:#cbe8c9;
+}
+@media(max-width:720px){
+  .templateButtonGrid{grid-template-columns:1fr}
+}
+

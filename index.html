@@ -33,7 +33,7 @@
 </div>
 <main><section class="panel on landingPage" id="home">
 <div class="landingHero">
-<div class="homeVersionSmall" id="homeVersionSmall">v50</div>
+<div class="homeVersionSmall" id="homeVersionSmall">v51</div>
 <div class="heroCopy">
 <div class="heroKicker">LG Survey</div>
 <h2>Solar consultation</h2>
@@ -393,9 +393,22 @@
 <button class="secondary" id="clearSignature" type="button">Clear signature</button>
 </div>
 </div>
-<button class="primary" id="stampAccept" type="button">Accept and prepare recommendation email</button>
+<button class="primary" id="stampAccept" type="button">Accept and create recommendation</button>
 <div class="guide acceptanceThanks" id="acceptanceStamp">No survey acceptance recorded yet.</div>
 </div>
+
+<div class="templateActionCard" id="recommendationTemplateCard">
+  <h2>Recommendation document</h2>
+  <p class="hint">Create the branded customer recommendation from the survey details. Use Print / Save as PDF, then send from Outlook with the short email draft.</p>
+  <div class="templateButtonGrid">
+    <button class="primary" id="previewRecommendationTemplate" type="button">Preview recommendation</button>
+    <button class="secondary" id="printRecommendationTemplate" type="button">Print / save as PDF</button>
+    <button class="secondary" id="downloadRecommendationTemplate" type="button">Download HTML copy</button>
+    <button class="secondary" id="openShortRecommendationEmail" type="button">Open Outlook email draft</button>
+  </div>
+  <div class="guide templateNotice" id="templateNotice">The recommendation will use the selected battery brand, panel model, extras, bird protection and SPDs.</div>
+</div>
+
 </section>
 <section class="panel internalPanel" id="internal">
 <h2>Tools</h2>
@@ -487,7 +500,7 @@
 <details class="internalGroup">
 <summary>App tools</summary>
 <button class="secondary" id="updateApp" type="button">Update app / clear cache</button>
-<div class="versionBadge" id="appVersionBadge">App version: v50</div>
+<div class="versionBadge" id="appVersionBadge">App version: v51</div>
 </details>
 </section>
 </main>
