@@ -1,6 +1,6 @@
 const KEY='tlgec_current_draft_v1'; const SURVEYS_KEY='tlgec_surveys_saved_v1';
 let selectedFiles=[]; let currentSavedId=null; let signatureData=''; let signaturePadDirty=false;
-const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','photoNotes','siteRiskNotes','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','solarSelfUsePct','autoPanelChoice','autoPanelMargin','panelModel','panelCount','systemOverride','framingSelection','tigoQty','tigoPrice','batteryBrand','sigBatteryModel','sigModuleQty','sigBatteryOnlyController','teslaSaleType','pw3Qty','dcExpQty','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','eddiPrice','otherExtraName','otherExtraPrice','extrasNote','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut','salesStatus','mainBlocker','customerLikelihood','blockerReason'];
+const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','photoNotes','siteRiskNotes','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','solarSelfUsePct','autoPanelChoice','autoPanelMargin','panelModel','panelCount','systemOverride','framingSelection','tigoQty','tigoPrice','batteryBrand','sigBatteryModel','sigModuleQty','sigBatteryOnlyController','teslaSaleType','pw3Qty','dcExpQty','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','teslaOtherNotes','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','eddiPrice','otherExtraName','otherExtraPrice','extrasNote','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut','salesStatus','mainBlocker','customerLikelihood','blockerReason'];
 const checks=['heatPump','highEvening','backupNeeded','askBill','askDecisionMaker','askCompetitors','askTiming','askBackup','askBudget','solar','battery','ev','eddi','otherExtra','tigo','bird','spds','pw3','gateway','dcExp','sigGateway','photoRoofFront','photoRoofRear','photoMeter','photoCU','photoFuse','photoBatteryLoc','photoInverterLoc','photoCableRoute','photoAccess','customerRouteAgreed'];
 function $(x){return document.getElementById(x)}
 
@@ -560,7 +560,7 @@ function renderCustomerAgreementSummary(){
   if(!box) return;
   const route=($('cable')?.value||'Route to be confirmed in final design.');
   const batteryLoc=($('batteryLoc')?.value||'Battery location to be confirmed.');
-  const invLoc=($('invLoc')?.value||'Inverter/controller location to be confirmed.');
+  const invLoc=($('invLoc')?.value||'Battery / controller location to be confirmed.');
   const access=($('access')?.value||'Access/scaffold to be confirmed.');
   const q=quote(), p=panelParts();
   const solar=$('solar')?.checked?`${$('panelCount')?.value||0} x ${p.name}, ${q.kWp} kWp`:'No solar included';
@@ -613,7 +613,7 @@ ${roofLines()}
 Dimension notes: ${d.dims}
 Obstructions / shading: ${d.shade}
 Battery location: ${d.batteryLoc}
-Inverter/controller location: ${d.invLoc}
+Battery / controller location: ${d.invLoc}
 Meter/CU/supply: ${d.meter}
 Cable route: ${d.cable}
 Access/scaffold: ${d.access}
@@ -1193,7 +1193,7 @@ function bindCriticalButtons(){
   if(monday) monday.onchange=e=>readCSVFileAndSave((e.target.files||[])[0]);
 }
 
-document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v50';load();initSignaturePad();
+document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v54';load();initSignaturePad();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}if(['annualKwh','dailyKwh','heatPump','highEvening','backupNeeded','ev','wants','preInterest'].includes(el.id))recommendBattery(false);if(['teslaSaleType','pw3Qty','dcExpQty','gateway','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','batteryBrand'].includes(el.id))syncTeslaOptions();if(['ev','wants','preInterest'].includes(el.id))toggleConditionalFields();save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
@@ -1514,7 +1514,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
     ['shade','Obstructions / shading notes'],
     ['meter','Meter / CU / incoming supply notes'],
     ['batteryLoc','Battery location'],
-    ['invLoc','Inverter/controller location'],
+    ['invLoc','Battery / controller location'],
     ['cable','Cable route'],
     ['access','Access / scaffold notes'],
     ['photoRoofFront','Roof front/access photo ticked', () => checked('photoRoofFront')],
@@ -1523,7 +1523,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
     ['photoCU','Consumer unit photo ticked', () => checked('photoCU')],
     ['photoFuse','Incoming supply/fuse photo ticked', () => checked('photoFuse')],
     ['photoBatteryLoc','Battery location photo ticked', () => checked('photoBatteryLoc')],
-    ['photoInverterLoc','Inverter/controller location photo ticked', () => checked('photoInverterLoc')],
+    ['photoInverterLoc','Battery / controller location photo ticked', () => checked('photoInverterLoc')],
     ['photoCableRoute','Cable route photo ticked', () => checked('photoCableRoute')],
     ['photoAccess','Access/scaffold photo ticked', () => checked('photoAccess')],
     ['customerRouteAgreed','Customer route/location agreement ticked', () => checked('customerRouteAgreed')],
@@ -1612,7 +1612,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
     const box = $('customerAgreementSummary');
     if(!box) return;
     const battery = val('batteryLoc') || 'Battery location not yet captured';
-    const inverter = val('invLoc') || 'Inverter/controller location not yet captured';
+    const inverter = val('invLoc') || 'Battery / controller location not yet captured';
     const cable = val('cable') || 'Cable route not yet captured';
     const access = val('access') || 'Access/scaffold notes not yet captured';
     const next = val('nextAction') || 'Prepare formal quote for review and e-signing';
@@ -1698,7 +1698,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
         ['Consumer unit', checked('photoCU')],
         ['Incoming supply/fuse', checked('photoFuse')],
         ['Battery location', checked('photoBatteryLoc')],
-        ['Inverter/controller location', checked('photoInverterLoc')],
+        ['Battery / controller location', checked('photoInverterLoc')],
         ['Cable route', checked('photoCableRoute')],
         ['Access/scaffold', checked('photoAccess')]
       ].map(([name,ok]) => `${ok ? '✓' : '✗'} ${name}`).join('\n');
@@ -1901,12 +1901,10 @@ Site risk/blocker notes: ${val('siteRiskNotes')}`;
   }
 
   function updateTigoDefault(){
-    const count = num($('panelCount')?.value || 0);
+    // Tigos are not always needed on every panel. Keep quantity manual.
     const tigoQty = $('tigoQty');
-    if($('tigo')?.checked && tigoQty && (!num(tigoQty.value) || tigoQty.dataset.auto === 'yes')){
-      tigoQty.value = count || 0;
-      tigoQty.dataset.auto = 'yes';
-    }
+    if(tigoQty && tigoQty.value === '') tigoQty.value = '0';
+    if(tigoQty) tigoQty.dataset.auto = '';
   }
 
   function applyFitToRow(row, fit, force){
@@ -2075,9 +2073,9 @@ Site risk/blocker notes: ${val('siteRiskNotes')}`;
         });
         el.addEventListener('change', () => {
           if(id === 'panelModel' && $('autoPanelChoice')) $('autoPanelChoice').value = el.value || 'AUTO';
-          if(id === 'tigo' && $('tigo')?.checked && $('tigoQty') && !num($('tigoQty').value)){
-            $('tigoQty').value = num($('panelCount')?.value||0);
-            $('tigoQty').dataset.auto='yes';
+          if(id === 'tigo' && $('tigoQty') && $('tigoQty').value === ''){
+            $('tigoQty').value = '0';
+            $('tigoQty').dataset.auto='';
           }
           autoFitRoofPanels(false);
           renderPanelSenseCheck();
@@ -3570,7 +3568,7 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
 
 /* v52 export pack, local media pack and completion workflow */
 (function(){
-  const VERSION = 'v53';
+  const VERSION = 'v54';
   const $ = id => document.getElementById(id);
   const EMAIL_SUBJECT = 'Your Little Green Energy survey recommendation';
 
@@ -4002,7 +4000,7 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
 
 /* v53 persistent quick capture gallery */
 (function(){
-  const VERSION = 'v53';
+  const VERSION = 'v54';
   const $ = id => document.getElementById(id);
   const DB_NAME = 'lg_survey_media_v1';
   const DB_VERSION = 1;
@@ -4016,7 +4014,7 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
     'Roof',
     'Distribution board / CU',
     'Meter / fuse',
-    'Battery / inverter location',
+    'Battery / controller location',
     'Cable route',
     'Access / scaffold',
     'Other'
@@ -4157,7 +4155,7 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
       'Roof': ['photoRoofFront','photoRoofRear'],
       'Distribution board / CU': ['photoCU'],
       'Meter / fuse': ['photoMeter','photoFuse'],
-      'Battery / inverter location': ['photoBatteryLoc','photoInverterLoc'],
+      'Battery / controller location': ['photoBatteryLoc','photoInverterLoc'],
       'Cable route': ['photoCableRoute'],
       'Access / scaffold': ['photoAccess']
     };
@@ -4466,4 +4464,227 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
   else bind();
+})();
+
+
+
+/* v54: survey media stay-on-page, combined equipment location, simplified Tesla route */
+(function(){
+  const VERSION = 'v54';
+  const ACTIVE_TAB_KEY = 'lg_survey_active_tab_v1';
+  const $ = id => document.getElementById(id);
+
+  function rememberTab(tabId){
+    if(!tabId) return;
+    try{ localStorage.setItem(ACTIVE_TAB_KEY, tabId); }catch(e){}
+    try{
+      const url = new URL(location.href);
+      url.hash = tabId;
+      history.replaceState(null, '', url.pathname + url.search + url.hash);
+    }catch(e){}
+  }
+
+  function activateTab(tabId, opts={}){
+    const target = $(tabId);
+    if(!target) return;
+    document.querySelectorAll('nav button[data-tab]').forEach(btn => {
+      btn.classList.toggle('on', btn.dataset.tab === tabId);
+    });
+    document.querySelectorAll('main > section.panel').forEach(panel => {
+      panel.classList.toggle('on', panel.id === tabId);
+    });
+    target.classList.add('on');
+    rememberTab(tabId);
+    if(opts.scroll !== false){
+      try{ window.scrollTo({top:0,left:0,behavior:opts.smooth?'smooth':'auto'}); }catch(e){ window.scrollTo(0,0); }
+    }
+    if(tabId === 'present'){
+      setTimeout(() => {
+        try{ if(typeof refreshPresent === 'function') refreshPresent(); }catch(e){}
+        try{ if(typeof renderRecommendationPreview === 'function') renderRecommendationPreview(); }catch(e){}
+      }, 0);
+    }
+    if(tabId === 'agreement'){
+      setTimeout(() => {
+        try{ if(typeof initSignaturePad === 'function') initSignaturePad(); }catch(e){}
+      }, 0);
+    }
+  }
+
+  function restoreTab(){
+    let tab = '';
+    try{ tab = (location.hash || '').replace('#',''); }catch(e){}
+    if(!tab){
+      try{ tab = localStorage.getItem(ACTIVE_TAB_KEY) || ''; }catch(e){}
+    }
+    if(location.search.includes('newSurvey=')) tab = 'customer';
+    if(!$(tab)) tab = 'home';
+    activateTab(tab, {scroll:false});
+  }
+
+  function bindNavigation(){
+    document.querySelectorAll('nav button[data-tab]').forEach(btn => {
+      btn.onclick = function(e){
+        e.preventDefault();
+        activateTab(btn.dataset.tab, {smooth:false});
+      };
+    });
+
+    document.addEventListener('click', function(e){
+      const continueBtn = e.target && e.target.closest ? e.target.closest('.continueBtn[data-next]') : null;
+      if(continueBtn){
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        activateTab(continueBtn.dataset.next, {smooth:true});
+        return;
+      }
+
+      const navBtn = e.target && e.target.closest ? e.target.closest('nav button[data-tab]') : null;
+      if(navBtn){
+        rememberTab(navBtn.dataset.tab);
+      }
+
+      const mediaBtn = e.target && e.target.closest ? e.target.closest('.mediaQuickBtn,#addSiteFiles,#recordSiteVideo') : null;
+      if(mediaBtn){
+        rememberTab('site');
+      }
+    }, true);
+
+    ['quickPhotoInput','quickVideoInput','filesInput'].forEach(id => {
+      const el = $(id);
+      if(!el || el.dataset.v54StayBound) return;
+      el.dataset.v54StayBound = 'yes';
+      el.addEventListener('click', () => rememberTab('site'), true);
+      el.addEventListener('change', () => {
+        rememberTab('site');
+        setTimeout(() => activateTab('site', {scroll:false}), 250);
+        setTimeout(() => activateTab('site', {scroll:false}), 900);
+      }, true);
+    });
+  }
+
+  function syncEquipmentLocation(){
+    const battery = $('batteryLoc');
+    const legacyInv = $('invLoc');
+    if(!battery || !legacyInv) return;
+    if(!battery.value && legacyInv.value) battery.value = legacyInv.value;
+    legacyInv.value = battery.value || legacyInv.value || '';
+    if(!battery.dataset.v54Combined){
+      battery.dataset.v54Combined = 'yes';
+      battery.addEventListener('input', () => {
+        legacyInv.value = battery.value;
+        try{ if(typeof save === 'function') save(); }catch(e){}
+      });
+    }
+  }
+
+  function simplifyTeslaDefaults(){
+    const brand = $('batteryBrand');
+    const battery = $('battery');
+    const pw3Qty = $('pw3Qty');
+    const pw3 = $('pw3');
+    const gateway = $('gateway');
+    const saleType = $('teslaSaleType');
+
+    function applyDefault(){
+      if(brand && brand.value === 'Tesla'){
+        if(battery) battery.checked = true;
+        if(pw3Qty && !Number(pw3Qty.value || 0)) pw3Qty.value = '1';
+        if(pw3) pw3.checked = Number(pw3Qty?.value || 1) > 0;
+        if(gateway && gateway.dataset.userChanged !== 'yes') gateway.checked = true;
+        if(saleType) saleType.value = 'solarBattery';
+      }
+      try{ if(typeof syncTeslaOptions === 'function') syncTeslaOptions(); }catch(e){}
+      try{ if(typeof calculate === 'function') calculate(); }catch(e){}
+      try{ if(typeof save === 'function') save(); }catch(e){}
+    }
+
+    if(brand && !brand.dataset.v54Tesla){
+      brand.dataset.v54Tesla = 'yes';
+      brand.addEventListener('change', applyDefault);
+    }
+    if(gateway && !gateway.dataset.v54Tesla){
+      gateway.dataset.v54Tesla = 'yes';
+      gateway.addEventListener('change', () => {
+        gateway.dataset.userChanged = 'yes';
+        if(saleType) saleType.value = 'solarBattery';
+        try{ if(typeof syncTeslaOptions === 'function') syncTeslaOptions(); }catch(e){}
+        try{ if(typeof save === 'function') save(); }catch(e){}
+      });
+    }
+    ['pw3Qty','dcExpQty'].forEach(id => {
+      const el = $(id);
+      if(el && !el.dataset.v54Tesla){
+        el.dataset.v54Tesla = 'yes';
+        el.addEventListener('input', () => {
+          if(saleType) saleType.value = 'solarBattery';
+          try{ if(typeof syncTeslaOptions === 'function') syncTeslaOptions(); }catch(e){}
+          try{ if(typeof save === 'function') save(); }catch(e){}
+        });
+      }
+    });
+    // On normal page load, keep any saved Gateway choice. The HTML default is already checked for new surveys.
+    if(brand && brand.value === 'Tesla'){
+      if(battery) battery.checked = true;
+      if(pw3Qty && !Number(pw3Qty.value || 0)) pw3Qty.value = '1';
+      if(pw3) pw3.checked = Number(pw3Qty?.value || 1) > 0;
+      if(saleType) saleType.value = 'solarBattery';
+      try{ if(typeof syncTeslaOptions === 'function') syncTeslaOptions(); }catch(e){}
+    }
+  }
+
+  function fixTigoManual(){
+    const tigoQty = $('tigoQty');
+    const tigo = $('tigo');
+    if(tigoQty){
+      tigoQty.dataset.auto = '';
+      if(tigoQty.value === '') tigoQty.value = '0';
+      if(!tigoQty.dataset.v54Manual){
+        tigoQty.dataset.v54Manual = 'yes';
+        tigoQty.addEventListener('focus', () => { tigoQty.dataset.auto = ''; });
+        tigoQty.addEventListener('input', () => { tigoQty.dataset.auto = ''; });
+      }
+    }
+    if(tigo && !tigo.dataset.v54Manual){
+      tigo.dataset.v54Manual = 'yes';
+      tigo.addEventListener('change', () => {
+        setTimeout(() => {
+          const q = $('tigoQty');
+          if(q && q.dataset.auto === 'yes'){
+            q.value = '0';
+            q.dataset.auto = '';
+          }
+        }, 0);
+      }, true);
+    }
+  }
+
+  function patchVersion(){
+    const home = $('homeVersionSmall');
+    if(home) home.textContent = VERSION;
+    const badge = $('appVersionBadge');
+    if(badge) badge.textContent = 'App version: ' + VERSION;
+  }
+
+  function bind(){
+    bindNavigation();
+    syncEquipmentLocation();
+    simplifyTeslaDefaults();
+    fixTigoManual();
+    patchVersion();
+    restoreTab();
+    setTimeout(() => {
+      bindNavigation();
+      syncEquipmentLocation();
+      simplifyTeslaDefaults();
+      fixTigoManual();
+      patchVersion();
+      restoreTab();
+    }, 700);
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+
+  window.LGSurveyActivateTab = activateTab;
 })();

@@ -1134,3 +1134,31 @@ label{font-size:15px;color:#263c31}
   .mediaGallery{grid-template-columns:1fr}
   .mediaThumb img,.mediaThumb video{height:210px}
 }
+
+
+/* v54 refinements */
+.teslaQuickCard{
+  border:1px solid #cfe4d6;
+  background:linear-gradient(135deg,#f5fbf4 0%,#e9f7ec 100%);
+  border-radius:22px;
+  padding:14px 16px;
+  margin:10px 0 14px;
+  box-shadow:0 4px 14px rgba(6,40,25,.06);
+}
+.teslaQuickCard b{display:block;color:#062819;font-size:18px;margin-bottom:4px}
+.teslaQuickCard p{margin:0 0 10px;color:#3d5248;line-height:1.35}
+.gatewayToggle{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  background:white;
+  border:1px solid #d9e2da;
+  border-radius:16px;
+  padding:12px 14px;
+  margin:8px 0 0;
+}
+.legacyTeslaChecks[aria-hidden="true"],
+.legacyTeslaChecks input[hidden],
+.hiddenLegacyField{display:none!important}
+.fieldHint{display:block;color:#6b7a70;font-size:13px;font-weight:650;margin-top:5px;line-height:1.25}
+.mediaTile{scroll-margin-top:14px}

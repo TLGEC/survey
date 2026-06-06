@@ -139,7 +139,7 @@
     <button type="button" class="mediaQuickBtn" data-media-cat="Roof">Roof</button>
     <button type="button" class="mediaQuickBtn" data-media-cat="Distribution board / CU">Dist board / CU</button>
     <button type="button" class="mediaQuickBtn" data-media-cat="Meter / fuse">Meter / fuse</button>
-    <button type="button" class="mediaQuickBtn" data-media-cat="Battery / inverter location">Battery / controller</button>
+    <button type="button" class="mediaQuickBtn" data-media-cat="Battery / controller location">Battery / controller</button>
     <button type="button" class="mediaQuickBtn" data-media-cat="Cable route">Cable run</button>
     <button type="button" class="mediaQuickBtn" data-media-cat="Access / scaffold">Access</button>
     <button type="button" class="mediaQuickBtn" data-media-cat="Other">Other</button>
@@ -164,8 +164,8 @@
 <label><input id="photoMeter" type="checkbox"/> Meter position</label>
 <label><input id="photoCU" type="checkbox"/> Consumer unit</label>
 <label><input id="photoFuse" type="checkbox"/> Incoming supply / fuse</label>
-<label><input id="photoBatteryLoc" type="checkbox"/> Battery location</label>
-<label><input id="photoInverterLoc" type="checkbox"/> Inverter/controller location</label>
+<label><input id="photoBatteryLoc" type="checkbox"/> Battery / controller location</label>
+<input id="photoInverterLoc" type="checkbox" hidden/>
 <label><input id="photoCableRoute" type="checkbox"/> Cable route</label>
 <label><input id="photoAccess" type="checkbox"/> Scaffold/access</label>
 </div>
@@ -203,8 +203,8 @@
 <label>Reference measurement / roof dimension notes<textarea id="dims" placeholder="Laser measure notes, tile count, Google Earth check, sketch notes..."></textarea></label>
 </details>
 <label>Obstructions / shading<textarea id="shade" placeholder="Chimney, trees, dormers, skylights, neighbour shading..."></textarea></label>
-<label>Battery location<textarea id="batteryLoc"></textarea></label>
-<label>Inverter/controller location<textarea id="invLoc"></textarea></label>
+<label>Battery / controller location<textarea id="batteryLoc" placeholder="Battery, Powerwall, inverter or controller position. Note wall type, clearance, outside/inside location and any customer preference."></textarea><span class="fieldHint">Use this single box when the equipment is going in the same area.</span></label>
+<input id="invLoc" type="hidden"/>
 <label>Meter / CU / incoming supply<textarea id="meter"></textarea></label>
 <label>Cable route<textarea id="cable"></textarea></label>
 <label>Access / scaffold<textarea id="access"></textarea></label>
@@ -278,22 +278,25 @@
 </select></label>
 <div class="quoteBox batteryChoiceCard teslaChoice" id="teslaBox">
 <div class="batteryBrandHead"><span class="batteryLogo teslaLogo">TESLA</span><span>Powerwall battery option</span></div>
-<label>Powerwall sale type<select id="teslaSaleType">
-<option selected="" value="solarBattery">Solar + battery / retrofit battery</option>
-<option value="batteryGateway">Battery + Gateway only</option>
-<option value="batteryOnly">Battery only, no Gateway</option>
-<option value="gatewayOnly">Gateway only / manual use</option>
-</select></label>
+<input id="teslaSaleType" type="hidden" value="solarBattery"/>
+<div class="teslaQuickCard">
+  <b>Usual Tesla route</b>
+  <p>Powerwall 3 is the main selection. Add Gateway when backup or future backup readiness is part of the recommendation.</p>
+  <label class="gatewayToggle"><input checked="" id="gateway" type="checkbox"/> Backup Gateway included</label>
+</div>
 <div class="two">
 <label>Powerwall 3 units<input id="pw3Qty" max="4" min="0" type="number" value="1"/><span class="fieldHint">Tesla supports up to 4 Powerwall 3 units.</span></label>
 <label>DC Expansion packs<input id="dcExpQty" max="3" min="0" type="number" value="0"/><span class="fieldHint">Max 3 expansions total. Expansions require a Powerwall 3.</span></label>
 </div>
-<div aria-hidden="true" class="scope legacyTeslaChecks">
-<label><input checked="" id="pw3" type="checkbox"/> Powerwall 3</label>
-<label><input id="gateway" type="checkbox"/> Backup Gateway</label>
-<label><input id="dcExp" type="checkbox"/> DC Expansion</label>
+<div aria-hidden="true" class="legacyTeslaChecks">
+<input checked="" id="pw3" type="checkbox" hidden/>
+<input id="dcExp" type="checkbox" hidden/>
 </div>
-<div class="teslaConfigGuide" id="teslaConfigGuide">1 x Powerwall 3, no DC Expansion selected.</div>
+<details class="quickDetails">
+<summary>Unusual Tesla setup note</summary>
+<label>Other Tesla setup notes<textarea id="teslaOtherNotes" placeholder="Gateway only, retrofit notes, customer already has solar, backup expectation, or anything unusual."></textarea></label>
+</details>
+<div class="teslaConfigGuide" id="teslaConfigGuide">1 x Powerwall 3 + Backup Gateway, no DC Expansion selected.</div>
 <details class="quickDetails advancedPricing">
 <summary>Advanced Tesla pricing</summary>
 <p class="hint">Guide prices are used for the Tesla net position guide. Internal proposal total still follows the quote builder unless a system override is entered.</p>
@@ -531,7 +534,7 @@
 <details class="internalGroup">
 <summary>App tools</summary>
 <button class="secondary" id="updateApp" type="button">Update app / clear cache</button>
-<div class="versionBadge" id="appVersionBadge">App version: v53</div>
+<div class="versionBadge" id="appVersionBadge">App version: v54</div>
 </details>
 </section>
 </main>
