@@ -313,3 +313,32 @@ nav button{touch-action:manipulation}
 .conditionalField{display:none}
 .decisionDetails{background:#f3f8f4}
 .quoteCheckBox{margin-top:14px}
+
+
+/* v42 premium customer presentation */
+.legacyTeslaChecks{position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden}
+.teslaConfigGuide{margin:12px 0}
+.quoteGood,.quoteWarn{border-radius:18px;padding:14px;border:1px solid #d9e2da;background:#f7faf4;line-height:1.35}
+.quoteGood{background:#eff8ed;border-color:#b9ddb1}
+.quoteWarn{background:#fff6e8;border-color:#efd19b}
+.premiumCard{background:linear-gradient(135deg,#ffffff 0%,#f7faf4 100%);border:1px solid #d9e2da;border-radius:26px;padding:18px;margin:14px 0;box-shadow:0 8px 24px rgba(6,40,25,.07)}
+.premiumCard h3{margin:4px 0 10px;font-size:22px;color:#062819}
+.cardKicker,.smallCaps{display:block;text-transform:uppercase;letter-spacing:.11em;font-size:12px;font-weight:950;color:#6c7a70}
+.statusRow{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.statusPill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;background:#eef3ef;border:1px solid #d9e2da;padding:7px 10px;font-size:13px;font-weight:900;color:#0b1f18}
+.statusPill.good{background:#eff8ed;border-color:#b9ddb1;color:#285f25}
+.statusPill.warn{background:#fff6e8;border-color:#efd19b;color:#7b5200}
+.statusPill.bad{background:#fff0ef;border-color:#efb3ad;color:#8c1f13}
+.confidenceCard{display:grid;gap:8px}
+.confidenceCard b{display:block;font-size:42px;line-height:.95;color:#062819}
+.confidenceCard.good{border-color:#b9ddb1}
+.confidenceCard.warn{border-color:#efd19b}
+.confidenceCard.bad{border-color:#efb3ad}
+.missingMini{background:white;border-radius:16px;padding:12px;border:1px solid #e4ebe5}
+.whyCard ul{margin:8px 0 0;padding-left:20px;line-height:1.45}
+.storyCard p{margin:8px 0;line-height:1.4}
+.agreementGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.agreementGrid div{background:white;border:1px solid #d9e2da;border-radius:16px;padding:12px}
+.agreementGrid b{display:block;color:#062819;margin-bottom:4px}
+.agreementGrid span{color:#3d5248;font-size:15px;line-height:1.35}
+@media(max-width:760px){.agreementGrid{grid-template-columns:1fr}.confidenceCard b{font-size:36px}}

@@ -1,6 +1,6 @@
 const KEY='tlgec_current_draft_v1'; const SURVEYS_KEY='tlgec_surveys_saved_v1';
 let selectedFiles=[]; let currentSavedId=null; let signatureData=''; let signaturePadDirty=false;
-const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','photoNotes','siteRiskNotes','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','solarSelfUsePct','panelModel','panelCount','systemOverride','framingSelection','tigoPrice','batteryBrand','sigBatteryModel','sigModuleQty','sigBatteryOnlyController','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','eddiPrice','otherExtraName','otherExtraPrice','extrasNote','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut','salesStatus','mainBlocker','customerLikelihood','blockerReason'];
+const ids=['customerName','surveyDate','address','phone','email','decisionMakers','competitors','mondayId','leadSource','appointmentTime','crmStatus','crmNotes','preInterest','preUsage','promisesMade','crmPaste','wants','whyNow','roof','roof1Name','roof1Width','roof1Slope','roof1Pitch','roof1Azimuth','roof2Name','roof2Width','roof2Slope','roof2Pitch','roof2Azimuth','dims','shade','batteryLoc','invLoc','meter','cable','access','photoNotes','siteRiskNotes','annualKwh','dailyKwh','tariff','peak','offpeak','annualSpend','paybackNightRate','miles','exportRate','solarSelfUsePct','panelModel','panelCount','systemOverride','framingSelection','tigoPrice','batteryBrand','sigBatteryModel','sigModuleQty','sigBatteryOnlyController','teslaSaleType','pw3Qty','dcExpQty','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','sigController','sigControllerOverride','sigGatewayPrice','sig6Qty','sig10Qty','sig6Price','sig10Price','scaffoldLifts','zappiPrice','eddiPrice','otherExtraName','otherExtraPrice','extrasNote','manualDiscount','commercialNote','acceptanceNote','nextAction','followUp','confidence','gut','salesStatus','mainBlocker','customerLikelihood','blockerReason'];
 const checks=['heatPump','highEvening','backupNeeded','askBill','askDecisionMaker','askCompetitors','askTiming','askBackup','askBudget','solar','battery','ev','eddi','otherExtra','tigo','bird','spds','pw3','gateway','dcExp','sigGateway','photoRoofFront','photoRoofRear','photoMeter','photoCU','photoFuse','photoBatteryLoc','photoInverterLoc','photoCableRoute','photoAccess','customerRouteAgreed'];
 function $(x){return document.getElementById(x)}
 
@@ -69,6 +69,78 @@ const framingDayBands = {
 };
 function num(v){return Number(v||0)||0}
 
+function clampNumber(v,min,max,fallback=0){
+  let n=Number(v);
+  if(!Number.isFinite(n)) n=fallback;
+  return Math.max(min,Math.min(max,Math.round(n)));
+}
+function teslaPw3Qty(){
+  const el=$('pw3Qty');
+  if(el) return clampNumber(el.value,0,4,$('pw3')?.checked?1:0);
+  return $('pw3')?.checked?1:0;
+}
+function teslaExpansionQty(){
+  const el=$('dcExpQty');
+  if(el) return clampNumber(el.value,0,3,$('dcExp')?.checked?1:0);
+  return $('dcExp')?.checked?1:0;
+}
+function syncTeslaOptions(){
+  const saleType=$('teslaSaleType')?.value||'solarBattery';
+  let pw3=teslaPw3Qty();
+  let exp=teslaExpansionQty();
+  if(saleType==='gatewayOnly'){ pw3=0; exp=0; }
+  if(exp>0 && pw3<1) pw3=1;
+  pw3=Math.min(pw3,4); exp=Math.min(exp,3);
+  if($('pw3Qty') && Number($('pw3Qty').value)!==pw3) $('pw3Qty').value=pw3;
+  if($('dcExpQty') && Number($('dcExpQty').value)!==exp) $('dcExpQty').value=exp;
+  if($('pw3')) $('pw3').checked=pw3>0;
+  if($('dcExp')) $('dcExp').checked=exp>0;
+  if($('gateway') && (saleType==='batteryGateway'||saleType==='gatewayOnly')) $('gateway').checked=true;
+  if($('gateway') && saleType==='batteryOnly') $('gateway').checked=false;
+  renderTeslaConfigGuide();
+}
+function teslaStorageKwh(){
+  return (teslaPw3Qty()+teslaExpansionQty())*13.5;
+}
+function teslaRetailGuide(){
+  const pw3=teslaPw3Qty(), exp=teslaExpansionQty();
+  const gateway=$('gateway')?.checked ? 1 : 0;
+  const gross=(pw3*num($('pw3Price')?.value||6500))+(gateway*num($('gatewayPrice')?.value||1000))+(exp*num($('dcPrice')?.value||5200));
+  const discounts=num($('teslaDiscounts')?.value||0);
+  return {gross,discounts,net:Math.max(0,gross-discounts),pw3,exp,gateway};
+}
+function teslaConfigMessages(){
+  const saleType=$('teslaSaleType')?.value||'solarBattery';
+  const pw3=teslaPw3Qty(), exp=teslaExpansionQty();
+  const messages=[];
+  if(exp>0 && pw3<1) messages.push('DC Expansion requires at least one Powerwall 3.');
+  if(pw3>4) messages.push('Powerwall 3 quantity capped at 4.');
+  if(exp>3) messages.push('DC Expansion quantity capped at 3 total.');
+  if(pw3+exp>7) messages.push('Tesla maximum total system size is 7 units.');
+  if(saleType==='gatewayOnly' && pw3>0) messages.push('Gateway-only mode should not include Powerwall units.');
+  return messages;
+}
+function teslaConfigText(){
+  const saleType=$('teslaSaleType')?.value||'solarBattery';
+  const guide=teslaRetailGuide();
+  const parts=[];
+  if(guide.pw3) parts.push(`${guide.pw3} x Powerwall 3`);
+  if(guide.gateway) parts.push('Backup Gateway');
+  if(guide.exp) parts.push(`${guide.exp} x DC Expansion`);
+  if(!parts.length && saleType==='gatewayOnly') parts.push('Backup Gateway only');
+  if(!parts.length) parts.push('No Tesla hardware selected');
+  return parts.join(' + ');
+}
+function renderTeslaConfigGuide(){
+  const box=$('teslaConfigGuide');
+  if(!box) return;
+  const guide=teslaRetailGuide();
+  const messages=teslaConfigMessages();
+  const storage=teslaStorageKwh();
+  box.innerHTML=`<div class="${messages.length?'quoteWarn':'quoteGood'}"><b>${teslaConfigText()}</b><p>${storage?storage.toFixed(1)+' kWh nominal storage':'Gateway-only / manual configuration'}</p><p>Guide gross ${money(guide.gross)}${guide.discounts?` less discounts ${money(guide.discounts)} = ${money(guide.net)}`:''}</p>${messages.length?'<ul>'+messages.map(m=>`<li>${m}</li>`).join('')+'</ul>':'<p>Configuration sense check passed. Final Tesla design remains subject to survey and product rules.</p>'}</div>`;
+}
+
+
 function money(n){return '£'+Number(n||0).toLocaleString('en-GB',{maximumFractionDigits:0})}
 function panelParts(){let [name,watt,dim,weight]=($('panelModel').value||'AIKO 495W|495|1762 x 1134 x 30 mm|20.6 kg').split('|');return {name,watt:+watt,dim,weight}}
 function kWp(){let p=panelParts();return ((+($('panelCount').value||0)*p.watt)/1000).toFixed(2)}
@@ -132,7 +204,7 @@ function roofLines(){
 
 function getData(){let d={};ids.forEach(i=>d[i]=$(i)?.value||'');checks.forEach(i=>d[i]=$(i)?.checked||false);d.scope=scope();d.flags=flags();d.files=selectedFiles.map(f=>f.name);d.roofPlanes=getRoofPlanes();d.batteryGuide=$('batteryGuide').textContent;d.quote=quote();d.present=$('presentSummary').innerText||'';d.acceptance=$('acceptanceStamp').innerText||'';d.signatureData=signatureData;d.currentSavedId=currentSavedId;return d}
 function save(){localStorage.setItem(KEY,JSON.stringify(getData()));render();renderSavedList();renderHomeSavedList()}
-function load(){let raw=localStorage.getItem(KEY);if(raw){try{let d=JSON.parse(raw);ids.forEach(i=>{if($(i))$(i).value=d[i]||''});checks.forEach(i=>{if($(i))$(i).checked=!!d[i]}); if(d.acceptance)$('acceptanceStamp').innerText=d.acceptance; currentSavedId=d.currentSavedId||null; signatureData=d.signatureData||''; setRoofPlanes(d.roofPlanes||[]);}catch(e){}}if(!document.querySelector('.roofPlaneRow')) setRoofPlanes([]);if(!$('surveyDate').value)$('surveyDate').value=today();if(!$('nextAction').value)$('nextAction').value='Send formal quote';if($('customerName').value && $('saveName')) $('saveName').value=$('customerName').value;render();updateSigPreview();refreshPresent();renderSavedList();renderHomeSavedList();updateSaveStatus();toggleConditionalFields();recommendBattery(false)}
+function load(){let raw=localStorage.getItem(KEY);if(raw){try{let d=JSON.parse(raw);ids.forEach(i=>{if($(i))$(i).value=d[i]||''});checks.forEach(i=>{if($(i))$(i).checked=!!d[i]}); if(d.acceptance)$('acceptanceStamp').innerText=d.acceptance; currentSavedId=d.currentSavedId||null; signatureData=d.signatureData||''; setRoofPlanes(d.roofPlanes||[]);}catch(e){}}if(!document.querySelector('.roofPlaneRow')) setRoofPlanes([]);if(!$('surveyDate').value)$('surveyDate').value=today();if(!$('nextAction').value)$('nextAction').value='Send formal quote';if($('customerName').value && $('saveName')) $('saveName').value=$('customerName').value;render();updateSigPreview();refreshPresent();renderSavedList();renderHomeSavedList();updateSaveStatus();toggleConditionalFields();syncTeslaOptions();recommendBattery(false);renderTeslaConfigGuide();renderCustomerAgreementSummary()}
 function syncUsage(changed){let a=parseFloat($('annualKwh').value||0), d=parseFloat($('dailyKwh').value||0);if(changed==='annual' && a>0)$('dailyKwh').value=(a/365).toFixed(1);if(changed==='daily' && d>0)$('annualKwh').value=Math.round(d*365)}
 function recommendBattery(shouldSave=true){let k=parseFloat($('annualKwh')?.value||0), daily=parseFloat($('dailyKwh')?.value||0), hp=$('heatPump')?.checked, ev=$('ev')?.checked, backup=$('backupNeeded')?.checked;let txt='Enter annual or daily usage to guide battery sizing.';if(k||daily){if(!daily)daily=k/365;if(!k)k=daily*365;let rec='';if(daily<10)rec='Sigenergy 6.0 or Sigenergy 10.0.';else if(daily<18)rec='Sigenergy 10.0 as the clean default, or Powerwall 3 if Tesla/backup route is preferred.';else if(daily<28)rec='Powerwall 3 or 2 x Sigenergy 10.0.';else rec='Powerwall 3 + DC Expansion, or a larger Sigenergy stack.';if(ev||hp)rec+=' EV/heat pump usage may justify stepping up storage once the load profile is reviewed.';if(backup)rec+=' Backup requirement pushes the design toward a Gateway/backup-capable route.';txt=`Guide: ${rec} Average use is about ${daily.toFixed(1)} kWh/day (${Math.round(k)} kWh/year).`;}if($('batteryGuide'))$('batteryGuide').textContent=txt;if(shouldSave)save()}
 function toggleConditionalFields(){const wants=(($('wants')?.value||'')+' '+($('preInterest')?.value||'')).toLowerCase();const evRelevant=!!$('ev')?.checked||wants.includes('ev')||wants.includes('electric vehicle')||wants.includes('zappi');const wrap=$('evMilesWrap');if(wrap)wrap.style.display=evRelevant?'block':'none';}
@@ -195,11 +267,16 @@ function updateSigPreview(){
 function batteryCostInternal(){
   let brand=$('batteryBrand').value, cost=0, text='None', inverterCost=0, controllerText='';
   if(brand==='Tesla'){
-    let hasPW3=$('pw3').checked, hasGateway=$('gateway').checked, hasExpansion=$('dcExp').checked;
-    if(hasPW3){cost+=4075;text='Tesla Powerwall 3';}
-    if(hasGateway){cost+=680;text += ' + Gateway';}
-    if(hasExpansion){cost+=3275;text += ' + DC Expansion';}
-    cost-=num($('teslaDiscounts').value);
+    syncTeslaOptions();
+    const pw3=teslaPw3Qty();
+    const exp=teslaExpansionQty();
+    const hasGateway=!!$('gateway')?.checked;
+    if(pw3>0){cost+=pw3*4075;}
+    if(hasGateway){cost+=680;}
+    if(exp>0){cost+=exp*3275;}
+    cost-=num($('teslaDiscounts')?.value||0);
+    text=teslaConfigText();
+    controllerText='Tesla configuration guide: '+teslaStorageKwh().toFixed(1)+' kWh nominal storage';
   }
   if(brand==='Sigenergy'){
     const hasSolar=$('solar')?.checked && num($('panelCount')?.value)>0;
@@ -243,7 +320,7 @@ function quote(){
   let admin = 0.25*PRICE_GUIDE.labour.admin;
   let labour = pvInstaller+pvLabourer+electrician+pm+designer+admin;
 
-  let carriage = (kWp()>8 || ((num($('sigModuleQty')?.value||0)>1)||(num($('sig6Qty')?.value||0)+num($('sig10Qty')?.value||0)>1)) || $('dcExp').checked) ? PRICE_GUIDE.carriage*2 : PRICE_GUIDE.carriage;
+  let carriage = (kWp()>8 || ((num($('sigModuleQty')?.value||0)>1)||(num($('sig6Qty')?.value||0)+num($('sig10Qty')?.value||0)>1)) || teslaExpansionQty()>0) ? PRICE_GUIDE.carriage*2 : PRICE_GUIDE.carriage;
   let logistics = carriage;
   let access = scaffoldCost($('scaffoldLifts').value,hasSolar);
   let other = PRICE_GUIDE.otherCosts;
@@ -310,10 +387,7 @@ function getNightRateForPayback(){
 function batteryUsableKwhForPayback(){
   const brand=$('batteryBrand')?.value||'None';
   if(brand==='Tesla'){
-    let total=0;
-    if($('pw3')?.checked) total+=13.5;
-    if($('dcExp')?.checked) total+=13.5;
-    return total;
+    return teslaStorageKwh();
   }
   if(brand==='Sigenergy'){
     if($('sigBatteryModel')){
@@ -382,8 +456,76 @@ function renderPaybackSummary(){
   </div>`;
 }
 
-function refreshPresent(){
+
+function customerStoryHTML(){
+  const customer=($('customerName')?.value||'Customer').trim();
+  const priorities=($('wants')?.value||'Not captured yet').trim();
+  const reason=($('whyNow')?.value||'Reason not captured yet').trim();
+  const concern=($('blockerReason')?.value||$('mainBlocker')?.value||'No concern captured yet').trim();
+  const decision=($('decisionMakers')?.value||'Decision maker not captured').trim();
+  const flagsText=flags ? flags() : '';
+  return `<div class="premiumCard storyCard">
+    <div class="cardKicker">Customer story</div>
+    <h3>${customer}</h3>
+    <div class="statusRow">
+      ${priorities!=='Not captured yet'?'<span class="statusPill good">Priority captured</span>':'<span class="statusPill warn">Priority missing</span>'}
+      ${decision!=='Decision maker not captured'?'<span class="statusPill good">Decision path known</span>':'<span class="statusPill warn">Decision path unclear</span>'}
+      ${flagsText?`<span class="statusPill">${flagsText}</span>`:''}
+    </div>
+    <p><b>What matters:</b> ${priorities}</p>
+    <p><b>Why now:</b> ${reason}</p>
+    <p><b>Concern to handle:</b> ${concern}</p>
+  </div>`;
+}
+function designConfidence(){
+  let checks=[];
+  const add=(label,ok,weight=1)=>checks.push({label,ok:!!ok,weight});
+  add('Usage captured', !!(($('annualKwh')?.value||'')||($('dailyKwh')?.value||'')), 2);
+  add('Roof dimensions captured', (typeof getRoofPlanes==='function' && getRoofPlanes().some(r=>r.width&&r.slope)), 2);
+  add('Panel count selected', Number($('panelCount')?.value||0)>0 || !$('solar')?.checked, 2);
+  add('Panel fit sense checked', !!($('panelSenseCheck')?.innerText||'').includes('fit'), 1);
+  add('Battery/inverter location agreed', !!(($('batteryLoc')?.value||'') && ($('invLoc')?.value||'')), 2);
+  add('Cable route captured', !!($('cable')?.value||''), 2);
+  add('Meter/CU/supply captured', !!($('meter')?.value||''), 2);
+  add('Customer route agreement ticked', !!$('customerRouteAgreed')?.checked, 2);
+  add('Customer close temperature captured', !!($('customerLikelihood')?.value||''), 1);
+  const done=checks.reduce((a,c)=>a+(c.ok?c.weight:0),0);
+  const max=checks.reduce((a,c)=>a+c.weight,0);
+  const score=Math.round(done/max*100);
+  const missing=checks.filter(c=>!c.ok).map(c=>c.label);
+  return {score,missing,checks};
+}
+function designConfidenceHTML(){
+  const d=designConfidence();
+  const cls=d.score>=85?'good':d.score>=65?'warn':'bad';
+  return `<div class="premiumCard confidenceCard ${cls}">
+    <div><span class="cardKicker">Design confidence</span><b>${d.score}%</b></div>
+    <p>${d.missing.length?'Strong enough to discuss, with items still to confirm.':'Core design information captured for a clean formal quote.'}</p>
+    <div class="statusRow">${d.checks.slice(0,6).map(c=>`<span class="statusPill ${c.ok?'good':'warn'}">${c.ok?'✓':'•'} ${c.label}</span>`).join('')}</div>
+    ${d.missing.length?`<div class="missingMini"><b>Confirm next:</b> ${d.missing.slice(0,4).join(', ')}</div>`:''}
+  </div>`;
+}
+function whyThisSystemHTML(){
   const q=quote(), p=panelParts();
+  const usage=getAnnualUsageForPayback ? getAnnualUsageForPayback() : 0;
+  const battery=customerBatteryTitle();
+  const tariff=($('tariff')?.value||'the current tariff').trim();
+  const fit=($('panelSenseCheck')?.innerText||'Panel fit has been sense checked from the entered roof information where available.');
+  const points=[
+    $('solar')?.checked ? `The solar recommendation is based on ${$('panelCount')?.value||0} x ${p.name} panels for a proposed ${q.kWp} kWp array.` : 'No solar roof works are included in this route.',
+    ($('batteryBrand')?.value||'None')!=='None' ? `The storage route is ${battery}, selected around usage, tariff opportunity and evening demand.` : 'No battery has been selected at this stage.',
+    usage ? `Usage basis: around ${Math.round(usage).toLocaleString()} kWh/year on ${tariff}.` : `Tariff basis: ${tariff}. Usage should be confirmed before final savings are relied on.`,
+    fit.length>20 ? fit.split('\n')[0] : 'Roof fit remains subject to measured survey and final design.'
+  ];
+  return `<div class="premiumCard whyCard"><div class="cardKicker">Why this system</div><h3>Right-sized around the home, not just maximum kit</h3><ul>${points.map(p=>`<li>${p}</li>`).join('')}</ul></div>`;
+}
+
+function refreshPresent(){
+  syncTeslaOptions();
+  const q=quote(), p=panelParts();
+  if($('customerStoryCard')) $('customerStoryCard').innerHTML=customerStoryHTML();
+  if($('designConfidenceCard')) $('designConfidenceCard').innerHTML=designConfidenceHTML();
+  if($('whyThisSystem')) $('whyThisSystem').innerHTML=whyThisSystemHTML();
   if($('presentVisuals')) $('presentVisuals').innerHTML=customerVisuals();
   if($('batteryImagePanel')) $('batteryImagePanel').innerHTML=customerBatteryImageHTML();
   const included=cleanIncludedList();
@@ -400,8 +542,26 @@ function refreshPresent(){
   ${cleanCommercialLine()}
   <p class="nextStepClean">Next step: prepare the formal quote for review and e-signing.</p>`;
   if(typeof renderPaybackSummary==='function') renderPaybackSummary();
+  if(typeof renderCustomerAgreementSummary==='function') renderCustomerAgreementSummary();
   render();
 }
+
+function renderCustomerAgreementSummary(){
+  const box=$('customerAgreementSummary');
+  if(!box) return;
+  const route=($('cable')?.value||'Cable route to be confirmed in final design.');
+  const batteryLoc=($('batteryLoc')?.value||'Battery location to be confirmed.');
+  const invLoc=($('invLoc')?.value||'Inverter/controller location to be confirmed.');
+  const access=($('access')?.value||'Access/scaffold to be confirmed.');
+  box.innerHTML=`<div class="agreementGrid">
+    <div><b>Equipment location</b><span>Battery: ${batteryLoc}<br>Inverter/controller: ${invLoc}</span></div>
+    <div><b>Cable route</b><span>${route}</span></div>
+    <div><b>Access</b><span>${access}</span></div>
+    <div><b>Recommendation</b><span>${customerBatteryTitle()}${$('solar')?.checked?` with ${$('panelCount')?.value||0} solar panels`:''}</span></div>
+  </div>
+  <p>This confirms the customer is happy for TLGEC to prepare the formal quote based on the discussion today. Final installation design remains subject to survey, DNO and technical checks.</p>`;
+}
+
 function prompt(){let d=getData(), q=d.quote;return `Survey pack for ${d.customerName||'[Customer]'}.
 
 Use the notes, photos and any SRT transcripts to create:
@@ -467,6 +627,8 @@ System size: ${q.kWp} kWp
 Tigo: ${d.tigo?'Yes at £'+d.tigoPrice+' per panel':'No'}
 SPDs: ${d.spds?'Yes':'No'}
 Battery: ${q.batteryText}
+Tesla configuration: ${($('batteryBrand')?.value==='Tesla')?teslaConfigText():''}
+Tesla storage: ${($('batteryBrand')?.value==='Tesla')?teslaStorageKwh().toFixed(1)+' kWh':''}
 Sig storage: ${q.sigNominal} kWh nominal / ${q.sigUsable} kWh usable
 Sigenergy controller/PV inverter: ${q.controllerText||''}
 Scaffold: ${d.scaffoldLifts} lift(s) included
@@ -564,6 +726,8 @@ Panel: ${q.panel.name}
 Panel count: ${d.panelCount}
 System size: ${q.kWp} kWp
 Battery: ${q.batteryText}
+Tesla configuration: ${($('batteryBrand')?.value==='Tesla')?teslaConfigText():''}
+Tesla storage: ${($('batteryBrand')?.value==='Tesla')?teslaStorageKwh().toFixed(1)+' kWh':''}
 Sig storage: ${q.sigNominal} kWh nominal / ${q.sigUsable} kWh usable
 Sigenergy controller/PV inverter: ${q.controllerText||''}
 Scaffold lifts: ${d.scaffoldLifts} included, internal pricing guide used
@@ -752,26 +916,20 @@ function panelVisualHTML(count){
   for(let i=0;i<n;i++) cells+='<div class="miniPanel"></div>';
   return cells || '<div class="hint">No solar panels selected</div>';
 }
-function customerVisuals(){
-  const q=quote(), p=panelParts(), brand=$('batteryBrand').value;
-  let batteryBadge=brand==='Tesla'?'<span class="brandBadge brandTesla">TESLA</span>':brand==='Sigenergy'?'<span class="brandBadge brandSig">Sigenergy</span>':'<span class="brandBadge brandAiko">Battery storage</span>';
-  let storage=brand==='Sigenergy'?q.sigUsable:brand==='Tesla'?'13.5':'0';
-  let storageLabel=brand==='Sigenergy'?'usable SigenStor storage':brand==='Tesla'?'Powerwall storage per unit':'battery storage';
-  return `<div class="visualCard"><h3>Solar array</h3><span class="brandBadge brandAiko">${p.name||'Solar PV'}</span><div class="panelStack">${panelVisualHTML($('panelCount').value)}</div><div class="summaryGrid"><div class="summaryItem"><b>${$('panelCount').value||0} panels</b><span>${p.name}</span></div><div class="summaryItem"><b>${q.kWp} kWp</b><span>Proposed array size</span></div></div></div>
-  <div class="visualCard"><h3>Storage and control</h3>${batteryBadge}<div class="bigMetric">${storage} kWh</div><div class="metricLabel">${storageLabel}</div><div class="summaryGrid"><div class="summaryItem"><b>${typeof customerExtrasTitle==='function'?customerExtrasTitle():'Extras'}</b><span>Customer-selected extras</span></div><div class="summaryItem"><b>${$('scaffoldLifts').value||0} lift(s)</b><span>Scaffold allowance</span></div></div></div>`;
-}
+
 
 
 function customerBatteryTitle(){
   const brand=$('batteryBrand')?.value||'None';
   if(brand==='Tesla'){
-    const parts=[];
-    if($('pw3')?.checked) parts.push('Powerwall 3');
-    if($('gateway')?.checked) parts.push('Backup Gateway');
-    if($('dcExp')?.checked) parts.push('DC Expansion');
-    return parts.length ? parts.join(' + ') : 'Tesla Powerwall 3';
+    return teslaConfigText();
   }
   if(brand==='Sigenergy'){
+    if($('sigBatteryModel')){
+      const qty=Number($('sigModuleQty')?.value||0);
+      const model=($('sigBatteryModel')?.value||'10')==='6'?'Sigen BAT 6.0':'Sigen BAT 10.0';
+      return qty ? `Sigenergy ${qty} x ${model}` : 'Sigenergy SigenStor battery';
+    }
     const six=Number($('sig6Qty')?.value||0);
     const ten=Number($('sig10Qty')?.value||0);
     const parts=[];
@@ -784,11 +942,8 @@ function customerBatteryTitle(){
 function customerBatteryStorageText(){
   const brand=$('batteryBrand')?.value||'None';
   if(brand==='Tesla'){
-    let units=0;
-    if($('pw3')?.checked) units+=1;
-    if($('dcExp')?.checked) units+=1;
-    const kwh=units*13.5;
-    return kwh ? `${kwh.toFixed(1)} kWh storage` : '13.5 kWh storage';
+    const kwh=teslaStorageKwh();
+    return kwh ? `${kwh.toFixed(1)} kWh storage` : (($('gateway')?.checked||$('teslaSaleType')?.value==='gatewayOnly')?'Gateway only / no battery storage':'No Tesla storage selected');
   }
   if(brand==='Sigenergy'){
     const nominal=Number(sigStorage ? sigStorage() : 0);
@@ -817,8 +972,10 @@ function panelVisualHTML(count){
 function customerVisuals(){
   const q=quote(), p=panelParts();
   const brand=$('batteryBrand')?.value||'None';
+  const storageText=customerBatteryStorageText();
+  const mainMetric=(brand==='Tesla'||brand==='Sigenergy') ? storageText.split(' ')[0] : '0';
   return `<div class="visualCard solarVisual"><h3>Your solar array</h3><span class="brandBadge brandAiko">${p.name||'Solar PV'}</span><div class="panelStack">${panelVisualHTML($('panelCount')?.value)}</div><div class="summaryGrid"><div class="summaryItem"><b>${$('panelCount')?.value||0} panels</b><span>${p.name}</span></div><div class="summaryItem"><b>${q.kWp} kWp</b><span>Proposed system size</span></div></div></div>
-  <div class="visualCard"><h3>Battery storage</h3><span class="brandBadge ${brand==='Tesla'?'brandTesla':brand==='Sigenergy'?'brandSig':'brandAiko'}">${brand==='None'?'Storage':brand}</span><div class="bigMetric">${customerBatteryStorageText().split(' ')[0]}</div><div class="metricLabel">${customerBatteryStorageText()}</div><div class="summaryGrid"><div class="summaryItem"><b>${$('ev')?.checked?'EV charger included':'EV charger not included'}</b><span>Zappi option</span></div><div class="summaryItem"><b>${$('solar')?.checked?'Bird protection included':'No solar roof works'}</b><span>Solar protection</span></div></div></div>`;
+  <div class="visualCard"><h3>Storage and control</h3><span class="brandBadge ${brand==='Tesla'?'brandTesla':brand==='Sigenergy'?'brandSig':'brandAiko'}">${brand==='None'?'Storage':brand}</span><div class="bigMetric">${mainMetric}</div><div class="metricLabel">${storageText}</div><div class="summaryGrid"><div class="summaryItem"><b>${customerBatteryTitle()}</b><span>Battery route</span></div><div class="summaryItem"><b>${typeof customerExtrasTitle==='function'?customerExtrasTitle():'No extras included'}</b><span>Extras</span></div></div></div>`;
 }
 
 function customerExtrasList(){
@@ -1023,8 +1180,8 @@ function bindCriticalButtons(){
   if(monday) monday.onchange=e=>readCSVFileAndSave((e.target.files||[])[0]);
 }
 
-document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v41';load();initSignaturePad();
-document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}if(['annualKwh','dailyKwh','heatPump','highEvening','backupNeeded','ev','wants','preInterest'].includes(el.id))recommendBattery(false);if(['ev','wants','preInterest'].includes(el.id))toggleConditionalFields();save()}));
+document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v42';load();initSignaturePad();
+document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}if(['annualKwh','dailyKwh','heatPump','highEvening','backupNeeded','ev','wants','preInterest'].includes(el.id))recommendBattery(false);if(['teslaSaleType','pw3Qty','dcExpQty','gateway','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','batteryBrand'].includes(el.id))syncTeslaOptions();if(['ev','wants','preInterest'].includes(el.id))toggleConditionalFields();save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
 if($('batteryGuideBtn'))$('batteryGuideBtn').onclick=()=>recommendBattery(true);if($('calcQuote'))$('calcQuote').onclick=calculate;$('refreshPresent').onclick=refreshPresent;
@@ -1057,7 +1214,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 
 /* v41 button repair, quote check and signature repair */
 (function(){
-  const VERSION = 'v41';
+  const VERSION = 'v42';
   const $ = id => document.getElementById(id);
 
   function money(n){
@@ -1118,11 +1275,13 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 
   function calculateQuote(){
     syncPanelCountFromRoofs();
+    syncTeslaOptions();
     let q = safeQuote();
     const p = safePanelParts();
     const count = Number($('panelCount')?.value || 0);
     const brand = $('batteryBrand')?.value || 'None';
     const errors = [];
+    const messages = [];
     if($('solar')?.checked && !count) errors.push('No panel count entered.');
     if($('solar')?.checked && !($('framingSelection')?.value)) errors.push('No roof mounting selected.');
     if(($('battery')?.checked || brand !== 'None') && brand === 'None') errors.push('Battery selected but no battery brand chosen.');
@@ -1130,20 +1289,33 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
       const sigQty = Number($('sigModuleQty')?.value || $('sig6Qty')?.value || 0) + Number($('sig10Qty')?.value || 0);
       if(!sigQty) errors.push('Sigenergy selected but no battery module quantity entered.');
     }
-    if(brand === 'Tesla' && !$('pw3')?.checked && !$('dcExp')?.checked) errors.push('Tesla selected but no Powerwall option ticked.');
+    if(brand === 'Tesla'){
+      const pw3 = teslaPw3Qty();
+      const exp = teslaExpansionQty();
+      const saleType = $('teslaSaleType')?.value || 'solarBattery';
+      if(saleType !== 'gatewayOnly' && !pw3 && !exp) errors.push('Tesla selected but no Powerwall 3 or DC Expansion quantity entered.');
+      if(exp && !pw3) errors.push('DC Expansion requires at least one Powerwall 3.');
+      if(pw3 > 4) errors.push('Tesla supports up to 4 Powerwall 3 units.');
+      if(exp > 3) errors.push('Tesla supports up to 3 DC Expansion packs total.');
+      if(pw3 + exp > 7) errors.push('Tesla maximum system size is 7 units.');
+      messages.push(teslaConfigText());
+    }
 
     const box = $('quoteCheck');
     if(box){
       box.innerHTML = `<div class="${errors.length?'quoteWarn':'quoteGood'}">
         <b>${errors.length?'Check before presenting':'Quote calculated'}</b>
         <p>${count ? `${count} x ${p.name}` : 'No panels selected'} ${q.kWp ? ' • ' + q.kWp + ' kWp' : ''}</p>
-        <p>Battery: ${brand}</p>
+        <p>Battery: ${brand}${brand==='Tesla'?' • '+teslaConfigText():''}</p>
         <p class="quoteTotal">Proposal position: ${money(q.total || 0)}</p>
+        ${brand==='Tesla' ? `<p>${customerBatteryStorageText()}</p>` : ''}
+        ${messages.length ? '<ul>' + messages.map(x=>'<li>'+x+'</li>').join('') + '</ul>' : ''}
         ${errors.length ? '<ul>' + errors.map(x=>'<li>'+x+'</li>').join('') + '</ul>' : '<p>No obvious missing build items found.</p>'}
       </div>`;
     }
 
     try{ if(typeof refreshPresent === 'function') refreshPresent(); }catch(e){}
+    try{ if(typeof renderTeslaConfigGuide === 'function') renderTeslaConfigGuide(); }catch(e){}
     try{ if(typeof save === 'function') save(); }catch(e){}
     return !errors.length;
   }
@@ -1302,6 +1474,8 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 
     initSignaturePad();
 
+    document.addEventListener('input', e => { if(e.target && ['teslaSaleType','pw3Qty','dcExpQty','gateway','pw3Price','gatewayPrice','dcPrice','teslaDiscounts'].includes(e.target.id)){ syncTeslaOptions(); try{ if(typeof save==='function') save(); }catch(err){} } }, true);
+
     if($('homeVersionSmall')) $('homeVersionSmall').textContent = VERSION;
     if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: ' + VERSION;
   }
@@ -1313,7 +1487,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 
 /* v41 local-only survey quality, panel sense check, extras and safer handover */
 (function(){
-  const VERSION = 'v41';
+  const VERSION = 'v42';
   const $ = id => document.getElementById(id);
 
   const REQUIRED = [
@@ -1574,6 +1748,8 @@ Site risk/blocker notes: ${val('siteRiskNotes')}`;
       stamp.addEventListener('click', defaultAcceptanceText, true);
     }
 
+    document.addEventListener('input', e => { if(e.target && ['teslaSaleType','pw3Qty','dcExpQty','gateway','pw3Price','gatewayPrice','dcPrice','teslaDiscounts'].includes(e.target.id)){ syncTeslaOptions(); try{ if(typeof save==='function') save(); }catch(err){} } }, true);
+
     if($('homeVersionSmall')) $('homeVersionSmall').textContent = VERSION;
     if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: ' + VERSION;
 
@@ -1593,7 +1769,7 @@ Site risk/blocker notes: ${val('siteRiskNotes')}`;
 
 /* v41 panel-first roof sense check and manual extras */
 (function(){
-  const VERSION = 'v41';
+  const VERSION = 'v42';
   const $ = id => document.getElementById(id);
   const val = id => ($(id)?.value || '').toString().trim();
   const num = v => Number(v || 0) || 0;
@@ -1820,6 +1996,8 @@ Extras notes: ${val('extrasNote')}`;
         try{ if(typeof refreshPresent === 'function') refreshPresent(); }catch(err){}
       }
     }, true);
+    document.addEventListener('input', e => { if(e.target && ['teslaSaleType','pw3Qty','dcExpQty','gateway','pw3Price','gatewayPrice','dcPrice','teslaDiscounts'].includes(e.target.id)){ syncTeslaOptions(); try{ if(typeof save==='function') save(); }catch(err){} } }, true);
+
     if($('homeVersionSmall')) $('homeVersionSmall').textContent = VERSION;
     if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: ' + VERSION;
     ['calculateQuote','refreshPresent','calcQuote'].forEach(id => {

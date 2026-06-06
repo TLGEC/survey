@@ -27,14 +27,14 @@
   <button data-tab="site">Site</button>
   <button data-tab="build">Build</button>
   <button data-tab="present">Present</button>
-  <button data-tab="internal">James tools</button>
+  <button data-tab="internal">Tools</button>
 </nav>
 
 <main>
 
 <section id="home" class="panel on landingPage">
   <div class="landingHero">
-    <div id="homeVersionSmall" class="homeVersionSmall">v41</div>
+    <div id="homeVersionSmall" class="homeVersionSmall">v42</div>
     <div>
       <div class="heroKicker">Survey Sync</div>
       <h2>Saved surveys</h2>
@@ -48,7 +48,7 @@
 
   <div class="syncNotice">
     <b>Local saved surveys</b>
-    <p>Saved surveys are stored on this device for fast offline use. Export backups regularly from James tools.</p>
+    <p>Saved surveys are stored on this device for fast offline use. Export backups regularly from Tools.</p>
   </div>
 
   <div id="homeProcessNote" class="syncNotice"><b>Today’s flow</b><p>Customer, Usage, Site, Build, Present, ask likelihood, signature, then mark survey complete.</p></div>
@@ -91,7 +91,7 @@
 
 
 <section id="internal" class="panel internalPanel">
-  <h2>James tools</h2>
+  <h2>Tools</h2>
   <p class="hint">Internal tools only. Keep survey flow fast on site: import, backup, copy handover or update the local app.</p>
 
   <details class="internalGroup" open>
@@ -188,7 +188,7 @@
   <details class="internalGroup">
     <summary>App tools</summary>
     <button id="updateApp" class="secondary" type="button">Update app / clear cache</button>
-    <div id="appVersionBadge" class="versionBadge">App version: v41</div>
+    <div id="appVersionBadge" class="versionBadge">App version: v42</div>
   </details>
 </section>
 
@@ -332,13 +332,25 @@
 
   <div id="teslaBox" class="quoteBox batteryChoiceCard teslaChoice">
     <div class="batteryBrandHead"><span class="batteryLogo teslaLogo">TESLA</span><span>Powerwall battery option</span></div>
-    <div class="scope">
-      <label><input id="pw3" type="checkbox"> Powerwall 3</label>
+    <label>Powerwall sale type<select id="teslaSaleType">
+      <option value="solarBattery" selected>Solar + battery / retrofit battery</option>
+      <option value="batteryGateway">Battery + Gateway only</option>
+      <option value="batteryOnly">Battery only, no Gateway</option>
+      <option value="gatewayOnly">Gateway only / manual use</option>
+    </select></label>
+    <div class="two">
+      <label>Powerwall 3 units<input id="pw3Qty" type="number" min="0" max="4" value="1"><span class="fieldHint">Tesla supports up to 4 Powerwall 3 units.</span></label>
+      <label>DC Expansion packs<input id="dcExpQty" type="number" min="0" max="3" value="0"><span class="fieldHint">Max 3 expansions total. Expansions require a Powerwall 3.</span></label>
+    </div>
+    <div class="scope legacyTeslaChecks" aria-hidden="true">
+      <label><input id="pw3" type="checkbox" checked> Powerwall 3</label>
       <label><input id="gateway" type="checkbox"> Backup Gateway</label>
       <label><input id="dcExp" type="checkbox"> DC Expansion</label>
     </div>
+    <div id="teslaConfigGuide" class="teslaConfigGuide">1 x Powerwall 3, no DC Expansion selected.</div>
     <details class="quickDetails advancedPricing">
       <summary>Advanced Tesla pricing</summary>
+      <p class="hint">Customer-facing guide prices are used for the Tesla net position guide. Internal proposal total still follows the quote builder unless a system override is entered.</p>
       <div class="two">
         <label>Powerwall 3 £<input id="pw3Price" type="number" value="6500"></label>
         <label>Gateway £<input id="gatewayPrice" type="number" value="1000"></label>
@@ -419,9 +431,12 @@
     <h2>Your recommended energy system</h2>
     <p>Built around the survey information reviewed together today.</p>
   </div>
+  <div id="customerStoryCard" class="customerStoryCard"></div>
+  <div id="designConfidenceCard" class="designConfidenceCard"></div>
   <div id="presentVisuals" class="presentVisuals"></div>
   <div id="batteryImagePanel" class="batteryImagePanel"></div>
   <div id="paybackSummary" class="paybackSummary"></div>
+  <div id="whyThisSystem" class="whySystemCard"></div>
   <div id="presentSummary" class="summaryBox presenterSummary"></div>
   <button id="refreshPresent" class="primary" type="button">Refresh summary</button>
 
