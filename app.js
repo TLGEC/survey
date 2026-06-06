@@ -458,23 +458,23 @@ function renderPaybackSummary(){
 
 
 function customerStoryHTML(){
-  const customer=($('customerName')?.value||'Customer').trim();
+  const name=($('customerName')?.value||'').trim();
   const priorities=($('wants')?.value||'Not captured yet').trim();
   const reason=($('whyNow')?.value||'Reason not captured yet').trim();
   const concern=($('blockerReason')?.value||$('mainBlocker')?.value||'No concern captured yet').trim();
-  const decision=($('decisionMakers')?.value||'Decision maker not captured').trim();
+  const decision=($('decisionMakers')?.value||'Decision path not captured').trim();
   const flagsText=flags ? flags() : '';
   return `<div class="premiumCard storyCard">
-    <div class="cardKicker">Customer story</div>
-    <h3>${customer}</h3>
+    <div class="cardKicker">Your priorities</div>
+    <h3>${name || 'Survey guidance'}</h3>
     <div class="statusRow">
-      ${priorities!=='Not captured yet'?'<span class="statusPill good">Priority captured</span>':'<span class="statusPill warn">Priority missing</span>'}
-      ${decision!=='Decision maker not captured'?'<span class="statusPill good">Decision path known</span>':'<span class="statusPill warn">Decision path unclear</span>'}
+      ${priorities!=='Not captured yet'?'<span class="statusPill good">Priorities captured</span>':'<span class="statusPill warn">Priorities missing</span>'}
+      ${decision!=='Decision path not captured'?'<span class="statusPill good">Decision path noted</span>':'<span class="statusPill warn">Decision path optional</span>'}
       ${flagsText?`<span class="statusPill">${flagsText}</span>`:''}
     </div>
     <p><b>What matters:</b> ${priorities}</p>
-    <p><b>Why now:</b> ${reason}</p>
-    <p><b>Concern to handle:</b> ${concern}</p>
+    <p><b>Reason for looking:</b> ${reason}</p>
+    <p><b>Anything to clarify:</b> ${concern}</p>
   </div>`;
 }
 function designConfidence(){
@@ -531,7 +531,7 @@ function refreshPresent(){
   const included=cleanIncludedList();
   const customer=$('customerName')?.value||'Customer';
   const aim=$('wants')?.value||'Lower bills and better energy control';
-  $('presentSummary').innerHTML=`<div class="customerIntro"><span>Recommended for</span><b>${customer}</b><p>${aim}</p></div>
+  $('presentSummary').innerHTML=`<div class="customerIntro"><span>Prepared for</span><b>${customer}</b><p>${aim}</p></div>
   <div class="summaryGrid">
     <div class="summaryItem"><b>Solar PV</b><span>${$('solar')?.checked?`${$('panelCount')?.value||0} x ${p.name}, ${q.kWp} kWp`:'Not included'}</span></div>
     <div class="summaryItem"><b>Battery</b><span>${customerBatteryTitle()}</span></div>
@@ -549,17 +549,20 @@ function refreshPresent(){
 function renderCustomerAgreementSummary(){
   const box=$('customerAgreementSummary');
   if(!box) return;
-  const route=($('cable')?.value||'Cable route to be confirmed in final design.');
+  const route=($('cable')?.value||'Route to be confirmed in final design.');
   const batteryLoc=($('batteryLoc')?.value||'Battery location to be confirmed.');
   const invLoc=($('invLoc')?.value||'Inverter/controller location to be confirmed.');
   const access=($('access')?.value||'Access/scaffold to be confirmed.');
+  const q=quote(), p=panelParts();
+  const solar=$('solar')?.checked?`${$('panelCount')?.value||0} x ${p.name}, ${q.kWp} kWp`:'No solar included';
+  const battery=customerBatteryTitle ? customerBatteryTitle() : 'Battery route to be confirmed';
   box.innerHTML=`<div class="agreementGrid">
+    <div><b>Recommendation</b><span>${solar}<br>${battery}</span></div>
     <div><b>Equipment location</b><span>Battery: ${batteryLoc}<br>Inverter/controller: ${invLoc}</span></div>
-    <div><b>Cable route</b><span>${route}</span></div>
-    <div><b>Access</b><span>${access}</span></div>
-    <div><b>Recommendation</b><span>${customerBatteryTitle()}${$('solar')?.checked?` with ${$('panelCount')?.value||0} solar panels`:''}</span></div>
+    <div><b>Route and access</b><span>${route}<br>${access}</span></div>
+    <div><b>Final checks</b><span>Subject to roof, electrical, DNO and final design checks.</span></div>
   </div>
-  <p>This confirms the customer is happy for TLGEC to prepare the formal quote based on the discussion today. Final installation design remains subject to survey, DNO and technical checks.</p>`;
+  <p>This confirms the survey guidance can be turned into a formal quote for review. The quote is not treated as final installation design until the checks are complete.</p>`;
 }
 
 function prompt(){let d=getData(), q=d.quote;return `Survey pack for ${d.customerName||'[Customer]'}.
@@ -667,7 +670,7 @@ function updateHeader(){
   if(address) bits.push(`<span>${address}</span>`);
   if(phone) bits.push(`<a href="tel:${cleanTel(phone)}">${phone}</a>`);
   if(email) bits.push(`<a href="mailto:${email}">${email}</a>`);
-  $('headerContact').innerHTML = bits.length ? bits.join('<span class="dotSep">•</span>') : 'No customer loaded';
+  $('headerContact').innerHTML = bits.length ? bits.join('<span class="dotSep">•</span>') : 'No survey loaded';
 }
 function surveyDisplayName(d){
   return ((d&&d.customerName)||($('customerName')?.value)||'Untitled survey').trim() || 'Untitled survey';
@@ -1181,7 +1184,7 @@ function bindCriticalButtons(){
   if(monday) monday.onchange=e=>readCSVFileAndSave((e.target.files||[])[0]);
 }
 
-document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v45';load();initSignaturePad();
+document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v46';load();initSignaturePad();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}if(['annualKwh','dailyKwh','heatPump','highEvening','backupNeeded','ev','wants','preInterest'].includes(el.id))recommendBattery(false);if(['teslaSaleType','pw3Qty','dcExpQty','gateway','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','batteryBrand'].includes(el.id))syncTeslaOptions();if(['ev','wants','preInterest'].includes(el.id))toggleConditionalFields();save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
@@ -1215,7 +1218,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 
 /* v41 button repair, quote check and signature repair */
 (function(){
-  const VERSION = 'v45';
+  const VERSION = 'v46';
   const $ = id => document.getElementById(id);
 
   function money(n){
@@ -1488,7 +1491,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 
 /* v41 local-only survey quality, panel sense check, extras and safer handover */
 (function(){
-  const VERSION = 'v45';
+  const VERSION = 'v46';
   const $ = id => document.getElementById(id);
 
   const REQUIRED = [
@@ -1770,7 +1773,7 @@ Site risk/blocker notes: ${val('siteRiskNotes')}`;
 
 /* v41 panel-first roof sense check and manual extras */
 (function(){
-  const VERSION = 'v45';
+  const VERSION = 'v46';
   const $ = id => document.getElementById(id);
   const val = id => ($(id)?.value || '').toString().trim();
   const num = v => Number(v || 0) || 0;
@@ -2029,9 +2032,9 @@ Extras notes: ${val('extrasNote')}`;
 })();
 
 
-/* v43/v45: repair Continue buttons and keep bottom buttons non-sticky */
+/* v43/v46: repair Continue buttons and keep bottom buttons non-sticky */
 (function(){
-  const VERSION = 'v45';
+  const VERSION = 'v46';
   const $ = id => document.getElementById(id);
 
   function showSurveySyncTab(tabId){
@@ -2090,9 +2093,9 @@ Extras notes: ${val('extrasNote')}`;
 })();
 
 
-/* v45 premium guided consultation layer */
+/* v46 premium guided consultation layer */
 (function(){
-  const VERSION = 'v45';
+  const VERSION = 'v46';
   const $ = id => document.getElementById(id);
   const order = ['home','customer','usage','site','build','present','agreement','internal'];
   const journeyMap = {
@@ -2195,7 +2198,7 @@ Extras notes: ${val('extrasNote')}`;
 })();
 
 
-/* v45: open the Customer stage after Start new consultation reset */
+/* v46: open the Customer stage after Start new consultation reset */
 (function(){
   function openHashStage(){
     const hash=(location.hash||'').replace('#','');
@@ -2205,4 +2208,297 @@ Extras notes: ${val('extrasNote')}`;
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', openHashStage);
   else openHashStage();
+})();
+
+
+/* v46 acceptance flow, dynamic proof cards and email draft */
+(function(){
+  const VERSION = 'v46';
+  const $ = id => document.getElementById(id);
+  const val = id => ($(id)?.value || '').toString().trim();
+  const checked = id => !!$(id)?.checked;
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+  const clip = (s, n=82) => {
+    const t = String(s || '').replace(/\s+/g,' ').trim();
+    return t.length > n ? t.slice(0,n-1).trim() + '…' : t;
+  };
+
+  function qSafe(){
+    try{ return typeof quote === 'function' ? quote() : {total:0,kWp:0}; }catch(e){ return {total:0,kWp:0}; }
+  }
+  function pSafe(){
+    try{ return typeof panelParts === 'function' ? panelParts() : {name:'Solar panel'}; }catch(e){ return {name:'Solar panel'}; }
+  }
+  function paybackSafe(){
+    try{ return typeof estimatePayback === 'function' ? estimatePayback() : {ok:false}; }catch(e){ return {ok:false}; }
+  }
+  function batteryTitle(){
+    try{ return typeof customerBatteryTitle === 'function' ? customerBatteryTitle() : (val('batteryBrand') || 'No battery selected'); }catch(e){ return val('batteryBrand') || 'No battery selected'; }
+  }
+  function storageText(){
+    try{ return typeof customerBatteryStorageText === 'function' ? customerBatteryStorageText() : ''; }catch(e){ return ''; }
+  }
+  function extrasText(){
+    try{ return typeof customerExtrasTitle === 'function' ? customerExtrasTitle() : (checked('ev') ? 'Zappi EV charger' : 'No extras included'); }catch(e){ return checked('ev') ? 'Zappi EV charger' : 'No extras included'; }
+  }
+  function roofSummary(){
+    try{
+      if(typeof getRoofPlanes === 'function'){
+        const planes = getRoofPlanes();
+        const withData = planes.filter(r => r.width || r.slope || r.pitch || r.azimuth || r.panels);
+        if(withData.length){
+          return withData.map(r => `${r.name || 'Roof'}: ${r.panels || '?'} panels, ${r.width || '?'}m x ${r.slope || '?'}m`).join(' | ');
+        }
+      }
+    }catch(e){}
+    return val('roof') || val('dims') || '';
+  }
+  function proofData(){
+    const q = qSafe(), p = pSafe();
+    const usage = val('annualKwh') ? `${Number(val('annualKwh')).toLocaleString()} kWh/year` : (val('dailyKwh') ? `${val('dailyKwh')} kWh/day` : '');
+    const priorities = val('wants') || val('whyNow');
+    const roof = roofSummary();
+    const routeBits = [val('cable') ? `route: ${clip(val('cable'),35)}` : '', val('access') ? `access: ${clip(val('access'),35)}` : ''].filter(Boolean).join(' · ');
+    const designBits = [
+      checked('solar') && val('panelCount') ? `${val('panelCount')} x ${p.name} (${q.kWp} kWp)` : '',
+      batteryTitle() && batteryTitle() !== 'Battery not included' ? batteryTitle() : '',
+      usage ? `usage: ${usage}` : ''
+    ].filter(Boolean).join(' · ');
+    const protectedBits = [
+      checked('customerRouteAgreed') ? 'locations and route accepted' : '',
+      val('nextAction') ? val('nextAction') : 'formal quote next',
+      'subject to final design checks'
+    ].filter(Boolean).join(' · ');
+    return [
+      {
+        n:'1', title:'Understood',
+        ok:!!priorities,
+        text:priorities ? clip(priorities,92) : 'Add priorities or main reason.'
+      },
+      {
+        n:'2', title:'Checked',
+        ok:!!(roof || routeBits || val('meter')),
+        text:clip([roof, routeBits, val('meter') ? 'meter/CU checked' : ''].filter(Boolean).join(' · '),110) || 'Add roof, route and electrical notes.'
+      },
+      {
+        n:'3', title:'Right-sized',
+        ok:!!designBits,
+        text:clip(designBits,110) || 'Select panels, battery and usage.'
+      },
+      {
+        n:'4', title:'Protected',
+        ok:!!(checked('customerRouteAgreed') || val('nextAction') || q.total),
+        text:clip(protectedBits,110)
+      }
+    ];
+  }
+  function updateConsultationProof(){
+    const box = $('consultationProof') || document.querySelector('.consultationProof');
+    if(!box) return;
+    box.innerHTML = proofData().map(item => `<div class="${item.ok ? 'proofComplete' : 'proofPending'}">
+      <span>${item.n}</span>
+      <b>${item.title}</b>
+      <small>${esc(item.text)}</small>
+    </div>`).join('');
+  }
+
+  function setLikelihood(value){
+    const input = $('customerLikelihood');
+    if(input) input.value = value || '';
+    document.querySelectorAll('#likelihoodButtons button').forEach(btn => {
+      btn.classList.toggle('selected', btn.dataset.likelihood === value);
+    });
+    const prompt = $('blockerPrompt');
+    if(prompt){
+      prompt.className = 'blockerPrompt';
+      if(!value){
+        prompt.textContent = 'Choose the closest option above.';
+      } else if(value.includes('Ready')){
+        prompt.textContent = 'Good. The quote can now be formalised from today’s survey guidance.';
+        prompt.classList.add('good');
+        if($('salesStatus')) $('salesStatus').value = 'Formal quote needed';
+        if($('mainBlocker')) $('mainBlocker').value = 'None known';
+      } else if(value.includes('Question')){
+        prompt.textContent = 'No problem. Add the question or change below so it is handled before the quote is finalised.';
+        prompt.classList.add('warn');
+        if($('salesStatus')) $('salesStatus').value = 'Clarification before quote';
+        if($('mainBlocker') && !$('mainBlocker').value) $('mainBlocker').value = 'Question or change to resolve';
+      } else {
+        prompt.textContent = 'Thanks. Add the reason below so the follow-up is handled properly.';
+        prompt.classList.add('danger');
+        if($('salesStatus')) $('salesStatus').value = 'Not ready';
+      }
+    }
+    try{ if(typeof save === 'function') save(); }catch(e){}
+  }
+
+  function syncLikelihoodButtons(){
+    const v = val('customerLikelihood');
+    document.querySelectorAll('#likelihoodButtons button').forEach(btn => {
+      btn.classList.toggle('selected', btn.dataset.likelihood === v);
+    });
+  }
+
+  function buildEmailBody(){
+    const q = qSafe(), p = pSafe(), pb = paybackSafe();
+    const name = val('customerName') || 'there';
+    const first = name.split(/\s+/)[0] || name;
+    const solar = checked('solar') ? `${val('panelCount') || 0} x ${p.name}, ${q.kWp || '0.00'} kWp` : 'Not included at this stage';
+    const battery = batteryTitle();
+    const storage = storageText();
+    const extras = extrasText();
+    const price = q.total ? (typeof money === 'function' ? money(q.total) : '£' + Math.round(q.total).toLocaleString()) : 'To be confirmed';
+    const usage = val('annualKwh') ? `${Number(val('annualKwh')).toLocaleString()} kWh/year` : (val('dailyKwh') ? `${val('dailyKwh')} kWh/day` : 'To be confirmed');
+    const paybackLine = (pb && pb.ok && pb.totalSaving) ? `Estimated first-year benefit: ${typeof money === 'function' ? money(pb.totalSaving) : '£' + Math.round(pb.totalSaving).toLocaleString()} | Estimated payback: ${pb.payback.toFixed(1)} years` : 'Savings and payback remain subject to final usage, tariff and design checks.';
+    const roof = roofSummary() || 'Roof details captured during survey.';
+    const route = val('cable') || 'Cable route to be confirmed in final design.';
+    const access = val('access') || 'Access/scaffold to be confirmed.';
+    const priorities = val('wants') || 'Lower bills and improved energy control.';
+    const why = val('whyNow') || '';
+    const clarify = val('blockerReason') || '';
+    return [
+      `Hi ${first},`,
+      '',
+      'Thank you for going through the survey today.',
+      '',
+      'Below is the recommendation we discussed. It is subject to final roof, electrical, DNO and design checks before the formal paperwork is issued.',
+      '',
+      'THE LITTLE GREEN ENERGY COMPANY',
+      'Survey Sync recommendation',
+      '',
+      '1. UNDERSTOOD',
+      `Priorities: ${priorities}`,
+      why ? `Reason for looking: ${why}` : '',
+      '',
+      '2. CHECKED',
+      `Roof/access: ${roof}`,
+      `Cable route: ${route}`,
+      `Access/scaffold: ${access}`,
+      '',
+      '3. RIGHT-SIZED RECOMMENDATION',
+      `Solar PV: ${solar}`,
+      `Battery: ${battery}`,
+      storage ? `Storage: ${storage}` : '',
+      `Extras: ${extras}`,
+      `Proposal position: ${price}`,
+      paybackLine,
+      '',
+      '4. PROTECTED NEXT STEP',
+      'James will prepare the detailed proposal and paperwork for review. The final design remains subject to survey validation, DNO and technical checks.',
+      clarify ? `Question/change to note: ${clarify}` : '',
+      '',
+      'Kind regards,',
+      'James Cooling',
+      'The Little Green Energy Company',
+      '01622 832834',
+      '07714292169'
+    ].filter(line => line !== '').join('\r\n');
+  }
+
+  function openRecommendationEmail(){
+    const email = val('email');
+    const name = val('customerName') || 'your home';
+    const subject = `Your solar recommendation - subject to final design checks`;
+    const body = buildEmailBody();
+    const href = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(body).catch(()=>{});
+      }
+    }catch(e){}
+    window.location.href = href;
+  }
+
+  function signatureCaptured(){
+    const canvas = $('signatureCanvas');
+    if(!canvas) return false;
+    try{
+      const ctx = canvas.getContext('2d');
+      const pixels = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+      for(let i=3;i<pixels.length;i+=4){
+        if(pixels[i] > 10){
+          window.signatureData = canvas.toDataURL('image/png');
+          return true;
+        }
+      }
+    }catch(e){
+      return !!(window.signatureData && window.signatureData.length > 1000);
+    }
+    return false;
+  }
+
+  function acceptSurveyGuidance(){
+    if(!signatureCaptured()){
+      alert('Please sign before accepting the survey guidance.');
+      return;
+    }
+    if(!val('customerLikelihood')) setLikelihood('Ready to formalise the quote');
+    const name = val('customerName') || 'Survey';
+    const now = new Date().toLocaleString();
+    if($('salesStatus')) $('salesStatus').value = 'Formal quote needed';
+    if($('nextAction')) $('nextAction').value = 'Prepare formal quote and send paperwork for review';
+    if($('acceptanceStamp')){
+      $('acceptanceStamp').innerHTML = `<div class="thanksCard">
+        <b>👍 Thank you.</b>
+        <p>The recommendation email is ready in the mailbox. James will come back later with the detailed proposal and paperwork for review.</p>
+        <small>${esc(name)} accepted the survey guidance on ${esc(now)}. Final design checks still apply.</small>
+      </div>`;
+    }
+    try{ if(typeof save === 'function') save(); }catch(e){}
+    openRecommendationEmail();
+  }
+
+  function patchRefresh(){
+    if(window.__v46RefreshPatched) return;
+    window.__v46RefreshPatched = true;
+    const original = window.refreshPresent;
+    if(typeof original === 'function'){
+      window.refreshPresent = function(){
+        const out = original.apply(this, arguments);
+        updateConsultationProof();
+        syncLikelihoodButtons();
+        return out;
+      };
+    }
+  }
+
+  function bind(){
+    patchRefresh();
+    updateConsultationProof();
+    syncLikelihoodButtons();
+
+    document.querySelectorAll('#likelihoodButtons button').forEach(btn => {
+      btn.onclick = e => {
+        e.preventDefault();
+        setLikelihood(btn.dataset.likelihood || '');
+      };
+    });
+
+    const accept = $('stampAccept');
+    if(accept){
+      accept.onclick = e => {
+        e.preventDefault();
+        acceptSurveyGuidance();
+      };
+    }
+
+    document.addEventListener('input', e => {
+      if(e.target && (e.target.matches('input,textarea,select') || e.target.closest('#roofPlanes'))){
+        updateConsultationProof();
+        syncLikelihoodButtons();
+      }
+    }, true);
+    document.addEventListener('change', e => {
+      if(e.target && (e.target.matches('input,textarea,select') || e.target.closest('#roofPlanes'))){
+        updateConsultationProof();
+        syncLikelihoodButtons();
+      }
+    }, true);
+
+    if($('homeVersionSmall')) $('homeVersionSmall').textContent = VERSION;
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: ' + VERSION;
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
 })();

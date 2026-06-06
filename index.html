@@ -16,11 +16,11 @@
 <div class="brandText">
 <small>The Little Green Energy Company</small>
 <h1 id="appTitle">Survey Sync</h1>
-<div class="headerContact" id="headerContact">No customer loaded</div>
+<div class="headerContact" id="headerContact">No survey loaded</div>
 </div>
 </div>
 </header>
-<nav><button class="on" data-tab="home">Start</button><button data-tab="customer">Customer</button><button data-tab="usage">Energy</button><button data-tab="site">Survey</button><button data-tab="build">Design</button><button data-tab="present">Proposal</button><button data-tab="agreement">Agreement</button><button data-tab="internal">Tools</button></nav>
+<nav><button class="on" data-tab="home">Start</button><button data-tab="customer">Priorities</button><button data-tab="usage">Energy</button><button data-tab="site">Survey</button><button data-tab="build">Design</button><button data-tab="present">Proposal</button><button data-tab="agreement">Acceptance</button><button data-tab="internal">Tools</button></nav>
 <div class="journeyBar" id="journeyBar">
 <div class="journeyRail">
 <button class="journeyStep on" data-jump="customer"><span>1</span><b>Understand</b><small>goals and concern</small></button>
@@ -28,18 +28,18 @@
 <button class="journeyStep" data-jump="site"><span>3</span><b>Home survey</b><small>roof, route, access</small></button>
 <button class="journeyStep" data-jump="build"><span>4</span><b>Design</b><small>right-sized system</small></button>
 <button class="journeyStep" data-jump="present"><span>5</span><b>Recommendation</b><small>confidence and value</small></button>
-<button class="journeyStep" data-jump="agreement"><span>6</span><b>Next step</b><small>agreement</small></button>
+<button class="journeyStep" data-jump="agreement"><span>6</span><b>Next step</b><small>survey acceptance</small></button>
 </div>
 </div>
 <main><section class="panel on landingPage" id="home">
 <div class="landingHero">
-<div class="homeVersionSmall" id="homeVersionSmall">v45</div>
+<div class="homeVersionSmall" id="homeVersionSmall">v46</div>
 <div class="heroCopy">
 <div class="heroKicker">Survey Sync</div>
 <h2>Solar consultation</h2>
 <p>A clear local journey for understanding the home, checking the install route, right-sizing the system and agreeing the next step.</p>
 <div class="heroTrustRow">
-<span>Offline first</span><span>Survey-led</span><span>Customer-facing</span><span>Handover ready</span>
+<span>Offline first</span><span>Survey-led</span><span>Shared view</span><span>Handover ready</span>
 </div>
 </div>
 <button class="primary heroButton" id="homeNewSurvey" type="button">Start new consultation</button>
@@ -51,22 +51,22 @@
 <b>Local saved surveys</b>
 <p>Saved surveys are stored on this device for fast offline use. Export backups regularly from Tools.</p>
 </div>
-<div class="syncNotice" id="homeProcessNote"><b>Today’s journey</b><p>Understand the customer, confirm usage, walk the home, build the recommendation, present the reason, then agree the next step.</p></div>
+<div class="syncNotice" id="homeProcessNote"><b>Today’s journey</b><p>Understand what matters, confirm usage, walk the home, build the recommendation, present the reason, then accept the survey guidance.</p></div>
 <div class="readinessBox homeReadinessCard" id="homeReadinessCard">Readiness score will appear once a survey is started.</div>
 <div class="savedList" id="homeSavedList"></div>
 </section>
 <section class="panel" id="customer">
 <div class="sectionTop">
-<h2>Customer and motivation</h2>
+<h2>Name and motivation</h2>
 <button class="secondary smallBtn" id="newSurveyTop" type="button">New survey</button>
 </div>
 <div class="conversationCard customerCue">
 <div class="stepBadge">1. Understand</div>
-<h3>Customer priorities</h3>
-<p>Capture the customer’s goals, timing, decision makers and concerns so the recommendation is built around their home, not a generic package.</p>
+<h3>Your priorities</h3>
+<p>Capture the goals, timing and concerns so the recommendation is built around the home, not a generic package.</p>
 <div class="surveyOutcome">Outcome: clear priorities, decision notes and any concern that needs answering.</div>
 </div>
-<label>Customer name<input autocomplete="name" id="customerName"/></label>
+<label>Name<input autocomplete="name" id="customerName"/></label>
 <label>Survey date<input id="surveyDate" type="date"/></label>
 <label>Address<textarea autocomplete="street-address" id="address"></textarea></label>
 <div class="two">
@@ -78,12 +78,12 @@
 <label>Decision makers<input id="decisionMakers" placeholder="Partner, landlord, parent, business partner..."/></label>
 <label>Competitors / other quotes<input id="competitors" placeholder="Who else are they comparing?"/></label>
 </details>
-<h2>Customer goal</h2>
+<h2>Priorities</h2>
 <div class="chips" data-target="wants">
 <button>Lower bills</button><button>Future-proofing</button><button>EV charging</button><button>Backup</button>
 <button>Energy independence</button><button>Battery tariff use</button><button>Maximum return</button><button>Best value</button>
 </div>
-<label>What matters most to them<textarea id="wants"></textarea></label>
+<label>What matters most<textarea id="wants"></textarea></label>
 <label>Why now / main concern<textarea id="whyNow"></textarea></label>
 <div class="bottomNav"><button class="primary continueBtn" data-next="usage" type="button">Continue to Energy</button></div>
 </section>
@@ -165,7 +165,7 @@
 <label>Access / scaffold<textarea id="access"></textarea></label>
 <label>Site risk / blocker notes<textarea id="siteRiskNotes" placeholder="Anything that could delay design, DNO, survey sign-off, scaffold, cable run or install."></textarea></label>
 <div class="checks agreementCheck">
-<label><input id="customerRouteAgreed" type="checkbox"/> Customer has agreed the proposed equipment locations and cable route, subject to final design and survey checks</label>
+<label><input id="customerRouteAgreed" type="checkbox"/> Route and equipment locations discussed and accepted, subject to final design and survey checks</label>
 </div>
 <div class="bottomNav"><button class="primary continueBtn" data-next="build" type="button">Continue to Design</button></div>
 </section>
@@ -250,7 +250,7 @@
 <div class="teslaConfigGuide" id="teslaConfigGuide">1 x Powerwall 3, no DC Expansion selected.</div>
 <details class="quickDetails advancedPricing">
 <summary>Advanced Tesla pricing</summary>
-<p class="hint">Customer-facing guide prices are used for the Tesla net position guide. Internal proposal total still follows the quote builder unless a system override is entered.</p>
+<p class="hint">Guide prices are used for the Tesla net position guide. Internal proposal total still follows the quote builder unless a system override is entered.</p>
 <div class="two">
 <label>Powerwall 3 £<input id="pw3Price" type="number" value="6500"/></label>
 <label>Gateway £<input id="gatewayPrice" type="number" value="1000"/></label>
@@ -307,10 +307,10 @@
 <label>Other extra name<input id="otherExtraName" placeholder="Immersion timer, extra socket, monitoring..."/></label>
 <label>Other extra manual cost £<input id="otherExtraPrice" type="number" value="0"/></label>
 </div>
-<label>Extras notes<textarea id="extrasNote" placeholder="Eddi, EV charger, extra electrical work, customer-requested add-ons..."></textarea></label>
+<label>Extras notes<textarea id="extrasNote" placeholder="Eddi, EV charger, extra electrical work, requested add-ons..."></textarea></label>
 <p class="hint">Extras use manual pricing. They are included in the proposal total when ticked, but are not treated as blockers.</p>
-<p class="hint">Scaffolding follows the internal pricing sheet. No customer-facing scaffold total is itemised.</p>
-<label>Commercial note<textarea id="commercialNote" placeholder="Month-end position, customer supplying cable, quote includes..."></textarea></label>
+<p class="hint">Scaffolding follows the internal pricing sheet. No scaffold total is itemised on the shared view.</p>
+<label>Commercial note<textarea id="commercialNote" placeholder="Month-end position, supplied cable, quote includes..."></textarea></label>
 <div class="quoteCheckBox">
 <button class="primary" id="calculateQuote" type="button">Calculate quote</button>
 <div class="quoteCheck" id="quoteCheck">Quote not calculated yet.</div>
@@ -323,8 +323,8 @@
 <h2>Your energy recommendation</h2>
 <p>A survey-led recommendation built around the home, the usage and what matters most.</p>
 </div>
-<div class="consultationProof">
-<div><span>1</span><b>Understood</b><small>goals and concerns captured</small></div>
+<div class="consultationProof" id="consultationProof">
+<div><span>1</span><b>Understood</b><small>Priorities will appear here</small></div>
 <div><span>2</span><b>Checked</b><small>roof, route and access reviewed</small></div>
 <div><span>3</span><b>Right-sized</b><small>system selected around usage</small></div>
 <div><span>4</span><b>Protected</b><small>formal quote and DNO next</small></div>
@@ -337,39 +337,43 @@
 <div class="whySystemCard" id="whyThisSystem"></div>
 <div class="summaryBox presenterSummary" id="presentSummary"></div>
 <button class="primary" id="refreshPresent" type="button">Refresh summary</button>
-<div class="bottomNav proposalNext"><button class="primary continueBtn" data-next="agreement" type="button">Continue to Agreement</button></div></section>
+<div class="bottomNav proposalNext"><button class="primary continueBtn" data-next="agreement" type="button">Continue to survey acceptance</button></div></section>
 <section class="panel agreementPage" id="agreement">
 <div class="presentHero agreementHero">
-<div class="heroKicker">Next step confirmation</div>
-<h2>Agree the route forward</h2>
-<p>Confirm the customer is comfortable with the recommendation, locations and next action before the formal quote is prepared.</p>
+<div class="heroKicker">Survey acceptance</div>
+<h2>Formalise the quote</h2>
+<p>Accept today’s survey guidance so the formal quote can be prepared. Final roof, electrical, DNO and design checks still apply.</p>
 </div>
-<div class="conversationCard agreementCue">
-<div class="stepBadge">6. Agreement</div>
-<h3>Next step confirmation</h3>
-<p>Confirm the customer is comfortable with the recommendation, agreed locations, subject-to-survey checks and next action.</p>
-<div class="surveyOutcome">Outcome: a cleaner handover and a clear reason to prepare the formal quote.</div>
-</div>
+
 <div class="closingCheck customerClose">
-<h2>How does this feel?</h2>
-<p class="hint">Before I prepare the formal quote, it is useful to know whether this feels like the right direction for you.</p>
-<label>Based on today's survey and recommendation, where are you with The Little Green Energy Company?
-      <select id="customerLikelihood">
-<option value="">Select answer</option>
-<option>Yes, this is the route I want to move forward with</option>
-<option>Interested, but I have a question or concern</option>
-<option>This is not the right route for me</option>
-</select>
-</label>
-<div class="blockerPrompt" id="blockerPrompt">Choose the closest answer above.</div>
-<label>What would help you feel comfortable moving forward?<textarea id="blockerReason" placeholder="Only use this if there is a question, concern or change needed."></textarea></label>
-</div><h2>Confirm next step</h2><p class="hint">Please sign below to confirm you would like this recommendation prepared as a formal quote for review and e-signing.</p><div class="agreementSummary" id="customerAgreementSummary">Agreement summary will refresh from the survey details.</div><label>Acceptance note<textarea id="acceptanceNote" placeholder="Customer agreed to proceed to formal quote based on this recommendation."></textarea></label><div class="signatureBox">
-<div class="signatureTitle">Customer signature</div>
+<h2>Ready to formalise?</h2>
+<p class="hint">Choose the closest next step. This simply guides how the formal quote is prepared.</p>
+<input id="customerLikelihood" type="hidden">
+<div class="likelihoodButtons" id="likelihoodButtons">
+<button type="button" data-likelihood="Ready to formalise the quote">Looks right</button>
+<button type="button" data-likelihood="Question or change before quote">One question first</button>
+<button type="button" data-likelihood="Not ready to formalise">Not ready yet</button>
+</div>
+<div class="blockerPrompt" id="blockerPrompt">Choose the closest option above.</div>
+<label>Question, concern or change to note<textarea id="blockerReason" placeholder="Only use this if something needs clarifying or changing."></textarea></label>
+</div>
+
+<div class="acceptSurveyCard">
+<h2>Accept survey guidance</h2>
+<p class="hint">Sign below to confirm you are happy for the recommendation to be formalised into a quote for review. The final proposal remains subject to design checks.</p>
+<div class="agreementSummary" id="customerAgreementSummary">Summary will refresh from the survey details.</div>
+<details class="acceptanceNoteWrap"><summary>Optional note for quote handover</summary><label>Note<textarea id="acceptanceNote" placeholder="Any detail to remember before preparing the formal quote."></textarea></label></details>
+<div class="signatureBox">
+<div class="signatureTitle">Signature</div>
 <canvas height="260" id="signatureCanvas" width="700"></canvas>
 <div class="signatureActions">
 <button class="secondary" id="clearSignature" type="button">Clear signature</button>
 </div>
-</div><button class="primary" id="stampAccept" type="button">Accept and proceed to formal quote</button><div class="guide" id="acceptanceStamp">No acceptance stamped yet.</div></section>
+</div>
+<button class="primary" id="stampAccept" type="button">Accept survey guidance and draft email</button>
+<div class="guide acceptanceThanks" id="acceptanceStamp">No survey acceptance recorded yet.</div>
+</div>
+</section>
 <section class="panel internalPanel" id="internal">
 <h2>Tools</h2>
 <p class="hint">Internal tools only. Use after the customer journey for import, handover, backup and app updates.</p>
@@ -460,7 +464,7 @@
 <details class="internalGroup">
 <summary>App tools</summary>
 <button class="secondary" id="updateApp" type="button">Update app / clear cache</button>
-<div class="versionBadge" id="appVersionBadge">App version: v45</div>
+<div class="versionBadge" id="appVersionBadge">App version: v46</div>
 </details>
 </section>
 </main>
