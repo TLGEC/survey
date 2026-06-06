@@ -1086,7 +1086,8 @@ function startNewSurveyNow(){
   }
   localStorage.removeItem(KEY);
   currentSavedId=null;
-  location.href=location.pathname + '?newSurvey=' + Date.now();
+  // Reload to reset all default pricing/configuration fields, then open the Customer stage automatically.
+  location.href=location.pathname + '?newSurvey=' + Date.now() + '#customer';
 }
 function saveImportedSurveyAndOpenCustomer(){
   const customer=($('customerName')?.value||'Untitled survey').trim() || 'Untitled survey';
@@ -1180,7 +1181,7 @@ function bindCriticalButtons(){
   if(monday) monday.onchange=e=>readCSVFileAndSave((e.target.files||[])[0]);
 }
 
-document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v44';load();initSignaturePad();
+document.addEventListener('DOMContentLoaded',()=>{bindCriticalButtons();migrateOldStorageKeys();if($('appVersionBadge'))$('appVersionBadge').innerText='App version: v45';load();initSignaturePad();
 document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',()=>{if(el.id==='annualKwh')syncUsage('annual');if(el.id==='dailyKwh')syncUsage('daily');if(el.id==='customerName'&&$('saveName')&&!$('saveName').value)$('saveName').value=el.value;if(el.id==='solar'&&el.checked){if($('bird'))$('bird').checked=true;if($('spds'))$('spds').checked=true;}if(['annualKwh','dailyKwh','heatPump','highEvening','backupNeeded','ev','wants','preInterest'].includes(el.id))recommendBattery(false);if(['teslaSaleType','pw3Qty','dcExpQty','gateway','pw3Price','gatewayPrice','dcPrice','teslaDiscounts','batteryBrand'].includes(el.id))syncTeslaOptions();if(['ev','wants','preInterest'].includes(el.id))toggleConditionalFields();save()}));
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on')});
 document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{let target=$(b.parentElement.dataset.target);target.value=target.value?target.value+', '+b.textContent:b.textContent;save()});
@@ -1214,7 +1215,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 
 /* v41 button repair, quote check and signature repair */
 (function(){
-  const VERSION = 'v44';
+  const VERSION = 'v45';
   const $ = id => document.getElementById(id);
 
   function money(n){
@@ -1487,7 +1488,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 
 /* v41 local-only survey quality, panel sense check, extras and safer handover */
 (function(){
-  const VERSION = 'v44';
+  const VERSION = 'v45';
   const $ = id => document.getElementById(id);
 
   const REQUIRED = [
@@ -1769,7 +1770,7 @@ Site risk/blocker notes: ${val('siteRiskNotes')}`;
 
 /* v41 panel-first roof sense check and manual extras */
 (function(){
-  const VERSION = 'v44';
+  const VERSION = 'v45';
   const $ = id => document.getElementById(id);
   const val = id => ($(id)?.value || '').toString().trim();
   const num = v => Number(v || 0) || 0;
@@ -2028,9 +2029,9 @@ Extras notes: ${val('extrasNote')}`;
 })();
 
 
-/* v43/v44: repair Continue buttons and keep bottom buttons non-sticky */
+/* v43/v45: repair Continue buttons and keep bottom buttons non-sticky */
 (function(){
-  const VERSION = 'v44';
+  const VERSION = 'v45';
   const $ = id => document.getElementById(id);
 
   function showSurveySyncTab(tabId){
@@ -2089,9 +2090,9 @@ Extras notes: ${val('extrasNote')}`;
 })();
 
 
-/* v44 premium guided consultation layer */
+/* v45 premium guided consultation layer */
 (function(){
-  const VERSION = 'v44';
+  const VERSION = 'v45';
   const $ = id => document.getElementById(id);
   const order = ['home','customer','usage','site','build','present','agreement','internal'];
   const journeyMap = {
@@ -2191,4 +2192,17 @@ Extras notes: ${val('extrasNote')}`;
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
   else bind();
+})();
+
+
+/* v45: open the Customer stage after Start new consultation reset */
+(function(){
+  function openHashStage(){
+    const hash=(location.hash||'').replace('#','');
+    if(!hash) return;
+    const btn=document.querySelector('nav button[data-tab="'+hash+'"]');
+    if(btn) setTimeout(()=>btn.click(), 80);
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', openHashStage);
+  else openHashStage();
 })();

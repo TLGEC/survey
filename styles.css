@@ -708,3 +708,37 @@ label{font-size:15px;color:#263c31}
 @supports not selector(:has(*)){
   .scope label,.checks label{background:linear-gradient(180deg,#ffffff,#f4faf2)}
 }
+
+
+/* v44 mobile sticky correction */
+@media(max-width:760px){
+  nav{top:68px!important}
+  .journeyBar{top:132px!important}
+}
+
+
+/* v45 customer-flow cleanup */
+.journeyBar{
+  display:none!important;
+}
+.conversationCard{
+  margin-top:10px;
+}
+.surveyOutcome{
+  margin-top:6px;
+  border-left:4px solid var(--tl-green);
+  background:#f3f8f4;
+  padding:12px 14px;
+  border-radius:0 18px 18px 0;
+  color:#183b2a;
+  font-weight:800;
+}
+.talkTrack{
+  display:none!important;
+}
+@media(max-width:760px){
+  nav{top:68px!important}
+  .landingHero{min-height:auto}
+  .heroCopy h2{font-size:34px}
+  .heroCopy p{font-size:18px}
+}
