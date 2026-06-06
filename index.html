@@ -127,11 +127,34 @@
 <p>Roof, electrical, equipment locations, cable route and access notes help reduce surprises before the formal quote.</p>
 <div class="surveyOutcome">Outcome: the practical install route is checked before the proposal is finalised.</div>
 </div>
-<div class="simpleRoofPhoto"><b>Local survey evidence</b><p>Capture the key site photos and tick each item as complete. Photos are available in the current offline session; saved survey records keep the filenames and checklist status on this device.</p></div>
-<div class="photoCaptureBox">
-<label>Survey photos<input accept="image/*,video/*,.pdf,application/pdf" id="filesInput" multiple="" type="file"/></label>
-<div class="fileNames" id="fileNames">No photos selected yet.</div>
-<div class="photos" id="preview"></div>
+<div class="simpleRoofPhoto"><b>Local survey evidence</b><p>Use the quick capture gallery as you walk around. Add roof photos, distribution board, meter, cable route, access photos or videos one after another. Nothing is replaced, and everything in the gallery goes into the export pack.</p></div>
+<div class="photoCaptureBox galleryCaptureBox">
+  <div class="quickCaptureHeader">
+    <div>
+      <b>Quick capture gallery</b>
+      <p>Tap a section, snap the evidence, keep moving. You can sort, relabel or remove items later.</p>
+    </div>
+  </div>
+  <div class="quickCaptureGrid">
+    <button type="button" class="mediaQuickBtn" data-media-cat="Roof">Roof</button>
+    <button type="button" class="mediaQuickBtn" data-media-cat="Distribution board / CU">Dist board / CU</button>
+    <button type="button" class="mediaQuickBtn" data-media-cat="Meter / fuse">Meter / fuse</button>
+    <button type="button" class="mediaQuickBtn" data-media-cat="Battery / inverter location">Battery / controller</button>
+    <button type="button" class="mediaQuickBtn" data-media-cat="Cable route">Cable run</button>
+    <button type="button" class="mediaQuickBtn" data-media-cat="Access / scaffold">Access</button>
+    <button type="button" class="mediaQuickBtn" data-media-cat="Other">Other</button>
+  </div>
+  <div class="quickCaptureActions">
+    <button type="button" class="secondary smallBtn" id="addSiteFiles">Add photos / files</button>
+    <button type="button" class="secondary smallBtn" id="recordSiteVideo">Record video</button>
+    <button type="button" class="secondary smallBtn dangerLight" id="clearSiteGallery">Clear gallery</button>
+  </div>
+  <input accept="image/*" capture="environment" id="quickPhotoInput" type="file" hidden />
+  <input accept="video/*" capture="environment" id="quickVideoInput" type="file" hidden />
+  <input accept="image/*,video/*,.pdf,application/pdf" id="filesInput" multiple="" type="file" hidden />
+  <div class="fileNames" id="fileNames">No site media captured yet.</div>
+  <div class="mediaGallery" id="mediaGallery"></div>
+  <div class="photos legacyPreview" id="preview"></div>
 </div>
 <div class="photoChecklist">
 <h3>Required evidence checklist</h3>
@@ -508,7 +531,7 @@
 <details class="internalGroup">
 <summary>App tools</summary>
 <button class="secondary" id="updateApp" type="button">Update app / clear cache</button>
-<div class="versionBadge" id="appVersionBadge">App version: v52</div>
+<div class="versionBadge" id="appVersionBadge">App version: v53</div>
 </details>
 </section>
 </main>

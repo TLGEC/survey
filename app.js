@@ -3570,7 +3570,7 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
 
 /* v52 export pack, local media pack and completion workflow */
 (function(){
-  const VERSION = 'v52';
+  const VERSION = 'v53';
   const $ = id => document.getElementById(id);
   const EMAIL_SUBJECT = 'Your Little Green Energy survey recommendation';
 
@@ -3993,6 +3993,475 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
   window.LGSurveyExportPack = {
     create: () => createSurveyPackZip(true, 'manual'),
     blob: () => createSurveyPackZip(false, 'manual')
+  };
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+
+
+/* v53 persistent quick capture gallery */
+(function(){
+  const VERSION = 'v53';
+  const $ = id => document.getElementById(id);
+  const DB_NAME = 'lg_survey_media_v1';
+  const DB_VERSION = 1;
+  const STORE = 'media';
+  const SESSION_KEY = 'lg_survey_media_session_v1';
+  let pendingCategory = 'Other';
+  let loadedItems = [];
+  let dbPromise = null;
+
+  const categories = [
+    'Roof',
+    'Distribution board / CU',
+    'Meter / fuse',
+    'Battery / inverter location',
+    'Cable route',
+    'Access / scaffold',
+    'Other'
+  ];
+
+  function uid(){
+    return 'media_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+  }
+
+  function ensureSessionId(){
+    // Starting a blank survey via the customer screen uses ?newSurvey.
+    if(location.search.includes('newSurvey=')){
+      const fresh = 'session_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+      localStorage.setItem(SESSION_KEY, fresh);
+      return fresh;
+    }
+    let id = localStorage.getItem(SESSION_KEY);
+    if(!id){
+      id = 'session_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+      localStorage.setItem(SESSION_KEY, id);
+    }
+    return id;
+  }
+
+  function newSession(){
+    const id = 'session_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+    localStorage.setItem(SESSION_KEY, id);
+    loadedItems = [];
+    try{ selectedFiles = []; }catch(e){}
+    renderGallery();
+    return id;
+  }
+
+  function currentSession(){
+    return ensureSessionId();
+  }
+
+  function openDB(){
+    if(dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve, reject) => {
+      if(!('indexedDB' in window)) return reject(new Error('IndexedDB not available'));
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if(!db.objectStoreNames.contains(STORE)){
+          const store = db.createObjectStore(STORE, {keyPath:'id'});
+          store.createIndex('sessionId', 'sessionId', {unique:false});
+          store.createIndex('capturedAt', 'capturedAt', {unique:false});
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('Could not open media database'));
+    });
+    return dbPromise;
+  }
+
+  async function txStore(mode){
+    const db = await openDB();
+    return db.transaction(STORE, mode).objectStore(STORE);
+  }
+
+  function promisify(req){
+    return new Promise((resolve, reject) => {
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('IndexedDB request failed'));
+    });
+  }
+
+  async function getAllForSession(sessionId){
+    const store = await txStore('readonly');
+    const idx = store.index('sessionId');
+    const req = idx.getAll(sessionId || currentSession());
+    const items = await promisify(req);
+    return (items || []).sort((a,b) => (a.capturedAt || 0) - (b.capturedAt || 0));
+  }
+
+  async function putItem(item){
+    const store = await txStore('readwrite');
+    await promisify(store.put(item));
+  }
+
+  async function deleteItem(id){
+    const store = await txStore('readwrite');
+    await promisify(store.delete(id));
+  }
+
+  async function clearCurrentSession(){
+    const sessionId = currentSession();
+    const items = await getAllForSession(sessionId);
+    const store = await txStore('readwrite');
+    await Promise.all(items.map(i => promisify(store.delete(i.id))));
+    loadedItems = [];
+    syncSelectedFiles();
+    renderGallery();
+  }
+
+  function cleanFileName(v){
+    return String(v || 'site_file').replace(/[\\/:*?"<>|]+/g,'_').replace(/\s+/g,' ').trim().slice(0,100) || 'site_file';
+  }
+
+  function cleanCategory(v){
+    return categories.includes(v) ? v : 'Other';
+  }
+
+  function categoryPrefix(cat){
+    return cleanCategory(cat).replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'').toLowerCase() || 'site';
+  }
+
+  function fileFromItem(item, index){
+    const original = cleanFileName(item.name || ('site_file_' + (index+1)));
+    const prefixed = `${String(index+1).padStart(2,'0')}_${categoryPrefix(item.category)}_${original}`;
+    try{
+      return new File([item.blob], prefixed, {type:item.type || item.blob?.type || 'application/octet-stream', lastModified:item.lastModified || Date.now()});
+    }catch(e){
+      const blob = item.blob || new Blob([]);
+      blob.name = prefixed;
+      blob.lastModified = item.lastModified || Date.now();
+      return blob;
+    }
+  }
+
+  function syncSelectedFiles(){
+    try{
+      selectedFiles = loadedItems.map((item, idx) => fileFromItem(item, idx));
+    }catch(e){}
+    const names = $('fileNames');
+    if(names){
+      const total = loadedItems.reduce((s,i) => s + (Number(i.size)||0), 0);
+      names.textContent = loadedItems.length
+        ? `${loadedItems.length} gallery item${loadedItems.length===1?'':'s'} ready for export (${Math.round(total/1024)} KB)\n` + loadedItems.map((i,idx) => `${idx+1}. ${i.category || 'Other'} - ${i.name || 'Unnamed file'}`).join('\n')
+        : 'No site media captured yet.';
+    }
+    try{ if(typeof save === 'function') save(); }catch(e){}
+  }
+
+  function autoTickForCategory(cat){
+    const map = {
+      'Roof': ['photoRoofFront','photoRoofRear'],
+      'Distribution board / CU': ['photoCU'],
+      'Meter / fuse': ['photoMeter','photoFuse'],
+      'Battery / inverter location': ['photoBatteryLoc','photoInverterLoc'],
+      'Cable route': ['photoCableRoute'],
+      'Access / scaffold': ['photoAccess']
+    };
+    (map[cat] || []).forEach(id => {
+      const el = $(id);
+      if(el) el.checked = true;
+    });
+  }
+
+  async function addFiles(files, category){
+    const arr = Array.from(files || []).filter(Boolean);
+    if(!arr.length) return;
+    const cat = cleanCategory(category || pendingCategory);
+    const sessionId = currentSession();
+    for(const f of arr){
+      const item = {
+        id: uid(),
+        sessionId,
+        name: cleanFileName(f.name || `${cat}_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}`),
+        type: f.type || 'application/octet-stream',
+        size: f.size || 0,
+        lastModified: f.lastModified || Date.now(),
+        category: cat,
+        capturedAt: Date.now(),
+        blob: f
+      };
+      await putItem(item);
+      loadedItems.push(item);
+    }
+    autoTickForCategory(cat);
+    syncSelectedFiles();
+    renderGallery();
+  }
+
+  async function loadGallery(){
+    try{
+      loadedItems = await getAllForSession(currentSession());
+      syncSelectedFiles();
+      renderGallery();
+    }catch(e){
+      const names = $('fileNames');
+      if(names) names.textContent = 'Gallery storage is not available on this device. Files will still attach during this session.';
+    }
+  }
+
+  function formatSize(bytes){
+    const n = Number(bytes)||0;
+    if(n > 1024*1024) return (n/(1024*1024)).toFixed(1) + ' MB';
+    return Math.round(n/1024) + ' KB';
+  }
+
+  function iconFor(item){
+    const t = item.type || '';
+    if(t.includes('pdf')) return 'PDF';
+    if(t.startsWith('video/')) return '▶';
+    return 'FILE';
+  }
+
+  function renderGallery(){
+    const box = $('mediaGallery');
+    const legacy = $('preview');
+    if(legacy) legacy.innerHTML = '';
+    if(!box) return;
+    if(!loadedItems.length){
+      box.innerHTML = '<div class="galleryEmpty">No photos or videos captured yet. Tap a quick capture button to start building the survey gallery.</div>';
+      return;
+    }
+    box.innerHTML = '';
+    loadedItems.forEach((item, idx) => {
+      const tile = document.createElement('div');
+      tile.className = 'mediaTile';
+      tile.dataset.mediaId = item.id;
+
+      const thumb = document.createElement('div');
+      thumb.className = 'mediaThumb';
+      const url = item.blob ? URL.createObjectURL(item.blob) : '';
+      if((item.type || '').startsWith('image/') && url){
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = item.name || 'Survey photo';
+        img.onload = () => setTimeout(() => URL.revokeObjectURL(url), 1000);
+        thumb.appendChild(img);
+      } else if((item.type || '').startsWith('video/') && url){
+        const video = document.createElement('video');
+        video.src = url;
+        video.controls = true;
+        video.muted = true;
+        video.playsInline = true;
+        thumb.appendChild(video);
+      } else {
+        const icon = document.createElement('div');
+        icon.className = 'mediaFileIcon';
+        icon.textContent = iconFor(item);
+        thumb.appendChild(icon);
+      }
+
+      const body = document.createElement('div');
+      body.className = 'mediaBody';
+      const name = document.createElement('div');
+      name.className = 'mediaName';
+      name.textContent = item.name || `Survey file ${idx+1}`;
+      const meta = document.createElement('div');
+      meta.className = 'mediaMeta';
+      meta.textContent = `${formatSize(item.size)} • ${item.type || 'file'}`;
+
+      const select = document.createElement('select');
+      select.className = 'mediaCategorySelect';
+      categories.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        if(cleanCategory(item.category) === c) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'mediaRemove';
+      remove.textContent = 'Remove from gallery';
+
+      body.appendChild(name);
+      body.appendChild(meta);
+      body.appendChild(select);
+      body.appendChild(remove);
+      tile.appendChild(thumb);
+      tile.appendChild(body);
+      box.appendChild(tile);
+    });
+  }
+
+  function bindInputs(){
+    const photoInput = $('quickPhotoInput');
+    const videoInput = $('quickVideoInput');
+    const fileInput = $('filesInput');
+
+    document.querySelectorAll('.mediaQuickBtn').forEach(btn => {
+      if(btn.dataset.v53Bound) return;
+      btn.dataset.v53Bound = 'yes';
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        pendingCategory = cleanCategory(btn.dataset.mediaCat || 'Other');
+        if(photoInput){
+          photoInput.value = '';
+          photoInput.click();
+        }
+      });
+    });
+
+    const addFilesBtn = $('addSiteFiles');
+    if(addFilesBtn && !addFilesBtn.dataset.v53Bound){
+      addFilesBtn.dataset.v53Bound = 'yes';
+      addFilesBtn.addEventListener('click', e => {
+        e.preventDefault();
+        pendingCategory = 'Other';
+        if(fileInput){
+          fileInput.value = '';
+          fileInput.click();
+        }
+      });
+    }
+
+    const recordBtn = $('recordSiteVideo');
+    if(recordBtn && !recordBtn.dataset.v53Bound){
+      recordBtn.dataset.v53Bound = 'yes';
+      recordBtn.addEventListener('click', e => {
+        e.preventDefault();
+        pendingCategory = 'Other';
+        if(videoInput){
+          videoInput.value = '';
+          videoInput.click();
+        }
+      });
+    }
+
+    const clearBtn = $('clearSiteGallery');
+    if(clearBtn && !clearBtn.dataset.v53Bound){
+      clearBtn.dataset.v53Bound = 'yes';
+      clearBtn.addEventListener('click', async e => {
+        e.preventDefault();
+        if(!loadedItems.length) return;
+        if(!confirm('Clear all site media from this survey gallery?')) return;
+        await clearCurrentSession();
+      });
+    }
+
+    if(photoInput && !photoInput.dataset.v53Bound){
+      photoInput.dataset.v53Bound = 'yes';
+      photoInput.onchange = async e => {
+        await addFiles(e.target.files, pendingCategory);
+        photoInput.value = '';
+      };
+    }
+
+    if(videoInput && !videoInput.dataset.v53Bound){
+      videoInput.dataset.v53Bound = 'yes';
+      videoInput.onchange = async e => {
+        await addFiles(e.target.files, pendingCategory || 'Other');
+        videoInput.value = '';
+      };
+    }
+
+    if(fileInput){
+      fileInput.dataset.v52MediaBound = 'yes';
+      fileInput.onchange = async e => {
+        await addFiles(e.target.files, pendingCategory || 'Other');
+        fileInput.value = '';
+      };
+    }
+
+    const gallery = $('mediaGallery');
+    if(gallery && !gallery.dataset.v53Bound){
+      gallery.dataset.v53Bound = 'yes';
+      gallery.addEventListener('change', async e => {
+        const sel = e.target.closest('.mediaCategorySelect');
+        if(!sel) return;
+        const tile = sel.closest('.mediaTile');
+        const id = tile?.dataset.mediaId;
+        const item = loadedItems.find(x => x.id === id);
+        if(!item) return;
+        item.category = cleanCategory(sel.value);
+        await putItem(item);
+        autoTickForCategory(item.category);
+        syncSelectedFiles();
+      });
+      gallery.addEventListener('click', async e => {
+        const btn = e.target.closest('.mediaRemove');
+        if(!btn) return;
+        e.preventDefault();
+        const tile = btn.closest('.mediaTile');
+        const id = tile?.dataset.mediaId;
+        if(!id) return;
+        await deleteItem(id);
+        loadedItems = loadedItems.filter(x => x.id !== id);
+        syncSelectedFiles();
+        renderGallery();
+      });
+    }
+  }
+
+  function patchSurveySession(){
+    // Create a fresh gallery when a new survey starts. The old files remain archived in IndexedDB but are not attached to the new job.
+    document.addEventListener('click', e => {
+      const id = e.target && e.target.id;
+      if(['homeNewSurvey','newSurveyTop','newSurveySaved','saveAndNew'].includes(id)){
+        newSession();
+      }
+    }, true);
+
+    try{
+      const oldGetData = getData;
+      if(typeof oldGetData === 'function' && !oldGetData.v53MediaWrapped){
+        getData = function(){
+          const d = oldGetData();
+          d.mediaSessionId = currentSession();
+          d.mediaFiles = loadedItems.map((i,idx) => ({
+            file: fileFromItem(i,idx).name,
+            originalName: i.name,
+            category: i.category,
+            type: i.type,
+            size: i.size,
+            capturedAt: i.capturedAt
+          }));
+          return d;
+        };
+        getData.v53MediaWrapped = true;
+      }
+    }catch(e){}
+
+    try{
+      const oldLoadSavedSurvey = loadSavedSurvey;
+      if(typeof oldLoadSavedSurvey === 'function' && !oldLoadSavedSurvey.v53MediaWrapped){
+        loadSavedSurvey = function(id){
+          const surveys = typeof getSavedSurveys === 'function' ? getSavedSurveys() : [];
+          const rec = surveys.find(x => x.id === id);
+          oldLoadSavedSurvey(id);
+          const mediaId = rec && rec.mediaSessionId ? rec.mediaSessionId : localStorage.getItem(SESSION_KEY);
+          if(mediaId) localStorage.setItem(SESSION_KEY, mediaId);
+          setTimeout(loadGallery, 150);
+        };
+        loadSavedSurvey.v53MediaWrapped = true;
+      }
+    }catch(e){}
+  }
+
+  function bind(){
+    if($('homeVersionSmall')) $('homeVersionSmall').textContent = VERSION;
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: ' + VERSION;
+    ensureSessionId();
+    bindInputs();
+    patchSurveySession();
+    loadGallery();
+    // Re-bind after earlier v52 handlers, because v52 used to replace the file input contents.
+    setTimeout(() => {
+      bindInputs();
+      loadGallery();
+    }, 500);
+  }
+
+  window.LGSurveyMediaGallery = {
+    load: loadGallery,
+    clear: clearCurrentSession,
+    session: currentSession,
+    files: () => selectedFiles,
+    items: () => loadedItems.slice()
   };
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
