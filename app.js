@@ -4688,3 +4688,567 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
 
   window.LGSurveyActivateTab = activateTab;
 })();
+
+
+
+/* v55: robust media gallery save/export and stay-on-survey fixes */
+(function(){
+  const VERSION = 'v55';
+  const $ = id => document.getElementById(id);
+  const DB_NAME = 'lg_survey_media_v1';
+  const DB_VERSION = 1;
+  const STORE = 'media';
+  const SESSION_KEY = 'lg_survey_media_session_v1';
+  const ACTIVE_TAB_KEY = 'lg_survey_active_tab_v1';
+
+  const categories = [
+    'Roof',
+    'Distribution board / CU',
+    'Meter / fuse',
+    'Battery / controller location',
+    'Cable route',
+    'Access / scaffold',
+    'Other'
+  ];
+
+  let pendingCategory = 'Other';
+  let loadedItems = [];
+  let dbPromise = null;
+
+  function setVersion(){
+    const home = $('homeVersionSmall');
+    if(home) home.textContent = VERSION;
+    const badge = $('appVersionBadge');
+    if(badge) badge.textContent = 'App version: ' + VERSION;
+  }
+
+  function activePanelId(){
+    const on = document.querySelector('main > section.panel.on');
+    return on ? on.id : '';
+  }
+
+  function rememberSite(){
+    try{ localStorage.setItem(ACTIVE_TAB_KEY, 'site'); }catch(e){}
+    try{
+      if(location.hash !== '#site') history.replaceState(null, '', location.pathname + location.search + '#site');
+    }catch(e){}
+  }
+
+  function activateSite(delay){
+    window.setTimeout(() => {
+      try{
+        if(typeof window.LGSurveyActivateTab === 'function'){
+          window.LGSurveyActivateTab('site', {scroll:false});
+          return;
+        }
+      }catch(e){}
+      const target = $('site');
+      if(!target) return;
+      document.querySelectorAll('nav button[data-tab]').forEach(btn => btn.classList.toggle('on', btn.dataset.tab === 'site'));
+      document.querySelectorAll('main > section.panel').forEach(panel => panel.classList.toggle('on', panel.id === 'site'));
+      target.classList.add('on');
+      rememberSite();
+    }, delay || 0);
+  }
+
+  function uid(){
+    return 'media_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+  }
+
+  function ensureSessionId(){
+    let id = '';
+    try{ id = localStorage.getItem(SESSION_KEY) || ''; }catch(e){}
+    if(!id){
+      id = 'session_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+      try{ localStorage.setItem(SESSION_KEY, id); }catch(e){}
+    }
+    return id;
+  }
+
+  function cleanCategory(v){
+    return categories.includes(v) ? v : 'Other';
+  }
+
+  function cleanFileName(v){
+    return String(v || 'site_file')
+      .replace(/[\\/:*?"<>|]+/g,'_')
+      .replace(/\s+/g,' ')
+      .trim()
+      .slice(0,110) || 'site_file';
+  }
+
+  function categoryPrefix(cat){
+    return cleanCategory(cat).replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'').toLowerCase() || 'site';
+  }
+
+  function fileExtension(file){
+    const n = file && file.name ? String(file.name) : '';
+    if(n.includes('.')) return n.split('.').pop().toLowerCase();
+    const t = (file && file.type) || '';
+    if(t.includes('jpeg')) return 'jpg';
+    if(t.includes('png')) return 'png';
+    if(t.includes('webp')) return 'webp';
+    if(t.includes('pdf')) return 'pdf';
+    if(t.includes('mp4')) return 'mp4';
+    if(t.includes('quicktime')) return 'mov';
+    return 'bin';
+  }
+
+  function openDB(){
+    if(dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve, reject) => {
+      if(!('indexedDB' in window)) return reject(new Error('IndexedDB is not available on this device.'));
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if(!db.objectStoreNames.contains(STORE)){
+          const store = db.createObjectStore(STORE, {keyPath:'id'});
+          store.createIndex('sessionId', 'sessionId', {unique:false});
+          store.createIndex('capturedAt', 'capturedAt', {unique:false});
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('Could not open gallery storage.'));
+    });
+    return dbPromise;
+  }
+
+  function reqPromise(req){
+    return new Promise((resolve, reject) => {
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('Storage request failed.'));
+    });
+  }
+
+  async function store(mode){
+    const db = await openDB();
+    return db.transaction(STORE, mode).objectStore(STORE);
+  }
+
+  async function putItem(item){
+    const s = await store('readwrite');
+    await reqPromise(s.put(item));
+  }
+
+  async function deleteItem(id){
+    const s = await store('readwrite');
+    await reqPromise(s.delete(id));
+  }
+
+  async function getItems(sessionId){
+    const s = await store('readonly');
+    const idx = s.index('sessionId');
+    const items = await reqPromise(idx.getAll(sessionId || ensureSessionId()));
+    return (items || []).sort((a,b) => (a.capturedAt || 0) - (b.capturedAt || 0));
+  }
+
+  function safeFileFromItem(item, index){
+    const blob = item.blob instanceof Blob ? item.blob : new Blob([item.blob || ''], {type:item.type || 'application/octet-stream'});
+    const original = cleanFileName(item.name || `site_file_${index+1}.${fileExtension(blob)}`);
+    const name = `${String(index+1).padStart(2,'0')}_${categoryPrefix(item.category)}_${original}`;
+    try{
+      return new File([blob], name, {type:item.type || blob.type || 'application/octet-stream', lastModified:item.lastModified || Date.now()});
+    }catch(e){
+      blob.name = name;
+      blob.lastModified = item.lastModified || Date.now();
+      return blob;
+    }
+  }
+
+  function syncSelectedFiles(){
+    try{
+      window.selectedFiles = loadedItems.map((item, idx) => safeFileFromItem(item, idx));
+      if(typeof selectedFiles !== 'undefined') selectedFiles = window.selectedFiles;
+    }catch(e){}
+    const names = $('fileNames');
+    if(names){
+      if(!loadedItems.length){
+        names.textContent = 'No site media captured yet.';
+      }else{
+        const total = loadedItems.reduce((sum,i) => sum + (Number(i.size)||0), 0);
+        names.textContent = `${loadedItems.length} gallery item${loadedItems.length===1?'':'s'} ready for export (${Math.round(total/1024)} KB)\n` +
+          loadedItems.map((i,idx) => `${idx+1}. ${i.category || 'Other'} - ${i.name || 'Unnamed file'}`).join('\n');
+      }
+    }
+    try{ if(typeof save === 'function') save(); }catch(e){}
+  }
+
+  function autoTickForCategory(cat){
+    const map = {
+      'Roof': ['photoRoofFront','photoRoofRear'],
+      'Distribution board / CU': ['photoCU'],
+      'Meter / fuse': ['photoMeter','photoFuse'],
+      'Battery / controller location': ['photoBatteryLoc','photoInverterLoc'],
+      'Cable route': ['photoCableRoute'],
+      'Access / scaffold': ['photoAccess']
+    };
+    (map[cat] || []).forEach(id => {
+      const el = $(id);
+      if(el) el.checked = true;
+    });
+    try{ if(typeof save === 'function') save(); }catch(e){}
+  }
+
+  function formatSize(bytes){
+    const n = Number(bytes)||0;
+    if(n > 1024*1024) return (n/(1024*1024)).toFixed(1) + ' MB';
+    return Math.round(n/1024) + ' KB';
+  }
+
+  function iconFor(item){
+    const t = item.type || '';
+    if(t.includes('pdf')) return 'PDF';
+    if(t.startsWith('video/')) return '▶';
+    return 'FILE';
+  }
+
+  function renderGallery(){
+    const box = $('mediaGallery');
+    const preview = $('preview');
+    if(preview) preview.innerHTML = '';
+    if(!box) return;
+    if(!loadedItems.length){
+      box.innerHTML = '<div class="galleryEmpty">No photos or videos captured yet. Tap a quick capture button to start building the survey gallery.</div>';
+      return;
+    }
+    box.innerHTML = '';
+    loadedItems.forEach((item, idx) => {
+      const tile = document.createElement('div');
+      tile.className = 'mediaTile';
+      tile.dataset.mediaId = item.id;
+
+      const thumb = document.createElement('div');
+      thumb.className = 'mediaThumb';
+
+      const blob = item.blob instanceof Blob ? item.blob : null;
+      const url = blob ? URL.createObjectURL(blob) : '';
+
+      if((item.type || '').startsWith('image/') && url){
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = item.name || 'Survey photo';
+        img.onload = () => setTimeout(() => URL.revokeObjectURL(url), 1200);
+        thumb.appendChild(img);
+      }else if((item.type || '').startsWith('video/') && url){
+        const video = document.createElement('video');
+        video.src = url;
+        video.controls = true;
+        video.muted = true;
+        video.playsInline = true;
+        thumb.appendChild(video);
+      }else{
+        const icon = document.createElement('div');
+        icon.className = 'mediaFileIcon';
+        icon.textContent = iconFor(item);
+        thumb.appendChild(icon);
+      }
+
+      const body = document.createElement('div');
+      body.className = 'mediaBody';
+
+      const name = document.createElement('div');
+      name.className = 'mediaName';
+      name.textContent = item.name || `Survey file ${idx+1}`;
+
+      const meta = document.createElement('div');
+      meta.className = 'mediaMeta';
+      meta.textContent = `${formatSize(item.size)} • ${item.type || 'file'}`;
+
+      const select = document.createElement('select');
+      select.className = 'mediaCategorySelect';
+      categories.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        if(cleanCategory(item.category) === c) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'mediaRemove';
+      remove.textContent = 'Remove from gallery';
+
+      body.appendChild(name);
+      body.appendChild(meta);
+      body.appendChild(select);
+      body.appendChild(remove);
+
+      tile.appendChild(thumb);
+      tile.appendChild(body);
+      box.appendChild(tile);
+    });
+  }
+
+  async function loadGallery(){
+    try{
+      loadedItems = await getItems(ensureSessionId());
+      syncSelectedFiles();
+      renderGallery();
+    }catch(e){
+      const names = $('fileNames');
+      if(names) names.textContent = 'Gallery storage was blocked on this device. Use Add photos / files again before export.';
+      console.error('LG Survey gallery load failed', e);
+    }
+  }
+
+  async function addFiles(fileList, category){
+    const arr = Array.from(fileList || []).filter(Boolean);
+    if(!arr.length){
+      activateSite(0);
+      return;
+    }
+    rememberSite();
+    activateSite(0);
+    const cat = cleanCategory(category || pendingCategory);
+    const sessionId = ensureSessionId();
+
+    for(const f of arr){
+      const now = Date.now();
+      const extension = fileExtension(f);
+      const defaultName = `${categoryPrefix(cat)}_${new Date(now).toISOString().slice(0,19).replace(/[:T]/g,'-')}.${extension}`;
+      const item = {
+        id: uid(),
+        sessionId,
+        name: cleanFileName(f.name || defaultName),
+        type: f.type || 'application/octet-stream',
+        size: f.size || 0,
+        lastModified: f.lastModified || now,
+        category: cat,
+        capturedAt: now,
+        blob: f
+      };
+      await putItem(item);
+      loadedItems.push(item);
+    }
+
+    autoTickForCategory(cat);
+    syncSelectedFiles();
+    renderGallery();
+
+    activateSite(0);
+    activateSite(300);
+    activateSite(900);
+  }
+
+  async function clearGallery(){
+    if(!loadedItems.length) return;
+    if(!confirm('Clear all site media from this survey gallery?')) return;
+    const ids = loadedItems.map(i => i.id);
+    for(const id of ids) await deleteItem(id);
+    loadedItems = [];
+    syncSelectedFiles();
+    renderGallery();
+    activateSite(0);
+  }
+
+  function prepareInput(input, category){
+    if(!input) return;
+    pendingCategory = cleanCategory(category || 'Other');
+    rememberSite();
+    try{ input.value = ''; }catch(e){}
+    input.click();
+    activateSite(150);
+  }
+
+  function bindButtons(){
+    // Intercept quick capture buttons before the older handlers can fire, so each button follows the same stable route.
+    document.addEventListener('click', function(e){
+      const quick = e.target && e.target.closest ? e.target.closest('.mediaQuickBtn') : null;
+      const add = e.target && e.target.closest ? e.target.closest('#addSiteFiles') : null;
+      const video = e.target && e.target.closest ? e.target.closest('#recordSiteVideo') : null;
+      const clear = e.target && e.target.closest ? e.target.closest('#clearSiteGallery') : null;
+
+      if(quick || add || video || clear){
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        rememberSite();
+
+        if(quick){
+          prepareInput($('quickPhotoInput'), quick.dataset.mediaCat || 'Other');
+          return;
+        }
+        if(add){
+          prepareInput($('filesInput'), 'Other');
+          return;
+        }
+        if(video){
+          prepareInput($('quickVideoInput'), 'Other');
+          return;
+        }
+        if(clear){
+          clearGallery().catch(err => console.error(err));
+          return;
+        }
+      }
+    }, true);
+
+    const pairs = [
+      ['quickPhotoInput', () => pendingCategory || 'Other'],
+      ['quickVideoInput', () => pendingCategory || 'Other'],
+      ['filesInput', () => pendingCategory || 'Other']
+    ];
+
+    pairs.forEach(([id, catGetter]) => {
+      const input = $(id);
+      if(!input || input.dataset.v55Bound) return;
+      input.dataset.v55Bound = 'yes';
+      input.onchange = null;
+      input.addEventListener('click', function(){
+        rememberSite();
+      }, true);
+      input.addEventListener('change', function(e){
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const files = e.target.files;
+        const cat = catGetter();
+        addFiles(files, cat)
+          .catch(err => {
+            console.error('Could not save site media', err);
+            alert('That photo/video could not be saved into the gallery. Please try Add photos / files, or close other tabs and try again.');
+          })
+          .finally(() => {
+            try{ input.value = ''; }catch(err){}
+            rememberSite();
+            activateSite(0);
+            activateSite(400);
+            activateSite(1000);
+          });
+      }, true);
+    });
+
+    const gallery = $('mediaGallery');
+    if(gallery && !gallery.dataset.v55Bound){
+      gallery.dataset.v55Bound = 'yes';
+      gallery.addEventListener('change', function(e){
+        const sel = e.target.closest('.mediaCategorySelect');
+        if(!sel) return;
+        e.preventDefault();
+        const tile = sel.closest('.mediaTile');
+        const id = tile && tile.dataset.mediaId;
+        const item = loadedItems.find(x => x.id === id);
+        if(!item) return;
+        item.category = cleanCategory(sel.value);
+        putItem(item)
+          .then(() => {
+            autoTickForCategory(item.category);
+            syncSelectedFiles();
+            renderGallery();
+          })
+          .catch(err => console.error(err));
+      }, true);
+
+      gallery.addEventListener('click', function(e){
+        const btn = e.target.closest('.mediaRemove');
+        if(!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const tile = btn.closest('.mediaTile');
+        const id = tile && tile.dataset.mediaId;
+        if(!id) return;
+        deleteItem(id)
+          .then(() => {
+            loadedItems = loadedItems.filter(x => x.id !== id);
+            syncSelectedFiles();
+            renderGallery();
+          })
+          .catch(err => console.error(err));
+      }, true);
+    }
+  }
+
+  function patchNewSurveySession(){
+    document.addEventListener('click', function(e){
+      const id = e.target && e.target.id;
+      if(!['homeNewSurvey','newSurveyTop','newSurveySaved','saveAndNew'].includes(id)) return;
+      const fresh = 'session_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+      try{ localStorage.setItem(SESSION_KEY, fresh); }catch(err){}
+      loadedItems = [];
+      syncSelectedFiles();
+      renderGallery();
+    }, true);
+  }
+
+  function patchGetData(){
+    try{
+      if(typeof getData === 'function' && !getData.v55MediaWrapped){
+        const old = getData;
+        getData = function(){
+          const d = old();
+          d.mediaSessionId = ensureSessionId();
+          d.mediaFiles = loadedItems.map((i,idx) => ({
+            file: safeFileFromItem(i, idx).name,
+            originalName: i.name,
+            category: i.category,
+            type: i.type,
+            size: i.size,
+            capturedAt: i.capturedAt
+          }));
+          return d;
+        };
+        getData.v55MediaWrapped = true;
+      }
+    }catch(e){}
+  }
+
+  function patchLoadSavedSurvey(){
+    try{
+      if(typeof loadSavedSurvey === 'function' && !loadSavedSurvey.v55MediaWrapped){
+        const old = loadSavedSurvey;
+        loadSavedSurvey = function(id){
+          const surveys = typeof getSavedSurveys === 'function' ? getSavedSurveys() : [];
+          const rec = surveys.find(x => x.id === id);
+          old(id);
+          if(rec && rec.mediaSessionId){
+            try{ localStorage.setItem(SESSION_KEY, rec.mediaSessionId); }catch(e){}
+          }
+          setTimeout(loadGallery, 150);
+        };
+        loadSavedSurvey.v55MediaWrapped = true;
+      }
+    }catch(e){}
+  }
+
+  function patchExportBeforeDownload(){
+    // Keep selectedFiles fresh before any export button or acceptance-generated ZIP runs.
+    document.addEventListener('click', function(e){
+      const btn = e.target && e.target.closest ? e.target.closest('#exportSurveyPackZip,#toolsExportSurveyPackZip,#stampAccept,#markSurveyComplete') : null;
+      if(!btn) return;
+      syncSelectedFiles();
+    }, true);
+  }
+
+  function bind(){
+    setVersion();
+    ensureSessionId();
+    bindButtons();
+    patchNewSurveySession();
+    patchGetData();
+    patchLoadSavedSurvey();
+    patchExportBeforeDownload();
+    loadGallery();
+
+    // Bind again after all earlier version patchers have finished.
+    setTimeout(() => {
+      setVersion();
+      bindButtons();
+      loadGallery();
+      if(activePanelId() === 'site') activateSite(0);
+    }, 850);
+  }
+
+  window.LGSurveyMediaGallery = {
+    load: loadGallery,
+    files: () => {
+      syncSelectedFiles();
+      try{ return Array.from(selectedFiles || []); }catch(e){ return []; }
+    },
+    items: () => loadedItems.slice(),
+    session: ensureSessionId,
+    clear: clearGallery,
+    addFiles
+  };
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
