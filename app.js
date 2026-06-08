@@ -5252,3 +5252,269 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
   else bind();
 })();
+
+
+
+/* v56: full debug stabilisation for signature state, saved survey switching and export safety */
+(function(){
+  const VERSION = 'v56';
+  const KEY_NAME = 'tlgec_current_draft_v1';
+  const SURVEYS_NAME = 'tlgec_surveys_saved_v1';
+  const ACTIVE_TAB_KEY = 'lg_survey_active_tab_v1';
+  const $ = id => document.getElementById(id);
+
+  function setVersion(){
+    const home = $('homeVersionSmall');
+    if(home) home.textContent = VERSION;
+    const badge = $('appVersionBadge');
+    if(badge) badge.textContent = 'App version: ' + VERSION;
+  }
+
+  function blankSignatureMessage(){
+    return 'No survey acceptance recorded yet.';
+  }
+
+  function canvas(){
+    return $('signatureCanvas');
+  }
+
+  function clearCanvas(){
+    const c = canvas();
+    if(!c) return;
+    try{
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0,0,c.width,c.height);
+    }catch(e){}
+  }
+
+  function canvasHasInk(){
+    const c = canvas();
+    if(!c) return false;
+    try{
+      const ctx = c.getContext('2d', {willReadFrequently:true});
+      const data = ctx.getImageData(0,0,c.width,c.height).data;
+      for(let i=3;i<data.length;i+=4){
+        if(data[i] > 10) return true;
+      }
+    }catch(e){
+      return !!(signatureData && signatureData.length > 1000) || !!(window.signatureData && window.signatureData.length > 1000);
+    }
+    return false;
+  }
+
+  function currentCanvasSignature(){
+    const c = canvas();
+    if(!c || !canvasHasInk()) return '';
+    try{ return c.toDataURL('image/png'); }catch(e){ return signatureData || window.signatureData || ''; }
+  }
+
+  function applySignature(data, opts={}){
+    const value = data || '';
+    try{ signatureData = value; }catch(e){}
+    try{ window.signatureData = value; }catch(e){}
+    try{ signaturePadDirty = !!value; }catch(e){}
+
+    clearCanvas();
+
+    if(value){
+      const c = canvas();
+      if(c){
+        try{
+          const ctx = c.getContext('2d');
+          const img = new Image();
+          img.onload = function(){
+            try{
+              ctx.clearRect(0,0,c.width,c.height);
+              ctx.drawImage(img,0,0,c.width,c.height);
+            }catch(e){}
+          };
+          img.src = value;
+        }catch(e){}
+      }
+    }
+
+    if(opts.save){
+      try{ if(typeof save === 'function') save(); }catch(e){}
+    }
+  }
+
+  function clearSignatureAndAcceptance(opts={}){
+    applySignature('', {save:false});
+    const stamp = $('acceptanceStamp');
+    if(stamp) stamp.textContent = blankSignatureMessage();
+    const note = $('acceptanceNote');
+    if(note && opts.clearFields) note.value = '';
+    const likelihood = $('customerLikelihood');
+    if(likelihood && opts.clearFields) likelihood.value = '';
+    const blocker = $('blockerReason');
+    if(blocker && opts.clearFields) blocker.value = '';
+    document.querySelectorAll('#likelihoodButtons button').forEach(btn => btn.classList.remove('selected'));
+    const blockerPrompt = $('blockerPrompt');
+    if(blockerPrompt && opts.clearFields) blockerPrompt.textContent = 'Choose the closest option above.';
+    if(opts.save){
+      try{ if(typeof save === 'function') save(); }catch(e){}
+    }
+  }
+
+  function syncSignatureBeforeSave(){
+    const data = currentCanvasSignature();
+    try{ signatureData = data; }catch(e){}
+    try{ window.signatureData = data; }catch(e){}
+    return data;
+  }
+
+  function savedSurveyById(id){
+    try{
+      const list = typeof getSavedSurveys === 'function'
+        ? getSavedSurveys()
+        : JSON.parse(localStorage.getItem(SURVEYS_NAME) || '[]');
+      return (list || []).find(x => x && x.id === id) || null;
+    }catch(e){ return null; }
+  }
+
+  function patchSignatureHelpers(){
+    try{
+      window.LGSurveySignature = {
+        clear: () => clearSignatureAndAcceptance({save:true, clearFields:false}),
+        resetBlank: () => clearSignatureAndAcceptance({save:false, clearFields:true}),
+        apply: data => applySignature(data, {save:false}),
+        hasInk: canvasHasInk,
+        get: currentCanvasSignature
+      };
+    }catch(e){}
+
+    try{
+      hasSignature = function(){
+        return !!currentCanvasSignature();
+      };
+    }catch(e){}
+  }
+
+  function patchGetData(){
+    try{
+      if(typeof getData === 'function' && !getData.v56SignatureWrapped){
+        const old = getData;
+        getData = function(){
+          const data = syncSignatureBeforeSave();
+          const d = old.apply(this, arguments);
+          d.signatureData = data;
+          const stamp = $('acceptanceStamp');
+          d.acceptance = stamp ? (stamp.innerText || stamp.textContent || '') : '';
+          return d;
+        };
+        getData.v56SignatureWrapped = true;
+      }
+    }catch(e){}
+  }
+
+  function patchSaveCurrentSurvey(){
+    try{
+      if(typeof saveCurrentSurvey === 'function' && !saveCurrentSurvey.v56SignatureWrapped){
+        const old = saveCurrentSurvey;
+        saveCurrentSurvey = function(){
+          syncSignatureBeforeSave();
+          return old.apply(this, arguments);
+        };
+        saveCurrentSurvey.v56SignatureWrapped = true;
+      }
+    }catch(e){}
+  }
+
+  function patchLoadSavedSurvey(){
+    try{
+      if(typeof loadSavedSurvey === 'function' && !loadSavedSurvey.v56SignatureWrapped){
+        const old = loadSavedSurvey;
+        loadSavedSurvey = function(id){
+          const recBefore = savedSurveyById(id);
+          const result = old.apply(this, arguments);
+          const rec = savedSurveyById(id) || recBefore;
+          const sig = rec && rec.signatureData ? rec.signatureData : '';
+          const acceptance = rec && rec.acceptance ? rec.acceptance : blankSignatureMessage();
+
+          // Existing legacy loaders update fields but did not redraw or clear the canvas.
+          // Run a few times to beat older delayed render/bind code on slower phones.
+          [0,80,250,700].forEach(delay => {
+            setTimeout(() => {
+              applySignature(sig, {save:false});
+              const stamp = $('acceptanceStamp');
+              if(stamp) stamp.textContent = acceptance || blankSignatureMessage();
+              setVersion();
+            }, delay);
+          });
+
+          return result;
+        };
+        loadSavedSurvey.v56SignatureWrapped = true;
+      }
+    }catch(e){}
+  }
+
+  function patchBlankSurveyStarts(){
+    // Do not clear the visible signature before a user has confirmed a new survey.
+    // Blank-survey actions reload the app with ?newSurvey and are cleared in bind() after the new page loads.
+    // Save-and-new saves the current signature first, then starts a clean draft.
+    try{
+      if(typeof saveAndStartNew === 'function' && !saveAndStartNew.v56SignatureWrapped){
+        const old = saveAndStartNew;
+        saveAndStartNew = function(){
+          syncSignatureBeforeSave();
+          const result = old.apply(this, arguments);
+          setTimeout(() => clearSignatureAndAcceptance({save:false, clearFields:true}), 0);
+          return result;
+        };
+        saveAndStartNew.v56SignatureWrapped = true;
+      }
+    }catch(e){}
+  }
+
+  function patchClearSignatureButton(){
+    const btn = $('clearSignature');
+    if(!btn) return;
+    btn.onclick = function(e){
+      if(e) e.preventDefault();
+      applySignature('', {save:true});
+    };
+  }
+
+  function bind(){
+    setVersion();
+    patchSignatureHelpers();
+    patchGetData();
+    patchSaveCurrentSurvey();
+    patchLoadSavedSurvey();
+    patchBlankSurveyStarts();
+    patchClearSignatureButton();
+
+    if(location.search.includes('newSurvey=')){
+      clearSignatureAndAcceptance({save:false, clearFields:true});
+    }else{
+      // On first load, redraw the current draft signature or clear the box if none exists.
+      let draftSig = '';
+      let draftAcceptance = '';
+      try{
+        const draft = JSON.parse(localStorage.getItem(KEY_NAME) || 'null');
+        draftSig = draft && draft.signatureData ? draft.signatureData : '';
+        draftAcceptance = draft && draft.acceptance ? draft.acceptance : '';
+      }catch(e){}
+      setTimeout(() => {
+        applySignature(draftSig, {save:false});
+        const stamp = $('acceptanceStamp');
+        if(stamp && !draftAcceptance) stamp.textContent = blankSignatureMessage();
+        else if(stamp && draftAcceptance) stamp.textContent = draftAcceptance;
+      }, 120);
+    }
+
+    // Some older patchers reassign button handlers late. Re-apply final signature patch after they finish.
+    setTimeout(() => {
+      setVersion();
+      patchSignatureHelpers();
+      patchGetData();
+      patchSaveCurrentSurvey();
+      patchLoadSavedSurvey();
+      patchClearSignatureButton();
+    }, 1100);
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
