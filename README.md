@@ -1,4 +1,4 @@
-# LG Survey v60 local
+# LG Survey v61 local
 
 Stability/rescue build.
 
@@ -6,7 +6,7 @@ Stability/rescue build.
 - Stops the app rebuilding the full ChatGPT handover prompt on every field change.
 - Makes save lighter so Tigo, battery, panel and Sigenergy fields do not trigger heavy redraw loops.
 - Adds `reset.html` as an emergency rescue page for clearing old service-worker cache.
-- Updates service worker cache to v60.
+- Updates service worker cache to v61.
 
 ## Emergency update route
 After uploading to GitHub Pages, open:
