@@ -38,7 +38,7 @@ async function cleanCaches(){
     }
   }catch(e){log('Cache clear warning: '+e.message);}
 }
-function appUrl(){return './index.html?v61='+Date.now();}
+function appUrl(){return './index.html?v62='+Date.now();}
 document.getElementById('cache').onclick=async()=>{await cleanCaches(); location.replace(appUrl());};
 document.getElementById('draft').onclick=async()=>{await cleanCaches(); localStorage.removeItem('tlgec_current_draft_v1'); log('Current draft cleared'); location.replace(appUrl());};
 document.getElementById('all').onclick=async()=>{if(!confirm('This removes all saved LG Survey data in this browser. Continue?'))return; await cleanCaches(); Object.keys(localStorage).filter(k=>k.toLowerCase().includes('tlgec')).forEach(k=>localStorage.removeItem(k)); log('LG Survey local data cleared'); location.replace(appUrl());};
