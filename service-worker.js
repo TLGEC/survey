@@ -1,5 +1,5 @@
-const CACHE='lg-survey-v59-2026-06-14';
-const FILES=['./','./index.html','./styles.css','./app.js','./manifest.json','./icon.svg','./app-icon-192.png','./app-icon-512.png','./tesla-powerwall.webp','./sigenergy-battery.webp','./tlgec-logo.png'];
+const CACHE='lg-survey-v60-2026-06-14';
+const FILES=['./','./index.html','./styles.css','./app.js','./manifest.json','./icon.svg','./app-icon-192.png','./app-icon-512.png','./tesla-powerwall.webp','./sigenergy-battery.webp','./tlgec-logo.png','./reset.html'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(FILES).catch(()=>null)));

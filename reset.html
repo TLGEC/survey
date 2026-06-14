@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LG Survey reset</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f5f7f3;color:#0b1f18;margin:0;padding:24px}
+.card{max-width:620px;margin:40px auto;background:#fff;border-radius:18px;padding:24px;box-shadow:0 20px 50px rgba(0,0,0,.12)}
+button{display:block;width:100%;margin:12px 0;padding:14px 16px;border-radius:12px;border:0;background:#0b6b3a;color:white;font-weight:700;font-size:16px}
+.secondary{background:#2c3b34}.danger{background:#8f1d1d}.hint{color:#4d5d55;line-height:1.5}.small{font-size:13px;color:#68766f}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>LG Survey rescue</h1>
+<p class="hint">Use this if the app is stuck on an old version or freezing before the update button can be used.</p>
+<button id="cache">Update app cache only</button>
+<button class="secondary" id="draft">Clear current draft only</button>
+<button class="danger" id="all">Clear all LG Survey data</button>
+<p class="small">Use “Clear all” only after exporting a backup, because it removes saved surveys from this browser.</p>
+<pre id="status"></pre>
+</div>
+<script>
+const statusBox=document.getElementById('status');
+function log(t){statusBox.textContent += t + "\n";}
+async function cleanCaches(){
+  log('Clearing app cache...');
+  try{
+    if('serviceWorker' in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      for(const r of regs){try{await r.unregister(); log('Service worker removed');}catch(e){}}
+    }
+    if('caches' in window){
+      const keys=await caches.keys();
+      await Promise.all(keys.map(k=>caches.delete(k)));
+      log('Caches cleared: '+keys.length);
+    }
+  }catch(e){log('Cache clear warning: '+e.message);}
+}
+function appUrl(){return './index.html?v60='+Date.now();}
+document.getElementById('cache').onclick=async()=>{await cleanCaches(); location.replace(appUrl());};
+document.getElementById('draft').onclick=async()=>{await cleanCaches(); localStorage.removeItem('tlgec_current_draft_v1'); log('Current draft cleared'); location.replace(appUrl());};
+document.getElementById('all').onclick=async()=>{if(!confirm('This removes all saved LG Survey data in this browser. Continue?'))return; await cleanCaches(); Object.keys(localStorage).filter(k=>k.toLowerCase().includes('tlgec')).forEach(k=>localStorage.removeItem(k)); log('LG Survey local data cleared'); location.replace(appUrl());};
+</script>
+</body>
+</html>

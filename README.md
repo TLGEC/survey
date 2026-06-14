@@ -1,20 +1,18 @@
-# TLGEC Survey Sync
+# LG Survey v60 local
 
-Offline-capable mobile survey capture PWA.
+Stability/rescue build.
 
-## Deploy
+## Key fixes
+- Stops the app rebuilding the full ChatGPT handover prompt on every field change.
+- Makes save lighter so Tigo, battery, panel and Sigenergy fields do not trigger heavy redraw loops.
+- Adds `reset.html` as an emergency rescue page for clearing old service-worker cache.
+- Updates service worker cache to v60.
 
-Upload these files to your GitHub Pages repository root:
+## Emergency update route
+After uploading to GitHub Pages, open:
 
-- index.html
-- styles.css
-- app.js
-- manifest.json
-- service-worker.js
-- icon.svg
+`/reset.html`
 
-Then enable Pages from main branch, root folder.
+Then choose **Update app cache only**. If the current draft is corrupted or the first page still freezes, choose **Clear current draft only**.
 
-## Use
-
-Open the GitHub Pages link on Android Chrome, then Add to Home screen.
+Use **Clear all LG Survey data** only after exporting a backup.
