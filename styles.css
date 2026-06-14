@@ -1216,3 +1216,7 @@ label{font-size:15px;color:#263c31}
   .panelSuggestionBox{grid-template-columns:1fr}
   .panelSuggestionBox .smallBtn{width:100%!important}
 }
+
+
+/* v59 battery stability visual cue */
+.selectedBatteryBox{outline:3px solid rgba(121,172,32,.35);box-shadow:0 10px 28px rgba(6,40,25,.12)}

@@ -5885,3 +5885,241 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindTigoStability);
   else bindTigoStability();
 })();
+
+
+
+/* v59 stability patch: battery brand changes no longer trigger recursive Sigenergy save/quote loops. */
+(function(){
+  const VERSION = 'v59';
+  const $ = id => document.getElementById(id);
+  const n = v => Number(v || 0) || 0;
+  const clamp = (v,min,max) => Math.max(min, Math.min(max, Math.round(n(v))));
+
+  function setVersion(){
+    const hv=$('homeVersionSmall'); if(hv) hv.textContent=VERSION;
+    const av=$('appVersionBadge'); if(av) av.textContent='App version: '+VERSION;
+  }
+
+  function isOn(id){ return !!$(id)?.checked; }
+  function sig10(){ return clamp($('sig10Qty')?.value,0,6); }
+  function sig6(){ return clamp($('sig6Qty')?.value,0,6); }
+  function sigModules(){ return sig10()+sig6(); }
+  function sigTotal(){ return sig10()*9.04 + sig6()*6.02; }
+  function sigUsable59(){ return sig10()*8.76 + sig6()*5.84; }
+  function sigModuleText59(){
+    const parts=[];
+    if(sig10()) parts.push(`${sig10()} x SigenStor BAT 10.0`);
+    if(sig6()) parts.push(`${sig6()} x SigenStor BAT 6.0`);
+    return parts.length ? parts.join(' + ') : 'No Sigenergy battery modules selected';
+  }
+  function sigControllerSelected(){
+    const raw=$('sigBatteryOnlyController')?.value || '0|None';
+    const parts=String(raw).split('|');
+    return {cost:n(parts[0]), text:parts[1] || 'None'};
+  }
+  function sigControllerText59(){
+    const hasSolar=isOn('solar') && n($('panelCount')?.value)>0;
+    const manual=($('sigControllerMode')?.value||'auto')==='manual';
+    if(hasSolar && !manual){
+      try{ return `Controller auto-sized to ${sigPvInverterBand(kWp())} kW from solar size`; }catch(e){ return 'Controller auto-sized from solar size'; }
+    }
+    return `Controller selected: ${sigControllerSelected().text}`;
+  }
+  function sigControllerCost59(){
+    const hasSolar=isOn('solar') && n($('panelCount')?.value)>0;
+    const manual=($('sigControllerMode')?.value||'auto')==='manual';
+    if(hasSolar && !manual){
+      try{ return sigPvInverterCost(kWp()); }catch(e){ return 0; }
+    }
+    return sigControllerSelected().cost;
+  }
+  function sigBatteryCost59(){
+    const sixCost=n($('sig6Price')?.value || 1575);
+    const tenCost=n($('sig10Price')?.value || 2050);
+    const gateway=(isOn('sigGateway') && sigModules()>0) ? n($('sigGatewayPrice')?.value || 785) : 0;
+    return sig6()*sixCost + sig10()*tenCost + gateway;
+  }
+  function sigBatteryDescription59(){
+    if(sigModules()<=0) return 'No Sigenergy battery selected';
+    const gateway=isOn('sigGateway') ? 'Gateway included' : 'No Gateway';
+    return `${sigModuleText59()} | ${sigTotal().toFixed(2)} kWh total / ${sigUsable59().toFixed(2)} kWh usable | ${gateway}`;
+  }
+  function safeSyncSigUi(){
+    const ten=$('sig10Qty'), six=$('sig6Qty');
+    if(ten) ten.value=String(sig10());
+    if(six) six.value=String(sig6());
+
+    // One controller stack should be 1 to 6 modules. If over, trim 6.0 modules first.
+    if(sigModules()>6){
+      let over=sigModules()-6;
+      if(six && sig6()>0){
+        const newSix=Math.max(0, sig6()-over);
+        over -= (sig6()-newSix);
+        six.value=String(newSix);
+      }
+      if(over>0 && ten) ten.value=String(Math.max(0, sig10()-over));
+    }
+
+    const model=$('sigBatteryModel'), qty=$('sigModuleQty');
+    if(model) model.value = sig10() ? '10' : '6';
+    if(qty) qty.value = String(sigModules());
+
+    const hasSolar=isOn('solar') && n($('panelCount')?.value)>0;
+    const mode=$('sigControllerMode');
+    if(mode && !hasSolar && mode.value==='auto') mode.value='manual';
+
+    const preview=$('sigPreviewBox');
+    if(preview){
+      const route=($('sigInstallType')?.selectedOptions?.[0]?.textContent || 'Sigenergy route').trim();
+      const gateway=isOn('sigGateway') ? 'Gateway included where required' : 'No Sigenergy Gateway selected';
+      preview.innerHTML=`<div class="sigPreviewMain">${sigModuleText59()}</div>
+        <div class="sigPreviewSub">${route} • ${sigModules()} module${sigModules()===1?'':'s'} • ${sigTotal().toFixed(2)} kWh total / ${sigUsable59().toFixed(2)} kWh usable • ${gateway}<br>${sigControllerText59()}</div>`;
+    }
+
+    const warn=$('sigConfigWarning');
+    if(warn){
+      let msg='';
+      if(($('batteryBrand')?.value||'None')==='Sigenergy' && sigModules()===0) msg='Select at least one Sigenergy battery module.';
+      else if(($('batteryBrand')?.value||'None')==='Sigenergy' && (($('sigControllerMode')?.value||'auto')==='manual') && sigControllerSelected().text==='None') msg='Manual/battery-only Sigenergy route needs a controller selection.';
+      warn.textContent=msg;
+      warn.classList.toggle('on', !!msg);
+    }
+  }
+  function safeSyncTeslaUi(){
+    try{ if(typeof syncTeslaOptions === 'function') syncTeslaOptions(); }catch(e){}
+    try{ if(typeof renderTeslaConfigGuide === 'function') renderTeslaConfigGuide(); }catch(e){}
+  }
+  function updateBatteryPanels(){
+    const brand=$('batteryBrand')?.value || 'None';
+    const battery=$('battery');
+    if(battery) battery.checked = brand !== 'None';
+
+    const tesla=$('teslaBox'), sig=$('sigBox');
+    if(tesla) tesla.classList.toggle('selectedBatteryBox', brand==='Tesla');
+    if(sig) sig.classList.toggle('selectedBatteryBox', brand==='Sigenergy');
+
+    if(brand==='Tesla') safeSyncTeslaUi();
+    if(brand==='Sigenergy') safeSyncSigUi();
+  }
+
+  // Re-wrap save with a hard re-entrancy guard. This prevents legacy quote -> Sig sync -> save recursion.
+  function patchSaveGuard(){
+    try{
+      if(typeof save === 'function' && !save.v59BatteryGuard){
+        const oldSave = save;
+        save = function(){
+          if(window.__lgSurveySaveBusy) return;
+          window.__lgSurveySaveBusy = true;
+          try{ return oldSave.apply(this, arguments); }
+          finally{ window.__lgSurveySaveBusy = false; }
+        };
+        save.v59BatteryGuard = true;
+      }
+    }catch(e){}
+  }
+
+  // Replace Sigenergy quote helpers with non-saving versions so quote() remains pure.
+  function patchSigQuote(){
+    try{ sigStorage = function(){ return sigTotal(); }; }catch(e){}
+    try{ sigUsable = function(){ return sigUsable59(); }; }catch(e){}
+    try{ sigBatteryDescription = sigBatteryDescription59; }catch(e){}
+    try{ updateSigPreview = safeSyncSigUi; }catch(e){}
+    try{ sigBatteryOnlyControllerCost = sigControllerCost59; }catch(e){}
+
+    try{
+      if(typeof batteryCostInternal === 'function' && !batteryCostInternal.v59SigPure){
+        const old = batteryCostInternal;
+        const pure = function(){
+          const brand=$('batteryBrand')?.value || 'None';
+          if(brand !== 'Sigenergy') return old.apply(this, arguments);
+          safeSyncSigUi();
+          return {
+            cost: sigBatteryCost59(),
+            text: sigBatteryDescription59(),
+            inverterCost: sigControllerCost59(),
+            controllerText: sigControllerText59()
+          };
+        };
+        pure.v59SigPure = true;
+        batteryCostInternal = pure;
+      }
+    }catch(e){}
+
+    try{
+      if(typeof batteryUsableKwhForPayback === 'function' && !batteryUsableKwhForPayback.v59SigPure){
+        const oldPayback = batteryUsableKwhForPayback;
+        const pay = function(){
+          const brand=$('batteryBrand')?.value || 'None';
+          if(brand === 'Sigenergy') return sigUsable59();
+          return oldPayback.apply(this, arguments);
+        };
+        pay.v59SigPure = true;
+        batteryUsableKwhForPayback = pay;
+      }
+    }catch(e){}
+  }
+
+  const lightRefresh = (function(){
+    let t=null;
+    return function(){
+      clearTimeout(t);
+      t=setTimeout(()=>{
+        try{ if(typeof calculate === 'function' && $('quoteCheck')) calculate(); }
+        catch(e){
+          try{ if(typeof renderPanelSenseCheck === 'function') renderPanelSenseCheck(); }catch(_){}
+          try{ if(typeof refreshPresent === 'function') refreshPresent(); }catch(_){}
+          try{ if(typeof save === 'function') save(); }catch(_){}
+        }
+        try{ if(typeof updateConsultationProof === 'function') updateConsultationProof(); }catch(e){}
+        try{ if(typeof updateAgreementSummary === 'function') updateAgreementSummary(); }catch(e){}
+      }, 220);
+    };
+  })();
+
+  function bindBatteryBrand(){
+    const brand=$('batteryBrand');
+    if(!brand || brand.dataset.v59BatteryBound) return;
+    brand.dataset.v59BatteryBound='yes';
+
+    const handler=function(e){
+      // Old listeners did a heavy save + Sig sync chain here. Handle brand switching in one clean path.
+      if(e){
+        e.stopImmediatePropagation();
+        e.stopPropagation();
+      }
+      patchSaveGuard();
+      patchSigQuote();
+      updateBatteryPanels();
+      try{ if(typeof save === 'function') save(); }catch(err){}
+      lightRefresh();
+    };
+
+    brand.addEventListener('input', handler, true);
+    brand.addEventListener('change', handler, true);
+  }
+
+  function bind(){
+    setVersion();
+    patchSaveGuard();
+    patchSigQuote();
+    bindBatteryBrand();
+    updateBatteryPanels();
+
+    // Keep Sig/Tesla sub-fields responsive without creating save recursion.
+    ['sig6Qty','sig10Qty','sigGateway','sigControllerMode','sigBatteryOnlyController','sigInstallType','sig6Price','sig10Price','sigGatewayPrice','teslaSaleType','pw3Qty','dcExpQty','gateway','pw3Price','gatewayPrice','dcPrice','teslaDiscounts'].forEach(id=>{
+      const el=$(id);
+      if(el && !el.dataset.v59BatteryLight){
+        el.dataset.v59BatteryLight='yes';
+        const h=()=>{ patchSaveGuard(); patchSigQuote(); updateBatteryPanels(); lightRefresh(); };
+        el.addEventListener('input', h, true);
+        el.addEventListener('change', h, true);
+      }
+    });
+
+    setTimeout(()=>{ setVersion(); patchSaveGuard(); patchSigQuote(); bindBatteryBrand(); updateBatteryPanels(); }, 900);
+    setTimeout(()=>{ setVersion(); patchSaveGuard(); patchSigQuote(); bindBatteryBrand(); updateBatteryPanels(); }, 1700);
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
