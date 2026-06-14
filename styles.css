@@ -1162,3 +1162,57 @@ label{font-size:15px;color:#263c31}
 .hiddenLegacyField{display:none!important}
 .fieldHint{display:block;color:#6b7a70;font-size:13px;font-weight:650;margin-top:5px;line-height:1.25}
 .mediaTile{scroll-margin-top:14px}
+
+
+/* v57 polish: quick import, panel suggestion and Sigenergy matrix */
+.homeCsvStarter,.panelSuggestionBox,.sigRouteBox,.sigConfigWarning,.toolBox{
+  border:1px solid #d9e2da;
+  background:linear-gradient(180deg,#ffffff 0%,#f6fbf2 100%);
+  border-radius:22px;
+  padding:16px;
+  margin:14px 0;
+  box-shadow:0 6px 18px rgba(6,40,25,.06);
+}
+.homeCsvStarter .miniStepHead,.panelSuggestionBox b{
+  display:block;
+  color:#062819;
+}
+.miniStepHead span{
+  display:inline-block;
+  background:#dff2d0;
+  color:#0b5d36;
+  border-radius:999px;
+  padding:5px 10px;
+  font-size:12px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  margin-bottom:6px;
+}
+.miniStepHead b{display:block;font-size:20px}
+.compactCsvImport textarea{min-height:110px}
+.fileImportLine input{margin-top:8px}
+.panelSuggestionBox{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:6px 12px;
+  align-items:center;
+}
+.panelSuggestionBox b{grid-column:1/-1}
+.panelSuggestionBox span{color:#3d5248;font-weight:750}
+.panelSuggestionBox.suggestionReady{border-color:#94c96f;background:linear-gradient(180deg,#ffffff,#eff9e9)}
+.panelSuggestionBox.suggestionManual{border-color:#f0c66d;background:linear-gradient(180deg,#ffffff,#fff8e7)}
+.panelSuggestionBox .smallBtn{width:auto!important;margin:0!important}
+.sigCleanCard{border-color:#8dd6b8}
+.sigRouteBox{box-shadow:none;background:#f4fbf7;border-color:#d6eee2}
+.sigStackGrid label,.sigControllerGrid label{position:relative}
+.sigPreviewMain{font-size:20px;font-weight:950}
+.sigPreviewSub{line-height:1.45}
+.sigConfigWarning{display:none;background:#fff8e7;border-color:#f0c66d;color:#5c3b00}
+.sigConfigWarning.on{display:block}
+.toolBox summary{font-size:19px}
+.backupTool{background:linear-gradient(180deg,#ffffff,#f7faf9)}
+@media(max-width:640px){
+  .panelSuggestionBox{grid-template-columns:1fr}
+  .panelSuggestionBox .smallBtn{width:100%!important}
+}

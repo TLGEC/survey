@@ -33,7 +33,7 @@
 </div>
 <main><section class="panel on landingPage" id="home">
 <div class="landingHero">
-<div class="homeVersionSmall" id="homeVersionSmall">v51</div>
+<div class="homeVersionSmall" id="homeVersionSmall">v57</div>
 <div class="heroCopy">
 <div class="heroKicker">LG Survey</div>
 <h2>Solar consultation</h2>
@@ -44,6 +44,24 @@
 </div>
 <button class="primary heroButton" id="homeNewSurvey" type="button">Start new consultation</button>
 </div>
+<div class="homeCsvStarter" id="homeCsvStarter">
+  <div class="miniStepHead">
+    <span>Optional import</span>
+    <b>Start from monday CSV</b>
+  </div>
+  <p>Paste the customer row or Field,Value export here before the visit. This keeps the Tools page for backup work and makes the normal start faster.</p>
+  <details class="quickDetails compactCsvImport">
+    <summary>Paste or upload monday CSV</summary>
+    <label>monday CSV text<textarea id="homeCsvPaste" placeholder="Paste Field,Value CSV or a normal monday CSV row here"></textarea></label>
+    <div class="two">
+      <button class="primary" id="homeImportCustomer" type="button">Import CSV and open Priorities</button>
+      <button class="secondary" id="homeSkipCsv" type="button">Start blank survey</button>
+    </div>
+    <label class="fileImportLine">Upload monday CSV<input accept=".csv,text/csv" id="homeCsvFile" type="file"/></label>
+    <div class="guide" id="homeCsvStatus">No CSV imported yet.</div>
+  </details>
+</div>
+
 <div class="quickActions simpleHomeActions">
 <button class="secondary" id="homeSaveCurrent" type="button">Save survey</button>
 </div>
@@ -234,8 +252,13 @@
 <option value="SunPower P7 450W|450|1790 x 1134 x 30 mm|24.8 kg">SunPower P7 450W</option>
 </select></label>
 <div class="two">
-<label>Panel count<input id="panelCount" inputmode="numeric" type="number" value="0"/><span class="fieldHint">Auto-filled from roof elevations when panels are entered there.</span></label>
+<label>Panel count<input id="panelCount" inputmode="numeric" type="number" value="0"/><span class="fieldHint">Surveyor-adjustable. Roof auto-fit gives a suggestion, but this can be overridden for obstructions or judgement on site.</span></label>
 <label>System override price £<input id="systemOverride" inputmode="decimal" type="number" value="0"/></label>
+</div>
+<div class="panelSuggestionBox" id="panelSuggestionBox">
+  <b>Roof suggestion</b>
+  <span>Run auto-fit from the Survey page to show suggested panel count here.</span>
+  <button class="secondary smallBtn" id="useRoofSuggestion" type="button">Use roof suggestion</button>
 </div>
 <p class="hint">Pricing follows Residential Pricing V8.6 cost build. Use system override only for an approved final proposal position.</p>
 <div class="panelSenseCard">
@@ -309,26 +332,31 @@
 </details>
 </div>
 <div class="quoteBox batteryChoiceCard sigChoice sigCleanCard" id="sigBox">
-<div class="batteryBrandHead"><span class="batteryLogo sigLogo">Sigenergy</span><span>SigenStor battery storage</span></div>
-<p class="hint">For solar + battery, the Sigen controller is priced through PV Inverter automatically. Only select a battery-only controller when there are no solar panels.</p>
-<div class="two">
-<label>Main battery module<select id="sigBatteryModel">
-<option selected="" value="10">SigenStor BAT 10.0</option>
-<option value="6">SigenStor BAT 6.0</option>
-</select></label>
-<label>Total battery modules<input id="sigModuleQty" min="0" type="number" value="1"/></label>
+<div class="batteryBrandHead"><span class="batteryLogo sigLogo">Sigenergy</span><span>SigenStor battery option</span></div>
+<p class="hint">Choose the exact Sigenergy stack. The datasheet route allows 1 to 6 battery modules per controller, so mixed 10.0 and 6.0 combinations are supported up to 6 modules total.</p>
+<input id="sigBatteryModel" type="hidden" value="10"/>
+<input id="sigModuleQty" type="hidden" value="0"/>
+<div class="sigRouteBox">
+  <label>Sigenergy route<select id="sigInstallType">
+    <option selected value="solarBattery">Solar + battery</option>
+    <option value="batteryOnly">Battery only</option>
+    <option value="retrofit">Retrofit / existing solar</option>
+    <option value="other">Other / survey note</option>
+  </select></label>
+</div>
+<div class="two sigStackGrid">
+  <label>SigenStor BAT 10.0 modules<input id="sig10Qty" min="0" max="6" inputmode="numeric" type="number" value="1"/><span class="fieldHint">9.04 kWh total / 8.76 kWh usable each.</span></label>
+  <label>SigenStor BAT 6.0 modules<input id="sig6Qty" min="0" max="6" inputmode="numeric" type="number" value="0"/><span class="fieldHint">6.02 kWh total / 5.84 kWh usable each.</span></label>
 </div>
 <div class="scope">
-<label><input checked="" id="sigGateway" type="checkbox"/> Gateway included with first battery</label>
+<label><input checked id="sigGateway" type="checkbox"/> Sigenergy Gateway included where required</label>
 </div>
-<div class="sigPreview" id="sigPreviewBox">
-<div class="sigPreviewMain">SigenStor BAT 10.0</div>
-<div class="sigPreviewSub">1 module, gateway included</div>
-</div>
-<details class="quickDetails batteryOnlyBox advancedPricing">
-<summary>Battery-only controller</summary>
-<p class="hint">Use this only when there is no solar PV in the proposal.</p>
-<label>Controller<select id="sigBatteryOnlyController">
+<div class="two sigControllerGrid">
+  <label>Controller route<select id="sigControllerMode">
+    <option selected value="auto">Auto-size controller from solar size</option>
+    <option value="manual">Manual controller selection</option>
+  </select><span class="fieldHint">Use manual for battery-only, retrofit or special controller selection.</span></label>
+  <label>Controller<select id="sigBatteryOnlyController">
 <option value="0|None">None</option>
 <option value="780|Sigenstor Controller 3.6kW">3.6 kW</option>
 <option value="850|Sigenstor Controller 4.0kW">4.0 kW</option>
@@ -340,7 +368,21 @@
 <option value="2081|Sigenstor Controller 15kW">15 kW</option>
 <option value="1976|Sigenstor Controller 20kW">20 kW</option>
 <option value="2289.1|Sigenstor Controller 25kW">25 kW</option>
-</select></label>
+</select><span class="fieldHint">Used when Controller route is manual or when no solar is selected.</span></label>
+</div>
+<div class="sigPreview" id="sigPreviewBox">
+  <div class="sigPreviewMain">SigenStor stack</div>
+  <div class="sigPreviewSub">1 x BAT 10.0 selected. Gateway included. Controller auto-sized.</div>
+</div>
+<div class="sigConfigWarning" id="sigConfigWarning"></div>
+<details class="quickDetails advancedPricing">
+<summary>Advanced Sigenergy pricing</summary>
+<p class="hint">Use only when the pricing matrix changes. Defaults are pulled into the quote builder automatically.</p>
+<div class="two">
+  <label>BAT 6.0 internal cost £<input id="sig6Price" inputmode="decimal" type="number" value="1575"/></label>
+  <label>BAT 10.0 internal cost £<input id="sig10Price" inputmode="decimal" type="number" value="2050"/></label>
+  <label>Gateway internal cost £<input id="sigGatewayPrice" inputmode="decimal" type="number" value="785"/></label>
+</div>
 </details>
 </div>
 <h2>Extras</h2>
@@ -440,13 +482,14 @@
 </section>
 <section class="panel internalPanel" id="internal">
 <h2>Tools</h2>
-<p class="hint">Internal tools only. Use after the customer journey for import, handover, backup and app updates.</p>
-<details class="internalGroup" open="">
-<summary>Pre-survey import</summary>
-<p class="hint">Paste monday-generated CSV text. Import saves the survey and opens Customer.</p>
+<p class="hint">Quick operational tools for import, handover, export packs, backups and app maintenance. Saved surveys stay on Start.</p>
+
+<details class="internalGroup toolBox importTool" open>
+<summary>Import from monday</summary>
+<p class="hint">Use this when the survey was not started from the Start page CSV import.</p>
 <label>Paste monday CSV text<textarea id="crmPaste" placeholder="Paste Field,Value CSV or a normal monday CSV export here"></textarea></label>
-<button class="primary" id="importPastedCRM" type="button">Import, save survey and open Customer</button>
-<label>Import monday CSV<input accept=".csv,text/csv" id="mondayImport" type="file"/></label>
+<button class="primary" id="importPastedCRM" type="button">Import, save survey and open Priorities</button>
+<label class="fileImportLine">Import monday CSV<input accept=".csv,text/csv" id="mondayImport" type="file"/></label>
 <div class="guide" id="importStatus">No CRM data imported yet.</div>
 <div class="two">
 <label>monday item ID<input id="mondayId" placeholder="Imported from monday where available"/></label>
@@ -470,7 +513,8 @@
 <label>Existing notes<textarea id="crmNotes" placeholder="monday notes, call history or pre-survey comments"></textarea></label>
 <label>Known usage / bill notes<textarea id="preUsage" placeholder="Annual kWh, tariff, EV miles, heat pump, bill received..."></textarea></label>
 </details>
-<details class="internalGroup" open="">
+
+<details class="internalGroup toolBox actionTool" open>
 <summary>Next action and sales status</summary>
 <div class="two">
 <label>Sales status<select id="salesStatus">
@@ -504,37 +548,43 @@
 </div>
 <label>Gut feel / internal sales note<textarea id="gut" placeholder="Buying signals, objections, urgency, household decision dynamic, quote risk."></textarea></label>
 </details>
-<details class="internalGroup">
-<summary>Survey readiness</summary>
+
+<details class="internalGroup toolBox readinessTool">
+<summary>Readiness and completion</summary>
 <button class="primary" id="checkReadiness" type="button">Check what is missing</button>
 <div class="readinessBox" id="readinessBox">Readiness check not run yet.</div>
 <button class="primary" id="markSurveyComplete" type="button">Mark survey complete</button>
 </details>
-<details class="internalGroup" open="">
+
+<details class="internalGroup toolBox exportTool" open>
 <summary>Export pack</summary>
-<p class="hint">Creates one local ZIP for the job: recommendation document, short email text, ChatGPT survey pack prompt, internal brief, data file, signature and selected photos/videos from this session.</p>
+<p class="hint">Creates one local ZIP for the job: recommendation document, email text, ChatGPT survey pack prompt, internal brief, data file, signature and selected photos/videos.</p>
 <button class="primary" id="toolsExportSurveyPackZip" type="button">Export full survey pack ZIP</button>
 <div class="guide" id="toolsExportPackNotice">No export pack created yet.</div>
 </details>
-<details class="internalGroup">
+
+<details class="internalGroup toolBox handoverTool">
 <summary>ChatGPT handover</summary>
 <p class="hint">Copy this into a new ChatGPT chat for that customer. Start the chat with the customer name so ChatGPT titles it clearly.</p>
 <button class="primary" id="copy">Copy ChatGPT customer pack</button>
 <button id="txt">Download notes TXT</button>
 <button class="secondary" id="brief">Download internal brief</button>
-<details>
-<summary>Advanced backup</summary>
+<h2>Preview</h2>
+<pre id="out"></pre>
+</details>
+
+<details class="internalGroup toolBox backupTool">
+<summary>Data and backups</summary>
+<p class="hint">Use these for device backup, recovery or moving saved survey data. Keep this separate from the normal handover tools.</p>
 <button id="json">Download data file</button>
 <button class="secondary" id="exportBackup" type="button">Export saved survey backup</button>
 <label class="importBackupLabel">Import saved survey backup<input accept=".json,application/json" id="importBackup" type="file"/></label>
 </details>
-<h2>Preview</h2>
-<pre id="out"></pre>
-</details>
-<details class="internalGroup">
+
+<details class="internalGroup toolBox appTool">
 <summary>App tools</summary>
 <button class="secondary" id="updateApp" type="button">Update app / clear cache</button>
-<div class="versionBadge" id="appVersionBadge">App version: v55</div>
+<div class="versionBadge" id="appVersionBadge">App version: v57</div>
 </details>
 </section>
 </main>
