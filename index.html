@@ -4,9 +4,9 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
-<title>LG Survey v62</title>
+<title>LG Survey v65</title>
 <meta content="#062819" name="theme-color"/>
-<meta name="lg-survey-version" content="v62"/>
+<meta name="lg-survey-version" content="v65"/>
 <link href="manifest.json" rel="manifest"/>
 <link href="styles.css" rel="stylesheet"/>
 </head>
@@ -48,23 +48,24 @@
 <div class="homeCsvStarter" id="homeCsvStarter">
   <div class="miniStepHead">
     <span>Optional import</span>
-    <b>Start from monday CSV</b>
+    <b>Start from monday customer import</b>
   </div>
-  <p>Paste the customer row or Field,Value export here before the visit. This keeps the Tools page for backup work and makes the normal start faster.</p>
+  <p>Paste the monday customer details here before the visit. It can be a CSV export or AI-wrapped CSV text.</p>
   <details class="quickDetails compactCsvImport">
-    <summary>Paste or upload monday CSV</summary>
-    <label>monday CSV text<textarea id="homeCsvPaste" placeholder="Paste Field,Value CSV or a normal monday CSV row here"></textarea></label>
+    <summary>Paste or upload monday customer details</summary>
+    <label>monday customer text<textarea id="homeCsvPaste" placeholder="Paste Field,Value CSV, a monday row, or AI text that contains CSV here"></textarea></label>
     <div class="two">
-      <button class="primary" id="homeImportCustomer" type="button">Import CSV and open Priorities</button>
+      <button class="primary" id="homeImportCustomer" type="button">Import customer and open Priorities</button>
       <button class="secondary" id="homeSkipCsv" type="button">Start blank survey</button>
     </div>
-    <label class="fileImportLine">Upload monday CSV<input accept=".csv,text/csv" id="homeCsvFile" type="file"/></label>
-    <div class="guide" id="homeCsvStatus">No CSV imported yet.</div>
+    <label class="fileImportLine">Upload monday file<input accept=".csv,text/csv" id="homeCsvFile" type="file"/></label>
+    <div class="guide" id="homeCsvStatus">No monday customer imported yet.</div>
   </details>
 </div>
 
 <div class="quickActions simpleHomeActions">
 <button class="secondary" id="homeSaveCurrent" type="button">Save survey</button>
+<button class="secondary" id="homeDemoSurvey" type="button">Try sample job</button>
 </div>
 <div class="syncNotice">
 <b>Local saved surveys</b>
@@ -104,6 +105,18 @@
 </div>
 <label>What matters most<textarea id="wants"></textarea></label>
 <label>Why now / main concern<textarea id="whyNow"></textarea></label>
+<div class="financeCheckCard">
+  <h3>Project finance</h3>
+  <p class="hint">Capture this early so the recommendation matches how the customer plans to proceed.</p>
+  <input id="financePlan" type="hidden"/>
+  <div class="financeButtonGrid" id="financeButtons" aria-label="How is the customer planning to fund the project?">
+    <button type="button" data-finance="Own savings / cash">Own savings / cash</button>
+    <button type="button" data-finance="Bank loan arranged or in progress">Bank loan</button>
+    <button type="button" data-finance="Needs a finance company">Needs finance</button>
+    <button type="button" data-finance="Unsure / needs advice">Unsure</button>
+  </div>
+  <div class="financeStatus" id="financeStatus">Finance route not captured yet.</div>
+</div>
 <div class="bottomNav"><button class="primary continueBtn" data-next="usage" type="button">Continue to Energy</button></div>
 </section>
 <section class="panel" id="usage">
@@ -203,6 +216,7 @@
       <option selected value="AUTO">Auto select best output</option>
       <option value="AIKO 495W|495|1762 x 1134 x 30 mm|20.6 kg">AIKO 495W</option>
       <option value="AIKO 540W|540|1954 x 1134 x 30 mm|27.1 kg">AIKO 540W</option>
+      <option value="SunPower P6 405W Warehouse Deal|405|Editable - confirm datasheet|Manual stock deal">SunPower P6 405W warehouse deal</option>
       <option value="SunPower P7 500W|500|1996 x 1134 x 30 mm|27.5 kg">SunPower P7 500W</option>
       <option value="SunPower P7 450W|450|1790 x 1134 x 30 mm|24.8 kg">SunPower P7 450W</option>
     </select></label>
@@ -227,7 +241,7 @@
 <label>Meter / CU / incoming supply<textarea id="meter"></textarea></label>
 <label>Cable route<textarea id="cable"></textarea></label>
 <label>Access / scaffold<textarea id="access"></textarea></label>
-<label>Site risk / blocker notes<textarea id="siteRiskNotes" placeholder="Anything that could delay design, DNO, survey sign-off, scaffold, cable run or install."></textarea></label>
+<label>Site notes / things to confirm<textarea id="siteRiskNotes" placeholder="Anything to confirm for design, DNO, survey sign-off, scaffold, cable run or install."></textarea></label>
 <div class="checks agreementCheck">
 <label><input id="customerRouteAgreed" type="checkbox"/> Route and equipment locations discussed and accepted, subject to final design and survey checks</label>
 </div>
@@ -249,6 +263,7 @@
 <label>Panel model<select id="panelModel">
 <option value="AIKO 540W|540|1954 x 1134 x 30 mm|27.1 kg">AIKO 540W</option>
 <option selected="" value="AIKO 495W|495|1762 x 1134 x 30 mm|20.6 kg">AIKO 495W</option>
+<option value="SunPower P6 405W Warehouse Deal|405|Editable - confirm datasheet|Manual stock deal">SunPower P6 405W warehouse deal</option>
 <option value="SunPower P7 500W|500|1996 x 1134 x 30 mm|27.5 kg">SunPower P7 500W</option>
 <option value="SunPower P7 450W|450|1790 x 1134 x 30 mm|24.8 kg">SunPower P7 450W</option>
 </select></label>
@@ -260,6 +275,22 @@
   <b>Roof suggestion</b>
   <span>Run auto-fit from the Survey page to show suggested panel count here.</span>
   <button class="secondary smallBtn" id="useRoofSuggestion" type="button">Use roof suggestion</button>
+</div>
+<div class="manualPanelCard" id="manualPanelCard">
+  <div>
+    <b>Manual panel judgement</b>
+    <span id="manualPanelStatus">Auto-fit is only a starting suggestion. Your quoted panel count wins once edited.</span>
+  </div>
+  <label>Override reason<select id="panelOverrideReason">
+    <option value="">No manual reason selected</option>
+    <option>Shading / trees</option>
+    <option>Customer budget</option>
+    <option>Customer preference</option>
+    <option>Roof obstruction</option>
+    <option>Installer judgement</option>
+    <option>Other</option>
+  </select></label>
+  <label>Manual panel note<textarea id="panelOverrideNote" placeholder="Example: rear roof can physically take 10, but customer wants 6 due to budget/shading."></textarea></label>
 </div>
 <p class="hint">Pricing follows Residential Pricing V8.6 cost build. Use system override only for an approved final proposal position.</p>
 <div class="panelSenseCard">
@@ -295,11 +326,16 @@
 </div>
 </details>
 <h2>Battery</h2>
-<label>Battery brand<select id="batteryBrand">
+<label class="hiddenSelectLabel">Battery brand<select id="batteryBrand">
 <option value="None">None</option>
 <option value="Tesla">Tesla</option>
 <option value="Sigenergy">Sigenergy</option>
 </select></label>
+<div class="batteryButtonGrid" id="batteryBrandButtons" aria-label="Choose battery route">
+  <button type="button" data-battery-brand="None">No battery</button>
+  <button type="button" data-battery-brand="Tesla">Tesla Powerwall</button>
+  <button type="button" data-battery-brand="Sigenergy">Sigenergy</button>
+</div>
 <div class="quoteBox batteryChoiceCard teslaChoice" id="teslaBox">
 <div class="batteryBrandHead"><span class="batteryLogo teslaLogo">TESLA</span><span>Powerwall battery option</span></div>
 <input id="teslaSaleType" type="hidden" value="solarBattery"/>
@@ -448,6 +484,7 @@
 </div>
 <div class="blockerPrompt" id="blockerPrompt">Choose the closest option above.</div>
 <label>Question, concern or change to note<textarea id="blockerReason" placeholder="Only use this if something needs clarifying or changing."></textarea></label>
+<button class="primary followUpPackBtn" id="saveFollowUpPack" type="button">Save follow-up pack</button>
 </div>
 
 <div class="acceptSurveyCard">
@@ -474,24 +511,46 @@
     <button class="secondary" id="printRecommendationTemplate" type="button">Print / save as PDF</button>
     <button class="secondary" id="downloadRecommendationTemplate" type="button">Download HTML copy</button>
     <button class="secondary" id="openShortRecommendationEmail" type="button">Open Outlook email draft</button>
+    <button class="secondary" id="preparePandaDocQuoteTop" type="button">Prepare PandaDoc quote</button>
+    <button class="secondary" id="downloadEvidenceSoFarTop" type="button">Download evidence so far</button>
     <button class="primary" id="exportSurveyPackZip" type="button">Export full survey pack ZIP</button>
   </div>
   <div class="guide templateNotice" id="templateNotice">The recommendation will use the selected battery brand, panel model, extras, bird protection and SPDs.</div>
   <div class="guide" id="exportPackNotice">Export pack creates a local ZIP with the recommendation, survey prompt, internal brief, data file, signature and selected site photos/videos.</div>
 </div>
 
+<div class="finishPackCard" id="finishPackCard" hidden>
+  <div class="finishPackGlow"></div>
+  <div class="finishPackHead">
+    <span id="finishPackKicker">Customer pack ready</span>
+    <h2 id="finishPackTitle">Customer pack ready</h2>
+    <p id="finishPackSubtitle">The survey has been saved and the customer pack is ready to use.</p>
+  </div>
+  <div class="finishPackGrid" id="finishPackSummary"></div>
+  <div class="finishChecklist" id="finishChecklist"></div>
+  <div class="finishPackInstructions" id="finishPackInstructions">Create the customer email first, then download the internal pack for records.</div>
+  <div class="finishPackActions">
+    <button class="primary" id="finishOpenEmail" type="button">Create customer email</button>
+    <button class="secondary" id="preparePandaDocQuote" type="button">Prepare PandaDoc quote</button>
+    <button class="secondary" id="downloadEvidenceSoFar" type="button">Download evidence so far</button>
+    <button class="secondary" id="finishDownloadPack" type="button">Download internal pack</button>
+    <button class="secondary" id="finishNextSurvey" type="button">Start next survey</button>
+  </div>
+  <div class="guide" id="finishPackNotice">No pack created yet.</div>
+</div>
+
 </section>
 <section class="panel internalPanel" id="internal">
 <h2>Tools</h2>
-<p class="hint">Quick operational tools for import, handover, export packs, backups and app maintenance. Saved surveys stay on Start.</p>
+<p class="hint">Job admin, import, internal packs, backups and app maintenance. Saved surveys stay on Start.</p>
 
 <details class="internalGroup toolBox importTool" open>
-<summary>Import from monday</summary>
-<p class="hint">Use this when the survey was not started from the Start page CSV import.</p>
-<label>Paste monday CSV text<textarea id="crmPaste" placeholder="Paste Field,Value CSV or a normal monday CSV export here"></textarea></label>
-<button class="primary" id="importPastedCRM" type="button">Import, save survey and open Priorities</button>
-<label class="fileImportLine">Import monday CSV<input accept=".csv,text/csv" id="mondayImport" type="file"/></label>
-<div class="guide" id="importStatus">No CRM data imported yet.</div>
+<summary>Import</summary>
+<p class="hint">Use this when the survey was not started from the Start page monday customer import.</p>
+<label>monday customer text<textarea id="crmPaste" placeholder="Paste Field,Value CSV, a monday row, or AI text that contains CSV here"></textarea></label>
+<button class="primary" id="importPastedCRM" type="button">Import customer, save survey and open Priorities</button>
+<label class="fileImportLine">Import monday file<input accept=".csv,text/csv" id="mondayImport" type="file"/></label>
+<div class="guide" id="importStatus">No monday customer imported yet.</div>
 <div class="two">
 <label>monday item ID<input id="mondayId" placeholder="Imported from monday where available"/></label>
 <label>Lead source<input id="leadSource" placeholder="Referral, web, showroom, event..."/></label>
@@ -552,16 +611,23 @@
 
 <details class="internalGroup toolBox readinessTool">
 <summary>Readiness and completion</summary>
-<button class="primary" id="checkReadiness" type="button">Check what is missing</button>
-<div class="readinessBox" id="readinessBox">Readiness check not run yet.</div>
+<button class="primary" id="checkReadiness" type="button">Check job readiness</button>
+<div class="readinessBox" id="readinessBox">Readiness check will show what is ready and what to capture next.</div>
 <button class="primary" id="markSurveyComplete" type="button">Mark survey complete</button>
 </details>
 
 <details class="internalGroup toolBox exportTool" open>
-<summary>Export pack</summary>
-<p class="hint">Creates one local ZIP for the job: recommendation document, email text, ChatGPT survey pack prompt, internal brief, data file, signature and selected photos/videos.</p>
-<button class="primary" id="toolsExportSurveyPackZip" type="button">Export full survey pack ZIP</button>
-<div class="guide" id="toolsExportPackNotice">No export pack created yet.</div>
+<summary>Internal pack</summary>
+<p class="hint">Creates one local ZIP for records: customer summary, recommendation, email text, data backup, internal notes and selected site photos/videos.</p>
+<button class="primary" id="toolsExportSurveyPackZip" type="button">Download internal pack ZIP</button>
+<div class="guide" id="toolsExportPackNotice">No internal pack created yet.</div>
+</details>
+
+<details class="internalGroup toolBox managerTool">
+<summary>Manager summary</summary>
+<p class="hint">A short internal outcome summary for pipeline review, follow-up and blockers.</p>
+<button class="primary" id="downloadManagerSummary" type="button">Download manager summary</button>
+<div class="guide" id="managerSummaryNotice">No manager summary downloaded yet.</div>
 </details>
 
 <details class="internalGroup toolBox handoverTool">
@@ -584,11 +650,36 @@
 
 <details class="internalGroup toolBox appTool">
 <summary>App tools</summary>
-<button class="secondary" id="updateApp" type="button">Update app / clear cache</button>
-<div class="versionBadge" id="appVersionBadge">App version: v62</div>
+<button class="secondary" id="updateApp" type="button">Refresh app version</button>
+<div class="versionBadge" id="appVersionBadge">App version: v65</div>
 </details>
 </section>
 </main>
+<div class="markupModal" id="markupModal" hidden>
+  <div class="markupPanel">
+    <div class="markupHead">
+      <div><b>Mark up photo</b><span>Tap a label, draw a box or line, then save the marked-up copy.</span></div>
+      <button class="secondary smallBtn" id="closeMarkupModal" type="button">Close</button>
+    </div>
+    <div class="markupToolbar">
+      <button type="button" data-markup-label="Gateway location">Gateway</button>
+      <button type="button" data-markup-label="Powerwall3 location">Powerwall3</button>
+      <button type="button" data-markup-label="Cable route">Cable route</button>
+      <button type="button" data-markup-label="Earth rod location">Earth rod</button>
+      <button type="button" data-markup-label="DB location">DB</button>
+      <button type="button" data-markup-label="Incoming supply">Incoming supply</button>
+      <button type="button" data-markup-label="Pipework to move">Pipework</button>
+      <button type="button" data-markup-tool="box">Draw box</button>
+      <button type="button" data-markup-tool="line">Draw line</button>
+    </div>
+    <canvas id="markupCanvas" width="1200" height="900"></canvas>
+    <div class="markupActions">
+      <button class="secondary" id="undoMarkup" type="button">Undo last</button>
+      <button class="primary" id="saveMarkup" type="button">Save marked-up copy</button>
+    </div>
+    <div class="guide" id="markupNotice">Choose a label, then tap the photo where it should go.</div>
+  </div>
+</div>
 <script src="app.js"></script>
 </body>
 </html>

@@ -827,7 +827,32 @@ function initSignaturePad(){
 function hasSignature(){return !!signatureData && signatureData.length>1000}
 
 
+function extractCSVText(text){
+  let t=String(text||'').replace(/^\uFEFF/,'').trim();
+  const fenced=[...t.matchAll(/```(?:csv|text)?\s*([\s\S]*?)```/gi)];
+  if(fenced.length){
+    const best=fenced.map(m=>m[1].trim()).find(x=>x.includes(',') && /\n|\r/.test(x));
+    if(best) return best;
+  }
+  const lines=t.split(/\r?\n/);
+  const firstCsv=lines.findIndex(line=>{
+    const clean=line.trim().replace(/^["']|["']$/g,'');
+    const lower=clean.toLowerCase();
+    if(!clean.includes(',')) return false;
+    return lower==='field,value' ||
+      lower.startsWith('field,value,') ||
+      lower.includes('customer') ||
+      lower.includes('name') ||
+      lower.includes('email') ||
+      lower.includes('phone') ||
+      lower.includes('address') ||
+      lower.includes('item id');
+  });
+  if(firstCsv>0) t=lines.slice(firstCsv).join('\n').trim();
+  return t.replace(/^['"`]+|['"`]+$/g,'').trim();
+}
 function parseCSV(text){
+  text=extractCSVText(text);
   const rows=[]; let row=[], cell='', quote=false;
   for(let i=0;i<text.length;i++){
     const c=text[i], n=text[i+1];
@@ -1539,6 +1564,1528 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 })();
 
 
+/* v64: colleague-proof workflow polish */
+(function(){
+  const VERSION='v64';
+  const KEY='tlgec_current_draft_v1';
+  const $=id=>document.getElementById(id);
+  let finishEmailCreated=false;
+  let finishPackDownloaded=false;
+
+  function setVersion(){
+    const home=$('homeVersionSmall'); if(home) home.textContent=VERSION;
+    const badge=$('appVersionBadge'); if(badge) badge.textContent='App version: '+VERSION;
+  }
+  function val(id){return ($(id)?.value||'').toString().trim()}
+  function setVal(id,v){const el=$(id); if(el) el.value=v}
+  function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]))}
+  function moneySafe(n){const x=Number(n||0); if(!x)return 'To confirm'; try{if(typeof money==='function')return money(x)}catch(e){} return '£'+Math.round(x).toLocaleString()}
+  function qSafe(){try{return typeof quote==='function'?quote():{}}catch(e){return {}}}
+  function savedList(){try{return typeof getSavedSurveys==='function'?getSavedSurveys():[]}catch(e){return []}}
+  function statusFor(s){
+    const signal=`${s.salesStatus||''} ${s.customerLikelihood||''} ${s.acceptance||''}`.toLowerCase();
+    if(signal.includes('follow')||signal.includes('question')||signal.includes('not ready')) return {key:'followup', label:'Follow-up'};
+    if(signal.includes('formal quote')||signal.includes('accepted')||signal.includes('signed')||s.signatureData) return {key:'accepted', label:'Accepted'};
+    return {key:'draft', label:'Draft'};
+  }
+  function cleanTel(v){try{return String(v||'').replace(/[^0-9+]/g,'')}catch(e){return ''}}
+
+  function renderSavedCards(){
+    const box=$('homeSavedList');
+    if(!box) return;
+    const list=savedList().sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''));
+    if(!list.length){
+      box.innerHTML='<div class="emptyState"><b>No saved jobs yet</b><p>Start a consultation, or tap Try sample job to practise without risking real customer data.</p></div>';
+      return;
+    }
+    box.innerHTML=list.map(s=>{
+      const st=statusFor(s);
+      const name=esc(s.customerName||s.name||'Untitled survey');
+      const address=esc(s.address||'');
+      const phone=s.phone?`<a href="tel:${cleanTel(s.phone)}">${esc(s.phone)}</a>`:'';
+      const email=s.email?`<a href="mailto:${esc(s.email)}">${esc(s.email)}</a>`:'';
+      const contact=[phone,email].filter(Boolean).join(' • ');
+      const updated=s.updatedAt?new Date(s.updatedAt).toLocaleString():'Unknown';
+      const total=s.quote&&s.quote.total?` • ${moneySafe(s.quote.total)}`:'';
+      const next=esc(s.nextAction||'Next action not set');
+      const follow=s.followUp?` • Follow-up ${esc(s.followUp)}`:'';
+      return `<div class="savedCard homeCard">
+        <span class="savedStatusBadge ${st.key}">${st.label}</span>
+        <b>${name}</b>
+        <div class="savedMeta">${address}<br>${contact}<br>Updated ${updated}${total}</div>
+        <div class="savedNextLine"><b>Next:</b> ${next}${follow}</div>
+        <div class="savedActions"><button class="primaryMini" data-home-load="${esc(s.id)}">Continue job</button><button data-home-duplicate="${esc(s.id)}">Duplicate</button><button data-home-delete="${esc(s.id)}">Delete</button></div>
+      </div>`;
+    }).join('');
+    document.querySelectorAll('[data-home-load]').forEach(b=>b.onclick=()=>{try{loadSavedSurvey(b.dataset.homeLoad); switchTab('customer')}catch(e){}});
+    document.querySelectorAll('[data-home-duplicate]').forEach(b=>b.onclick=()=>{try{duplicateSavedSurvey(b.dataset.homeDuplicate)}catch(e){}});
+    document.querySelectorAll('[data-home-delete]').forEach(b=>b.onclick=()=>{try{deleteSavedSurvey(b.dataset.homeDelete); setTimeout(renderSavedCards,80)}catch(e){}});
+  }
+
+  function patchSavedList(){
+    try{
+      window.renderHomeSavedList=renderSavedCards;
+      renderHomeSavedList=renderSavedCards;
+    }catch(e){}
+    renderSavedCards();
+  }
+
+  function checklistHTML(){
+    const response=val('customerLikelihood')?'done':'';
+    const followNeeded=(val('customerLikelihood')||'').toLowerCase().includes('question') || (val('customerLikelihood')||'').toLowerCase().includes('not ready');
+    const followOk=!followNeeded || !!val('followUp');
+    return [
+      `<div class="finishCheckItem ${response}"><span>Response</span>${response?'Captured':'Choose close option'}</div>`,
+      `<div class="finishCheckItem ${finishEmailCreated?'done':''}"><span>Email</span>${finishEmailCreated?'Draft opened':'Create customer email'}</div>`,
+      `<div class="finishCheckItem ${finishPackDownloaded?'done':''}"><span>Internal pack</span>${finishPackDownloaded?'Downloaded':'Download for records'}</div>`,
+      `<div class="finishCheckItem ${followOk?'done':''}"><span>Follow-up</span>${followOk?'Set or not needed':'Set follow-up date'}</div>`
+    ].join('');
+  }
+  function updateFinishChecklist(){
+    const box=$('finishChecklist');
+    if(box) box.innerHTML=checklistHTML();
+  }
+  function patchFinishCardLabels(){
+    const email=$('finishOpenEmail');
+    if(email) email.textContent='Create customer email';
+    const pack=$('finishDownloadPack');
+    if(pack) pack.textContent='Download internal pack';
+    const notice=$('finishPackInstructions');
+    if(notice) notice.textContent='Customer email is what the customer sees. Internal pack is for records, evidence and handover.';
+    updateFinishChecklist();
+  }
+
+  function managerSummary(){
+    const q=qSafe();
+    const status=val('salesStatus')||statusFor({salesStatus:val('salesStatus'),customerLikelihood:val('customerLikelihood'),acceptance:$('acceptanceStamp')?.innerText||''}).label;
+    return [
+      'LG SURVEY MANAGER SUMMARY',
+      '',
+      `Customer: ${val('customerName')||'Customer'}`,
+      `Address: ${val('address')}`,
+      `Phone: ${val('phone')}`,
+      `Email: ${val('email')}`,
+      '',
+      `Outcome/status: ${status}`,
+      `Customer response: ${val('customerLikelihood')||'Not recorded'}`,
+      `Main blocker: ${val('mainBlocker')||'None known'}`,
+      `Question/blocker detail: ${val('blockerReason')||'None recorded'}`,
+      `Confidence: ${val('confidence')||'Not set'}`,
+      '',
+      `Proposal position: ${moneySafe(q.total)}`,
+      `Solar: ${val('panelCount')||0} panels${q.kWp?' / '+q.kWp+' kWp':''}`,
+      `Battery: ${q.batteryText||val('batteryBrand')||'To confirm'}`,
+      '',
+      `Next action: ${val('nextAction')||'Not set'}`,
+      `Follow-up date: ${val('followUp')||'Not set'}`,
+      '',
+      `Internal note: ${val('gut')||'None'}`
+    ].join('\r\n');
+  }
+  function downloadManagerSummary(){
+    const name=(val('customerName')||'survey').replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'').toLowerCase()||'survey';
+    try{
+      if(typeof download==='function') download(name+'_manager_summary.txt', managerSummary(), 'text/plain');
+      const n=$('managerSummaryNotice'); if(n)n.innerHTML='<b>Manager summary downloaded.</b> Use it for pipeline review or follow-up.';
+    }catch(e){alert('Could not download manager summary on this device.')}
+  }
+
+  function demoData(){
+    const today=new Date().toISOString().slice(0,10);
+    const pairs={
+      customerName:'Demo Customer',
+      surveyDate:today,
+      address:'14 Sample Close, Maidstone, ME14 1AA',
+      phone:'07700 900123',
+      email:'demo.customer@example.com',
+      wants:'Lower bills, battery storage and future EV readiness',
+      whyNow:'Bills have increased and the customer wants more control over evening usage.',
+      timing:'This month',
+      annualKwh:'5200',
+      dailyKwh:'14.2',
+      tariff:'Octopus Intelligent / similar',
+      peak:'29',
+      offpeak:'7',
+      exportRate:'15',
+      roof:'Main rear roof, good access, light shading from chimney to check.',
+      shade:'Minor chimney shade late afternoon.',
+      meter:'Meter and consumer unit in hallway cupboard. Main fuse photo required.',
+      batteryLoc:'Garage wall, customer prefers neat internal install.',
+      invLoc:'Garage wall next to battery location.',
+      cable:'Garage to CU via hallway cupboard route, final route to confirm.',
+      access:'Driveway access good. Scaffold likely front and rear.',
+      panelCount:'12',
+      nextAction:'Create customer email and prepare formal quote for review',
+      followUp:'',
+      salesStatus:'Survey booked',
+      confidence:'Medium'
+    };
+    Object.entries(pairs).forEach(([id,v])=>setVal(id,v));
+    ['solar','battery','ev','bird','spds','photoRoofFront','photoMeter','photoCU','photoBatteryLoc','photoCableRoute','photoAccess'].forEach(id=>{const el=$(id); if(el)el.checked=true});
+    try{if(typeof save==='function')save()}catch(e){}
+    try{if(typeof refreshPresent==='function')refreshPresent()}catch(e){}
+    try{switchTab('customer')}catch(e){}
+    alert('Sample job loaded. It is only saved on this device if you press Save survey.');
+  }
+
+  function hasCurrentJob(){
+    return !!(val('customerName')||val('address')||val('phone')||val('email'));
+  }
+  function leavingWarning(e){
+    const target=e.target&&e.target.closest?e.target.closest('#homeNewSurvey,#newSurveyTop,#newSurveySaved,#saveAndNew'):null;
+    if(!target || !hasCurrentJob()) return;
+    const stamp=$('acceptanceStamp')?.innerText||'';
+    const hasOutcome=val('customerLikelihood') || stamp.includes('accepted') || stamp.includes('Follow-up');
+    if(hasOutcome && (!finishEmailCreated || !finishPackDownloaded)){
+      const ok=confirm('This job may not be fully finished yet. Continue without creating the email or downloading the internal pack?');
+      if(!ok){
+        e.preventDefault();
+        e.stopPropagation();
+        if(e.stopImmediatePropagation)e.stopImmediatePropagation();
+      }
+    }
+  }
+
+  function patchEmailAndPackButtons(){
+    const email=$('finishOpenEmail');
+    if(email && !email.dataset.v64Polish){
+      email.dataset.v64Polish='yes';
+      email.addEventListener('click',()=>{finishEmailCreated=true; setTimeout(updateFinishChecklist,120)},true);
+    }
+    const pack=$('finishDownloadPack');
+    if(pack && !pack.dataset.v64Polish){
+      pack.dataset.v64Polish='yes';
+      pack.addEventListener('click',()=>{finishPackDownloaded=true; setTimeout(()=>{patchFinishCardLabels(); updateFinishChecklist()},700); setTimeout(()=>{patchFinishCardLabels(); updateFinishChecklist()},1800)},true);
+    }
+    ['stampAccept','saveFollowUpPack'].forEach(id=>{
+      const btn=$(id);
+      if(btn && !btn.dataset.v64Polish){
+        btn.dataset.v64Polish='yes';
+        btn.addEventListener('click',()=>{finishPackDownloaded=true; setTimeout(()=>{patchFinishCardLabels(); updateFinishChecklist()},900); setTimeout(()=>{patchFinishCardLabels(); updateFinishChecklist()},2400)},true);
+      }
+    });
+  }
+
+  function normalizeReadinessText(){
+    ['readinessBox','homeReadinessCard'].forEach(id=>{
+      const el=$(id); if(!el) return;
+      el.innerHTML=el.innerHTML
+        .replace(/Missing critical items before proposal handover\\./g,'Capture these next for a cleaner handover.')
+        .replace(/Critical missing/g,'Next to capture')
+        .replace(/Useful improvements/g,'Nice-to-have details')
+        .replace(/No critical survey gaps found\\./g,'Core job details are ready.');
+    });
+  }
+
+  function bind(){
+    setVersion();
+    patchSavedList();
+    patchFinishCardLabels();
+    patchEmailAndPackButtons();
+    normalizeReadinessText();
+    const demo=$('homeDemoSurvey'); if(demo && !demo.dataset.v64Bound){demo.dataset.v64Bound='yes'; demo.onclick=e=>{e.preventDefault(); demoData()}};
+    const mgr=$('downloadManagerSummary'); if(mgr && !mgr.dataset.v64Bound){mgr.dataset.v64Bound='yes'; mgr.onclick=e=>{e.preventDefault(); downloadManagerSummary()}};
+    document.addEventListener('click', leavingWarning, true);
+    document.addEventListener('click', e=>{if(e.target&&e.target.id==='checkReadiness')setTimeout(normalizeReadinessText,80)}, true);
+    document.addEventListener('input', updateFinishChecklist, true);
+    setTimeout(()=>{setVersion(); patchSavedList(); patchFinishCardLabels(); patchEmailAndPackButtons(); normalizeReadinessText()},800);
+    setTimeout(()=>{setVersion(); patchSavedList(); patchFinishCardLabels(); patchEmailAndPackButtons(); normalizeReadinessText()},1800);
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+
+
+/* v65 final override: keep the latest workflow in charge after older layers bind */
+(function(){
+  const VERSION='v65';
+  const ACTIVE_TAB_KEY='lg_survey_active_tab_v1';
+  const $=id=>document.getElementById(id);
+
+  function setVersion(){
+    if($('homeVersionSmall')) $('homeVersionSmall').textContent=VERSION;
+    if($('appVersionBadge')) $('appVersionBadge').textContent='App version: '+VERSION;
+  }
+  function activate(tab, scroll=true){
+    if(!$(tab)) return;
+    document.querySelectorAll('nav button[data-tab]').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
+    document.querySelectorAll('main > section.panel').forEach(p=>p.classList.toggle('on', p.id===tab));
+    try{localStorage.setItem(ACTIVE_TAB_KEY, tab); history.replaceState(null,'',location.pathname+location.search+'#'+tab);}catch(e){}
+    if(scroll) window.scrollTo({top:0,left:0,behavior:'auto'});
+    if(tab==='present'||tab==='agreement') setTimeout(()=>{try{if(typeof refreshPresent==='function')refreshPresent()}catch(e){}},40);
+  }
+  function val(id){return ($(id)?.value||'').toString().trim()}
+  function emailPlainText(){
+    const first=(val('customerName').split(/\s+/)[0]||'there');
+    return [`Hi ${first},`,'','Thank you for going through the survey today.','','I have copied the styled recommendation into this message. If it has not appeared, paste into the email body.','','Everything remains subject to final roof, electrical, DNO and design checks before formal paperwork is issued.','','Kind regards,','James Cooling','The Little Green Energy Company'].join('\r\n');
+  }
+  function recommendationHTML(){
+    try{if(window.LGSurveyRecommendationTemplate&&typeof window.LGSurveyRecommendationTemplate.html==='function')return window.LGSurveyRecommendationTemplate.html()}catch(e){}
+    return '<html><body><h1>Your Little Green Energy recommendation</h1><p>'+($('presentSummary')?.innerText||'Recommendation summary')+'</p></body></html>';
+  }
+  function simpleHealth(){
+    const missing=[];
+    if(!val('customerName'))missing.push('customer name');
+    if(!val('address'))missing.push('address');
+    if(!val('wants'))missing.push('priorities');
+    if(($('solar')?.checked)&&!(Number(val('panelCount'))>0))missing.push('panel count');
+    if(!val('cable'))missing.push('cable route');
+    if(!val('batteryLoc'))missing.push('equipment location');
+    const finance=val('financePlan').toLowerCase();
+    const financeBlock=finance.includes('needs a finance')||finance.includes('unsure');
+    const label=financeBlock?'Finance next step needed':missing.length?'Needs evidence':'Ready to quote';
+    return {label,missing,level:financeBlock||missing.length?'warn':'good'};
+  }
+  function updateHealthCard(){
+    const card=$('homeReadinessCard');
+    if(!card)return;
+    const h=simpleHealth();
+    card.innerHTML=`<b>${h.label}</b><p>${h.missing.length?'Next: '+h.missing.slice(0,5).join(', '):'Core job details look ready.'}</p>`;
+  }
+  async function createCustomerEmail(e){
+    if(e){e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();}
+    try{if(typeof save==='function')save()}catch(err){}
+    let rich=false;
+    try{
+      if(navigator.clipboard&&window.ClipboardItem){
+        await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([recommendationHTML()],{type:'text/html'}),'text/plain':new Blob([emailPlainText()],{type:'text/plain'})})]);
+        rich=true;
+      }else if(navigator.clipboard){await navigator.clipboard.writeText(emailPlainText())}
+    }catch(err){
+      try{if(navigator.clipboard)await navigator.clipboard.writeText(emailPlainText())}catch(_){}
+    }
+    const notice=$('finishPackNotice')||$('templateNotice');
+    if(notice) notice.innerHTML=rich?'<b>Email opened.</b> Tap in the email body and paste. The styled recommendation is already copied.':'<b>Email opened.</b> Paste the copied plain-text fallback into the email body.';
+    window.location.href=`mailto:${encodeURIComponent(val('email'))}?subject=${encodeURIComponent('Your Little Green Energy survey recommendation')}&body=${encodeURIComponent(emailPlainText())}`;
+  }
+  function bind(){
+    setVersion();
+    document.addEventListener('click',e=>{
+      const nav=e.target&&e.target.closest?e.target.closest('nav button[data-tab],.continueBtn[data-next],.journeyStep[data-jump]'):null;
+      if(nav){
+        const tab=nav.dataset.tab||nav.dataset.next||nav.dataset.jump;
+        if(tab){e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();activate(tab,true);return;}
+      }
+      const email=e.target&&e.target.closest?e.target.closest('#finishOpenEmail,#openShortRecommendationEmail'):null;
+      if(email){createCustomerEmail(e);return;}
+    },true);
+    window.LGSurveyActivateTab=function(tab,opts){activate(tab,!(opts&&opts.scroll===false));};
+    setTimeout(setVersion,600);
+    setTimeout(setVersion,1600);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);
+  else bind();
+})();
+
+
+/* v65: field workflow, safer local capture, rich email, PandaDoc output and photo markup */
+(function(){
+  const VERSION = 'v65';
+  const KEY_NAME = 'tlgec_current_draft_v1';
+  const ACTIVE_TAB_KEY = 'lg_survey_active_tab_v1';
+  const $ = id => document.getElementById(id);
+  const EXTRA_IDS = ['financePlan','panelOverrideReason','panelOverrideNote','p6PanelUnitCost'];
+  const EXTRA_CHECKS = [];
+
+  function esc(v){
+    return String(v == null ? '' : v).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+  }
+  function val(id){ return ($(id)?.value || '').toString().trim(); }
+  function setVersion(){
+    if($('homeVersionSmall')) $('homeVersionSmall').textContent = VERSION;
+    if($('appVersionBadge')) $('appVersionBadge').textContent = 'App version: ' + VERSION;
+  }
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function nowStamp(){
+    const d = new Date();
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+  }
+  function localTime(){
+    return new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  }
+  function nameStem(){
+    const raw = val('customerName') || 'survey';
+    const parts = raw.split(/\s+/).filter(Boolean);
+    const stem = parts.length > 1 ? `${parts[parts.length-1]}_${parts.slice(0,-1).join('_')}` : parts[0] || 'survey';
+    return stem.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'survey';
+  }
+  function moneyText(n){
+    try{ if(typeof money === 'function') return money(n); }catch(e){}
+    return '£' + Math.round(Number(n)||0).toLocaleString('en-GB');
+  }
+  function qSafe(){
+    try{ return typeof quote === 'function' ? quote() : {}; }catch(e){ return {}; }
+  }
+
+  function patchDataRoundTrip(){
+    try{
+      if(typeof getData === 'function' && !getData.v65ExtraWrapped){
+        const oldGet = getData;
+        getData = function(){
+          const d = oldGet();
+          EXTRA_IDS.forEach(id => { if($(id)) d[id] = $(id).value || ''; });
+          EXTRA_CHECKS.forEach(id => { if($(id)) d[id] = !!$(id).checked; });
+          d.localSavedAt = localStorage.getItem('tlgec_last_local_save_v65') || '';
+          d.jobHealth = jobHealth().label;
+          return d;
+        };
+        getData.v65ExtraWrapped = true;
+      }
+    }catch(e){}
+
+    try{
+      if(typeof load === 'function' && !load.v65ExtraWrapped){
+        const oldLoad = load;
+        load = function(){
+          oldLoad.apply(this, arguments);
+          try{
+            const raw = JSON.parse(localStorage.getItem(KEY_NAME) || '{}');
+            EXTRA_IDS.forEach(id => { if($(id) && raw[id] != null) $(id).value = raw[id] || ''; });
+            EXTRA_CHECKS.forEach(id => { if($(id) && raw[id] != null) $(id).checked = !!raw[id]; });
+          }catch(e){}
+          refreshV65Status();
+        };
+        load.v65ExtraWrapped = true;
+      }
+    }catch(e){}
+  }
+
+  function patchSaveStatus(){
+    try{
+      if(typeof save === 'function' && !save.v65SafetyWrapped){
+        const oldSave = save;
+        save = function(){
+          const out = oldSave.apply(this, arguments);
+          try{ localStorage.setItem('tlgec_last_local_save_v65', new Date().toISOString()); }catch(e){}
+          refreshV65Status();
+          return out;
+        };
+        save.v65SafetyWrapped = true;
+      }
+    }catch(e){}
+  }
+
+  function ensureSafetyCard(){
+    if($('localSavedStatus')) return;
+    const homeHero = document.querySelector('#home .landingHero');
+    if(homeHero){
+      const card = document.createElement('div');
+      card.className = 'localSafetyCard';
+      card.innerHTML = '<b>Local safety save</b><div class="localSavedStatus" id="localSavedStatus">Nothing saved in this session yet.</div><div id="jobHealthLine"></div>';
+      homeHero.insertAdjacentElement('afterend', card);
+    }
+  }
+
+  function jobHealth(){
+    const missing = [];
+    const warnings = [];
+    const hasCustomer = !!(val('customerName') && val('address'));
+    const mediaCount = mediaItems().length;
+    if(!hasCustomer) missing.push('customer details');
+    if($('solar')?.checked && !(Number(val('panelCount'))>0)) missing.push('panel count');
+    if($('battery')?.checked && (val('batteryBrand') === 'None' || !val('batteryBrand'))) missing.push('battery route');
+    if(!val('cable')) warnings.push('cable route');
+    if(!val('batteryLoc')) warnings.push('equipment location');
+    if(!mediaCount) warnings.push('site photos');
+    if(financeBlocker()) warnings.push('finance conversation');
+    if((val('salesStatus') || '').toLowerCase().includes('follow')) return {level:'warn', label:'Follow-up needed', missing, warnings};
+    if(missing.length) return {level:'bad', label:'Needs essentials', missing, warnings};
+    if(warnings.length) return {level:'warn', label:'Needs evidence', missing, warnings};
+    return {level:'good', label:'Ready to quote', missing, warnings};
+  }
+
+  function refreshV65Status(){
+    ensureSafetyCard();
+    const saved = $('localSavedStatus');
+    const iso = localStorage.getItem('tlgec_last_local_save_v65');
+    if(saved){
+      saved.className = 'localSavedStatus good';
+      saved.textContent = iso ? `Saved locally at ${localTime()}. Photos and survey details are recoverable on this device.` : 'Autosave is ready once the survey starts.';
+    }
+    const h = jobHealth();
+    const line = $('jobHealthLine');
+    if(line){
+      const items = []
+        .concat(`<span class="jobHealthBadge ${h.level}">${h.label}</span>`)
+        .concat(h.missing.slice(0,3).map(x => `<span class="jobHealthBadge bad">Missing ${esc(x)}</span>`))
+        .concat(h.warnings.slice(0,4).map(x => `<span class="jobHealthBadge warn">Check ${esc(x)}</span>`));
+      line.innerHTML = items.join('');
+    }
+    const home = $('homeReadinessCard');
+    if(home){
+      home.innerHTML = `<b>${esc(h.label)}</b><p>${h.missing.concat(h.warnings).length ? 'Next: ' + esc(h.missing.concat(h.warnings).slice(0,5).join(', ')) : 'Core job details and evidence look ready.'}</p>`;
+    }
+    updateFinanceStatus();
+    updatePanelOverrideStatus();
+  }
+
+  function financeBlocker(){
+    const v = val('financePlan').toLowerCase();
+    return v.includes('needs a finance') || v.includes('unsure');
+  }
+
+  function updateFinanceStatus(){
+    const box = $('financeStatus');
+    if(!box) return;
+    const v = val('financePlan');
+    syncFinanceButtons();
+    box.className = 'financeStatus';
+    if(!v){
+      box.textContent = 'Finance route not captured yet.';
+      return;
+    }
+    if(financeBlocker()){
+      box.classList.add('bad');
+      box.textContent = 'Finance support may be needed. Agree the next step before preparing the formal quote.';
+      if($('mainBlocker') && (!val('mainBlocker') || val('mainBlocker') === 'None known')) $('mainBlocker').value = 'Price';
+    }else if(v.toLowerCase().includes('bank')){
+      box.classList.add('warn');
+      box.textContent = 'Bank finance noted. Confirm timing before the formal quote is prepared.';
+    }else{
+      box.classList.add('good');
+      box.textContent = 'Funding route captured.';
+    }
+  }
+
+  function syncFinanceButtons(){
+    const selected = val('financePlan');
+    document.querySelectorAll('[data-finance]').forEach(btn => {
+      const isSelected = btn.dataset.finance === selected;
+      btn.classList.toggle('selected', isSelected);
+      btn.classList.toggle('blocker', /needs a finance|unsure/i.test(btn.dataset.finance || ''));
+      btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+    });
+  }
+
+  function scoreCsvLine(line){
+    const clean = String(line || '').trim();
+    if(!clean.includes(',')) return -5;
+    const cells = clean.split(',').map(x => x.trim().toLowerCase());
+    const joined = cells.join(' ');
+    let score = Math.min(cells.length, 12);
+    ['field','value','name','customer','email','phone','address','postcode','lead','status','notes','item id','contact'].forEach(k => {
+      if(joined.includes(k)) score += 4;
+    });
+    if(/^here('| i|s| is|\s)/i.test(clean)) score -= 5;
+    if(clean.startsWith('```') || clean.startsWith("'''")) score -= 3;
+    return score;
+  }
+
+  function robustExtractCSVText(text){
+    let t = String(text || '').replace(/^\uFEFF/,'').trim();
+    const fencePatterns = [
+      /```(?:csv|text)?\s*([\s\S]*?)```/gi,
+      /'''(?:csv|text)?\s*([\s\S]*?)'''/gi,
+      /"""(?:csv|text)?\s*([\s\S]*?)"""/gi
+    ];
+    for(const re of fencePatterns){
+      const matches = [...t.matchAll(re)].map(m => (m[1] || '').trim());
+      const best = matches.sort((a,b) => scoreCsvLine((b.split(/\r?\n/)[0]||'')) - scoreCsvLine((a.split(/\r?\n/)[0]||'')))[0];
+      if(best && best.includes(',')) return best.trim();
+    }
+    const lines = t.split(/\r?\n/).map(l => l.replace(/^['"`\s]+|['"`\s]+$/g,''));
+    let bestStart = 0, bestScore = -999;
+    lines.forEach((line, idx) => {
+      const score = scoreCsvLine(line) + scoreCsvLine(lines[idx+1] || '') * 0.45;
+      if(score > bestScore){ bestScore = score; bestStart = idx; }
+    });
+    let out = lines.slice(Math.max(0,bestStart)).join('\n').trim();
+    const end = out.split(/\r?\n/);
+    while(end.length && !end[end.length-1].includes(',')) end.pop();
+    out = end.join('\n').replace(/^csv\s*/i,'').replace(/^['"`]+|['"`]+$/g,'').trim();
+    return out || t;
+  }
+
+  function patchCsv(){
+    try{ extractCSVText = robustExtractCSVText; }catch(e){}
+  }
+
+  function setManualPanel(){
+    const pc = $('panelCount');
+    if(!pc) return;
+    pc.dataset.manual = 'yes';
+    pc.dataset.v65ManualOverride = 'yes';
+    pc.dataset.v62Priced = 'yes';
+  }
+
+  function updatePanelOverrideStatus(){
+    const pc = $('panelCount');
+    const status = $('manualPanelStatus');
+    const box = $('panelSuggestionBox');
+    if(!pc || !status) return;
+    const manual = pc.dataset.v65ManualOverride === 'yes' || pc.dataset.manual === 'yes';
+    const auto = roofSuggestionCount();
+    if(box) box.classList.toggle('manualActive', manual);
+    status.textContent = manual
+      ? `Manual count is active: ${pc.value || 0} panel(s) will be quoted. Auto-fit suggestion is ${auto || 'not available'}.`
+      : `Auto-fit is only a starting suggestion. Your quoted panel count wins once edited.`;
+  }
+
+  function roofSuggestionCount(){
+    let total = 0;
+    document.querySelectorAll('#roofPlanes .roofPanels').forEach(el => {
+      const n = Number(el.value || 0);
+      if(Number.isFinite(n) && n > 0) total += n;
+    });
+    return total;
+  }
+
+  function patchPanelLogic(){
+    try{ if(PRICE_GUIDE && PRICE_GUIDE.panelCosts) PRICE_GUIDE.panelCosts['SunPower P6 405W Warehouse Deal'] = Number(val('p6PanelUnitCost') || 0) || 84; }catch(e){}
+    const p6Opt = $('panelModel')?.querySelector('option[value^="SunPower P6"]');
+    if(p6Opt && !$('p6PanelUnitCost')){
+      const holder = document.createElement('div');
+      holder.className = 'manualPanelCard';
+      holder.innerHTML = '<b>SunPower P6 warehouse deal pricing</b><label>P6 panel internal cost £<input id="p6PanelUnitCost" inputmode="decimal" type="number" value="84"></label><span>Special stock/manual deal. Batteries and savings logic still work normally.</span>';
+      $('panelModel').closest('label')?.insertAdjacentElement('afterend', holder);
+    }
+    const pc = $('panelCount');
+    if(pc && !pc.dataset.v65Bound){
+      pc.dataset.v65Bound = 'yes';
+      pc.addEventListener('input', () => {
+        setManualPanel();
+        updatePanelOverrideStatus();
+        try{ if(typeof save === 'function') save(); }catch(e){}
+      }, true);
+    }
+    const use = $('useRoofSuggestion');
+    if(use && !use.dataset.v65Bound){
+      use.dataset.v65Bound = 'yes';
+      use.addEventListener('click', e => {
+        e.preventDefault();
+        const count = roofSuggestionCount();
+        if(count && pc){
+          pc.value = String(count);
+          pc.dataset.v65ManualOverride = '';
+          pc.dataset.manual = '';
+          pc.dataset.v62Priced = '';
+          try{ if(typeof save === 'function') save(); }catch(err){}
+          updatePanelOverrideStatus();
+        }
+      }, true);
+    }
+    ['panelOverrideReason','panelOverrideNote','p6PanelUnitCost','panelModel'].forEach(id => {
+      const el = $(id);
+      if(el && !el.dataset.v65Bound){
+        el.dataset.v65Bound = 'yes';
+        el.addEventListener('input', () => {
+          try{ if(PRICE_GUIDE && PRICE_GUIDE.panelCosts) PRICE_GUIDE.panelCosts['SunPower P6 405W Warehouse Deal'] = Number(val('p6PanelUnitCost') || 0) || 84; }catch(e){}
+          try{ if(typeof save === 'function') save(); }catch(e){}
+        }, true);
+      }
+    });
+    try{
+      if(typeof autoFitRoofPanels === 'function' && !autoFitRoofPanels.v65ManualWrapped){
+        const old = autoFitRoofPanels;
+        autoFitRoofPanels = function(force){
+          const before = pc ? pc.value : '';
+          const manual = pc && pc.dataset.v65ManualOverride === 'yes' && !force;
+          const out = old.apply(this, arguments);
+          if(manual && pc) pc.value = before;
+          updatePanelOverrideStatus();
+          return out;
+        };
+        autoFitRoofPanels.v65ManualWrapped = true;
+        window.autoFitRoofPanels = autoFitRoofPanels;
+      }
+    }catch(e){}
+  }
+
+  function mediaItems(){
+    try{
+      if(window.LGSurveyMediaGallery && typeof window.LGSurveyMediaGallery.items === 'function') return window.LGSurveyMediaGallery.items();
+    }catch(e){}
+    return [];
+  }
+
+  function recommendationHTML(){
+    try{
+      if(window.LGSurveyRecommendationTemplate && typeof window.LGSurveyRecommendationTemplate.html === 'function') return window.LGSurveyRecommendationTemplate.html();
+    }catch(e){}
+    return `<html><body><h1>${esc(val('customerName') || 'Your survey recommendation')}</h1><p>${esc($('presentSummary')?.innerText || 'Recommendation summary')}</p></body></html>`;
+  }
+
+  function emailPlainText(){
+    const first = (val('customerName').split(/\s+/)[0] || 'there');
+    return [
+      `Hi ${first},`,
+      '',
+      'Thank you for going through the survey today.',
+      '',
+      'I have copied the styled recommendation into this message. If it has not appeared, paste into the email body.',
+      '',
+      'Everything remains subject to final roof, electrical, DNO and design checks before formal paperwork is issued.',
+      '',
+      'Kind regards,',
+      'James Cooling',
+      'The Little Green Energy Company'
+    ].join('\r\n');
+  }
+
+  async function copyRichEmail(){
+    const html = recommendationHTML();
+    try{
+      if(navigator.clipboard && window.ClipboardItem){
+        await navigator.clipboard.write([new ClipboardItem({
+          'text/html': new Blob([html], {type:'text/html'}),
+          'text/plain': new Blob([emailPlainText()], {type:'text/plain'})
+        })]);
+        return true;
+      }
+    }catch(e){}
+    try{
+      await navigator.clipboard.writeText(emailPlainText());
+      return false;
+    }catch(e){}
+    return false;
+  }
+
+  async function createCustomerEmail(e){
+    if(e){
+      e.preventDefault();
+      e.stopPropagation();
+      if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+    }
+    try{ if(typeof save === 'function') save(); }catch(err){}
+    const rich = await copyRichEmail();
+    const subject = 'Your Little Green Energy survey recommendation';
+    const href = `mailto:${encodeURIComponent(val('email'))}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailPlainText())}`;
+    const notice = $('finishPackNotice') || $('templateNotice');
+    if(notice) notice.innerHTML = rich
+      ? '<b>Email opened.</b> Tap in the email body and paste. The styled recommendation is already copied.'
+      : '<b>Email opened.</b> Styled clipboard was blocked, so a plain-text fallback has been copied.';
+    window.location.href = href;
+  }
+
+  function bindEmailButtons(){
+    ['finishOpenEmail','openShortRecommendationEmail'].forEach(id => {
+      const btn = $(id);
+      if(btn && !btn.dataset.v65Email){
+        btn.dataset.v65Email = 'yes';
+        btn.textContent = id === 'finishOpenEmail' ? 'Create customer email' : 'Open email and copy styled body';
+        btn.addEventListener('click', createCustomerEmail, true);
+      }
+    });
+  }
+
+  function pdfEscape(s){
+    return String(s == null ? '' : s).replace(/[\\()]/g, '\\$&').replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '');
+  }
+  function wrapText(text, max){
+    const words = String(text || '').replace(/\s+/g,' ').trim().split(' ');
+    const lines = [];
+    let line = '';
+    words.forEach(w => {
+      if((line + ' ' + w).trim().length > max){
+        if(line) lines.push(line);
+        line = w;
+      }else line = (line + ' ' + w).trim();
+    });
+    if(line) lines.push(line);
+    return lines.length ? lines : [''];
+  }
+  function makePdfBlob(title, sections){
+    const pageH = 792, margin = 54, lineH = 15;
+    const pages = [];
+    let lines = [];
+    function addLine(text, size){
+      lines.push({text, size:size || 10});
+      if(lines.length > 43){ pages.push(lines); lines = []; }
+    }
+    addLine(title, 22);
+    addLine('The Little Green Energy Company', 11);
+    addLine(' ', 10);
+    sections.forEach(sec => {
+      addLine(sec.heading, 15);
+      sec.lines.forEach(l => wrapText(l, 86).forEach(w => addLine(w, 10)));
+      addLine(' ', 10);
+    });
+    if(lines.length) pages.push(lines);
+    const objects = [];
+    function obj(s){ objects.push(s); return objects.length; }
+    const catalogId = obj('');
+    const pagesId = obj('');
+    const fontId = obj('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+    const pageIds = [];
+    pages.forEach(page => {
+      let y = pageH - margin;
+      const content = page.map(l => {
+        const size = l.size || 10;
+        const out = `BT /F1 ${size} Tf ${margin} ${y} Td (${pdfEscape(l.text)}) Tj ET`;
+        y -= size > 14 ? 23 : lineH;
+        return out;
+      }).join('\n');
+      const contentId = obj(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
+      const pageId = obj(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${fontId} 0 R >> >> /Contents ${contentId} 0 R >>`);
+      pageIds.push(pageId);
+    });
+    objects[catalogId-1] = `<< /Type /Catalog /Pages ${pagesId} 0 R >>`;
+    objects[pagesId-1] = `<< /Type /Pages /Kids [${pageIds.map(id => id + ' 0 R').join(' ')}] /Count ${pageIds.length} >>`;
+    let pdf = '%PDF-1.4\n';
+    const offsets = [0];
+    objects.forEach((body, i) => {
+      offsets.push(pdf.length);
+      pdf += `${i+1} 0 obj\n${body}\nendobj\n`;
+    });
+    const xref = pdf.length;
+    pdf += `xref\n0 ${objects.length+1}\n0000000000 65535 f \n`;
+    offsets.slice(1).forEach(o => { pdf += String(o).padStart(10,'0') + ' 00000 n \n'; });
+    pdf += `trailer\n<< /Size ${objects.length+1} /Root ${catalogId} 0 R >>\nstartxref\n${xref}\n%%EOF`;
+    return new Blob([pdf], {type:'application/pdf'});
+  }
+
+  function formalQuotePdfBlob(){
+    const q = qSafe();
+    const d = (typeof getData === 'function') ? getData() : {};
+    const quoteRef = 'LG-' + nowStamp().replace(/[^0-9]/g,'').slice(0,12);
+    const sections = [
+      {heading:'Customer', lines:[`Name: ${val('customerName') || 'Customer'}`, `Address: ${val('address') || 'To confirm'}`, `Email: ${val('email') || 'To confirm'}`, `Quote reference: ${quoteRef}`, `Date: ${val('surveyDate') || new Date().toISOString().slice(0,10)}`]},
+      {heading:'Your Quote', lines:[`Number of panels: ${val('panelCount') || 0}`, `Panel: ${(q.panel && q.panel.name) || 'To confirm'}`, `System size: ${q.kWp || '0.00'} kWp`, `Battery: ${q.batteryText || val('batteryBrand') || 'To confirm'}`, `Estimated annual generation: ${Math.round((Number(q.kWp)||0)*900).toLocaleString()} kWh`, `Project total: ${moneyText(q.total || 0)}`]},
+      {heading:'Breakdown of Costs', lines:[`Photovoltaic system and associated equipment: included as specified`, `Battery storage system: ${q.batteryText || 'not included'}`, `Manual proposal position: ${moneyText(q.total || 0)}`, `All figures remain subject to final survey/design checks and TLGEC confirmation.`]},
+      {heading:'Scope of Works', lines:[`${val('panelCount') || 0} solar PV modules`, `PV inverter/controller route: ${q.controllerText || 'to confirm'}`, `Battery storage: ${q.batteryText || 'to confirm'}`, `Bird protection: ${$('bird')?.checked ? 'included' : 'not included'}`, `SPDs: ${$('spds')?.checked ? 'included' : 'not included'}`, `Scaffolding/access: ${val('access') || val('scaffoldLifts') + ' lift(s)' || 'to confirm'}`, `DNO application: where required`, `Certificates and handover pack: included`]},
+      {heading:'Survey Notes', lines:[`Customer priorities: ${val('wants') || 'not captured'}`, `Finance route: ${val('financePlan') || 'not captured'}`, `Equipment location: ${val('batteryLoc') || 'to confirm'}`, `Cable route: ${val('cable') || 'to confirm'}`, `Panel override: ${val('panelOverrideReason') || 'none'} ${val('panelOverrideNote') || ''}`]},
+      {heading:'Payment and Acceptance', lines:['Typical staged payment route: 20% deposit on order, 60% material purchase and installation scheduling, 20% completion and commissioning.', 'This PandaDoc-ready quote is prepared from the survey app. PandaDoc should be used for final signature, recipient verification and audit trail.', `Print name: ${val('customerName') || 'Customer'}`, 'Signature: ________________________________', `Date: ${new Date().toISOString().slice(0,10)}`]},
+      {heading:'DNO Letter of Authority', lines:[`I, ${val('customerName') || 'the customer'}, confirm that I am the legal owner/occupier of the property at ${val('address') || '[address]'}.`, 'I grant permission for The Little Green Energy Company Ltd, or any consultant authorised by them, to act on my behalf in relation to the grid connection process.', `MPAN: ${val('mpan') || 'To confirm'}`]}
+    ];
+    return makePdfBlob(`Domestic Proposal - ${val('customerName') || 'Customer'}`, sections);
+  }
+
+  function downloadBlob(blob, filename){
+    const a = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 700);
+  }
+
+  async function textEntry(name, text){ return {name, data:new TextEncoder().encode(String(text||''))}; }
+  async function blobEntry(name, blob){ return {name, data:new Uint8Array(await blob.arrayBuffer())}; }
+  function crcTable(){
+    const table = new Uint32Array(256);
+    for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=(c&1)?(0xedb88320^(c>>>1)):(c>>>1); table[n]=c>>>0; }
+    return table;
+  }
+  const CRC = crcTable();
+  function crc32(data){ let c=0xffffffff; for(let i=0;i<data.length;i++) c=CRC[(c^data[i])&255]^(c>>>8); return (c^0xffffffff)>>>0; }
+  function u16(n){ return [n&255,(n>>>8)&255]; }
+  function u32(n){ return [n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255]; }
+  function zipBlob(entries){
+    const chunks=[], central=[], enc=new TextEncoder(); let offset=0;
+    entries.forEach(e => {
+      const name=enc.encode(e.name), data=e.data, crc=crc32(data), flags=0x0800;
+      const local=new Uint8Array([...u32(0x04034b50),...u16(20),...u16(flags),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(data.length),...u32(data.length),...u16(name.length),...u16(0)]);
+      chunks.push(local,name,data);
+      const cen=new Uint8Array([...u32(0x02014b50),...u16(20),...u16(20),...u16(flags),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(data.length),...u32(data.length),...u16(name.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(offset)]);
+      central.push(cen,name);
+      offset += local.length + name.length + data.length;
+    });
+    const centralSize=central.reduce((s,c)=>s+c.length,0);
+    const eocd=new Uint8Array([...u32(0x06054b50),...u16(0),...u16(0),...u16(entries.length),...u16(entries.length),...u32(centralSize),...u32(offset),...u16(0)]);
+    return new Blob([...chunks,...central,eocd], {type:'application/zip'});
+  }
+
+  async function createPandaDocPack(download=true){
+    try{ if(typeof save === 'function') save(); }catch(e){}
+    const stem = nameStem();
+    const pdf = formalQuotePdfBlob();
+    const data = (typeof getData === 'function') ? getData() : {};
+    const checklist = [
+      'PandaDoc upload checklist',
+      '',
+      `Customer: ${val('customerName') || 'Customer'}`,
+      '',
+      '1. Open PandaDoc on the tablet.',
+      `2. Upload ${stem}_pandadoc_quote.pdf.`,
+      '3. Check the signature and date fields.',
+      '4. Confirm customer email and recipient name.',
+      '5. Send through PandaDoc so the audit trail is retained.',
+      '',
+      'This PDF was generated from the local survey app. Final design, DNO and electrical checks still apply.'
+    ].join('\r\n');
+    const entries = [
+      await blobEntry(`${stem}/pandadoc/${stem}_pandadoc_quote.pdf`, pdf),
+      await textEntry(`${stem}/pandadoc/pandadoc_data.json`, JSON.stringify(data, null, 2)),
+      await textEntry(`${stem}/pandadoc/pandadoc_upload_checklist.txt`, checklist),
+      await textEntry(`${stem}/customer/customer_email_body.html`, recommendationHTML())
+    ];
+    const blob = zipBlob(entries);
+    const filename = `${stem}_pandadoc_ready_${nowStamp()}.zip`;
+    if(download) downloadBlob(blob, filename);
+    const n = $('finishPackNotice') || $('toolsExportPackNotice') || $('exportPackNotice');
+    if(n) n.innerHTML = `<b>PandaDoc pack ready.</b> Upload the PDF inside ${esc(filename)} to the PandaDoc app, then check signature/date fields and send.`;
+    return {blob, filename};
+  }
+
+  async function createEvidencePack(){
+    try{ if(typeof save === 'function') save(); }catch(e){}
+    const stem = nameStem();
+    const data = (typeof getData === 'function') ? getData() : {};
+    const entries = [
+      await textEntry(`${stem}/summary.html`, evidenceSummaryHTML(data)),
+      await textEntry(`${stem}/survey_data.json`, JSON.stringify(data, null, 2)),
+      await textEntry(`${stem}/internal_notes.txt`, (typeof internalBrief === 'function') ? internalBrief() : '')
+    ];
+    const files = (window.LGSurveyMediaGallery && window.LGSurveyMediaGallery.files) ? window.LGSurveyMediaGallery.files() : [];
+    for(let i=0;i<files.length;i++){
+      entries.push(await blobEntry(`${stem}/photos/${cleanMediaExportName(files[i], i)}`, files[i]));
+    }
+    const blob = zipBlob(entries);
+    const filename = `${stem}_evidence_so_far_${nowStamp()}.zip`;
+    downloadBlob(blob, filename);
+    const n = $('finishPackNotice') || $('exportPackNotice');
+    if(n) n.innerHTML = `<b>Evidence saved.</b> ${esc(filename)} contains the current survey details and photos captured so far.`;
+  }
+
+  function cleanMediaExportName(file, idx){
+    const name = (file && file.name) || `photo_${idx+1}.jpg`;
+    const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : 'jpg';
+    const base = name.replace(/\.[^.]+$/,'').replace(/^\d+_/,'').replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'').toLowerCase() || `photo_${idx+1}`;
+    return `${base}.${ext}`;
+  }
+
+  function evidenceSummaryHTML(d){
+    return `<!doctype html><html><head><meta charset="utf-8"><title>Survey evidence</title></head><body style="font-family:Arial,sans-serif;color:#0b1f18"><h1>${esc(d.customerName || 'Survey evidence')}</h1><p>${esc(d.address || '')}</p><h2>Status</h2><p>${esc(jobHealth().label)}</p><h2>Priorities</h2><p>${esc(d.wants || '')}</p><h2>Site notes</h2><p>${esc(d.cable || '')}</p><p>${esc(d.batteryLoc || '')}</p><p>${esc(d.siteRiskNotes || '')}</p><h2>Finance</h2><p>${esc(d.financePlan || '')}</p></body></html>`;
+  }
+
+  function bindExportExtras(){
+    ['preparePandaDocQuote','preparePandaDocQuoteTop'].forEach(id => {
+      const panda = $(id);
+      if(panda && !panda.dataset.v65Bound){
+        panda.dataset.v65Bound = 'yes';
+        panda.addEventListener('click', e => { e.preventDefault(); createPandaDocPack(true); }, true);
+      }
+    });
+    ['downloadEvidenceSoFar','downloadEvidenceSoFarTop'].forEach(id => {
+      const evidence = $(id);
+      if(evidence && !evidence.dataset.v65Bound){
+        evidence.dataset.v65Bound = 'yes';
+        evidence.addEventListener('click', e => { e.preventDefault(); createEvidencePack(); }, true);
+      }
+    });
+  }
+
+  let markupState = null;
+  function addMarkupButtons(){
+    document.querySelectorAll('.mediaTile').forEach(tile => {
+      if(tile.querySelector('.mediaMarkBtn')) return;
+      const id = tile.dataset.mediaId;
+      const item = mediaItems().find(x => x.id === id);
+      if(!item || !String(item.type || '').startsWith('image/')) return;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'mediaMarkBtn';
+      btn.textContent = 'Mark up photo';
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        openMarkup(item);
+      });
+      tile.querySelector('.mediaBody')?.appendChild(btn);
+    });
+  }
+
+  function openMarkup(item){
+    const modal = $('markupModal'), canvas = $('markupCanvas');
+    if(!modal || !canvas || !item?.blob) return;
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    const url = URL.createObjectURL(item.blob);
+    img.onload = () => {
+      const maxW = 1200, maxH = 900;
+      const scale = Math.min(maxW/img.width, maxH/img.height, 1);
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      markupState = {item, imgData:ctx.getImageData(0,0,canvas.width,canvas.height), actions:[], tool:'label', label:'Gateway location', start:null};
+      modal.hidden = false;
+      if($('markupNotice')) $('markupNotice').textContent = 'Choose a label, then tap the photo where it should go.';
+    };
+    img.src = url;
+  }
+
+  function redrawMarkup(){
+    const canvas = $('markupCanvas');
+    if(!canvas || !markupState) return;
+    const ctx = canvas.getContext('2d');
+    ctx.putImageData(markupState.imgData, 0, 0);
+    markupState.actions.forEach(a => drawAction(ctx, a));
+  }
+
+  function drawAction(ctx, a){
+    ctx.save();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = a.color || '#ffffff';
+    ctx.fillStyle = a.color || '#ffffff';
+    ctx.font = 'bold 28px Arial';
+    if(a.type === 'label'){
+      const text = a.label || 'Label';
+      const w = ctx.measureText(text).width + 28;
+      ctx.fillStyle = 'rgba(255,255,255,.94)';
+      ctx.fillRect(a.x, a.y, w, 48);
+      ctx.strokeStyle = a.outline || '#ffffff';
+      ctx.strokeRect(a.x, a.y, w, 48);
+      ctx.fillStyle = a.textColor || '#111111';
+      ctx.fillText(text, a.x + 14, a.y + 33);
+    }else if(a.type === 'box'){
+      ctx.strokeStyle = '#ffffff';
+      roundRect(ctx, Math.min(a.x,a.x2), Math.min(a.y,a.y2), Math.abs(a.x2-a.x), Math.abs(a.y2-a.y), 24);
+      ctx.stroke();
+    }else if(a.type === 'line'){
+      ctx.strokeStyle = a.color || '#e64b3a';
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(a.x2,a.y2); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function roundRect(ctx,x,y,w,h,r){
+    r = Math.min(r, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r);
+  }
+
+  function canvasPoint(e){
+    const c = $('markupCanvas'), r = c.getBoundingClientRect();
+    const t = e.touches && e.touches[0];
+    const x = ((t?t.clientX:e.clientX) - r.left) * (c.width / r.width);
+    const y = ((t?t.clientY:e.clientY) - r.top) * (c.height / r.height);
+    return {x,y};
+  }
+
+  function bindMarkup(){
+    document.addEventListener('click', e => {
+      const label = e.target && e.target.closest ? e.target.closest('[data-markup-label]') : null;
+      const tool = e.target && e.target.closest ? e.target.closest('[data-markup-tool]') : null;
+      if(label && markupState){ markupState.tool='label'; markupState.label=label.dataset.markupLabel; if($('markupNotice')) $('markupNotice').textContent = `Tap the photo to place: ${markupState.label}`; }
+      if(tool && markupState){ markupState.tool=tool.dataset.markupTool; if($('markupNotice')) $('markupNotice').textContent = markupState.tool === 'box' ? 'Drag on the photo to draw a rounded box.' : 'Drag on the photo to draw a line.'; }
+    }, true);
+    const close = $('closeMarkupModal');
+    if(close && !close.dataset.v65Bound){ close.dataset.v65Bound='yes'; close.onclick = () => { if($('markupModal')) $('markupModal').hidden = true; }; }
+    const undo = $('undoMarkup');
+    if(undo && !undo.dataset.v65Bound){ undo.dataset.v65Bound='yes'; undo.onclick = () => { if(markupState){ markupState.actions.pop(); redrawMarkup(); } }; }
+    const saveBtn = $('saveMarkup');
+    if(saveBtn && !saveBtn.dataset.v65Bound){
+      saveBtn.dataset.v65Bound='yes';
+      saveBtn.onclick = () => {
+        const canvas = $('markupCanvas');
+        if(!canvas || !markupState) return;
+        canvas.toBlob(blob => {
+          if(!blob) return;
+          const base = (markupState.item.name || 'marked_photo').replace(/\.[^.]+$/,'');
+          const file = new File([blob], `${base}_marked.jpg`, {type:'image/jpeg', lastModified:Date.now()});
+          if(window.LGSurveyMediaGallery && window.LGSurveyMediaGallery.addFiles){
+            window.LGSurveyMediaGallery.addFiles([file], markupState.item.category || 'Other');
+          }
+          if($('markupModal')) $('markupModal').hidden = true;
+        }, 'image/jpeg', .9);
+      };
+    }
+    const canvas = $('markupCanvas');
+    if(canvas && !canvas.dataset.v65Bound){
+      canvas.dataset.v65Bound='yes';
+      const start = e => {
+        if(!markupState) return;
+        e.preventDefault();
+        const p = canvasPoint(e);
+        if(markupState.tool === 'label'){
+          markupState.actions.push({type:'label', x:p.x, y:p.y, label:markupState.label});
+          redrawMarkup();
+        }else{
+          markupState.start = p;
+        }
+      };
+      const end = e => {
+        if(!markupState || !markupState.start) return;
+        e.preventDefault();
+        const p = canvasPoint(e), s = markupState.start;
+        markupState.actions.push({type:markupState.tool, x:s.x, y:s.y, x2:p.x, y2:p.y, color:markupState.tool==='line'?'#e64b3a':'#ffffff'});
+        markupState.start = null;
+        redrawMarkup();
+      };
+      canvas.addEventListener('mousedown', start);
+      canvas.addEventListener('mouseup', end);
+      canvas.addEventListener('touchstart', start, {passive:false});
+      canvas.addEventListener('touchend', end, {passive:false});
+    }
+    setInterval(addMarkupButtons, 1200);
+  }
+
+  function stableNavigation(){
+    function activate(tab, scroll){
+      if(!$(tab)) return;
+      document.querySelectorAll('nav button[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+      document.querySelectorAll('main > section.panel').forEach(p => p.classList.toggle('on', p.id === tab));
+      try{ localStorage.setItem(ACTIVE_TAB_KEY, tab); history.replaceState(null, '', location.pathname + location.search + '#' + tab); }catch(e){}
+      if(scroll !== false) window.scrollTo({top:0,left:0,behavior:'auto'});
+      if(tab === 'present' || tab === 'agreement') setTimeout(() => { try{ if(typeof refreshPresent === 'function') refreshPresent(); }catch(e){} }, 20);
+      refreshV65Status();
+    }
+    document.addEventListener('click', e => {
+      const target = e.target && e.target.closest ? e.target.closest('nav button[data-tab], .continueBtn[data-next], .journeyStep[data-jump]') : null;
+      if(!target) return;
+      const tab = target.dataset.tab || target.dataset.next || target.dataset.jump;
+      if(!tab) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+      activate(tab, true);
+    }, true);
+    window.LGSurveyActivateTab = function(tab, opts){ activate(tab, !(opts && opts.scroll === false)); };
+  }
+
+  function bindInputs(){
+    document.addEventListener('click', e => {
+      const btn = e.target && e.target.closest ? e.target.closest('[data-finance]') : null;
+      if(!btn) return;
+      e.preventDefault();
+      const input = $('financePlan');
+      if(input) input.value = btn.dataset.finance || '';
+      syncFinanceButtons();
+      refreshV65Status();
+      try{ if(typeof save === 'function') save(); }catch(err){}
+    }, true);
+    document.addEventListener('input', e => {
+      if(!e.target) return;
+      if(['financePlan','panelOverrideReason','panelOverrideNote','p6PanelUnitCost'].includes(e.target.id)){
+        refreshV65Status();
+        try{ if(typeof save === 'function') save(); }catch(err){}
+      }
+    }, true);
+    document.addEventListener('change', e => {
+      if(e.target && e.target.id === 'financePlan'){
+        refreshV65Status();
+        try{ if(typeof save === 'function') save(); }catch(err){}
+      }
+    }, true);
+  }
+
+  function bind(){
+    setVersion();
+    patchDataRoundTrip();
+    patchSaveStatus();
+    patchCsv();
+    stableNavigation();
+    patchPanelLogic();
+    bindInputs();
+    bindEmailButtons();
+    bindExportExtras();
+    bindMarkup();
+    ensureSafetyCard();
+    refreshV65Status();
+    setTimeout(() => { setVersion(); patchPanelLogic(); bindEmailButtons(); bindExportExtras(); addMarkupButtons(); refreshV65Status(); }, 900);
+  }
+
+  window.LGSurveyPandaDoc = {create:createPandaDocPack, pdf:formalQuotePdfBlob};
+  window.LGSurveyEvidencePack = {create:createEvidencePack};
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+
+
+/* v63: colleague-friendly finish pack and tablet email flow */
+(function(){
+  const VERSION = 'v64';
+  const KEY_NAME = 'tlgec_current_draft_v1';
+  const SURVEYS_NAME = 'tlgec_surveys_saved_v1';
+  const $ = id => document.getElementById(id);
+  let lastFinishMode = 'accepted';
+
+  function setVersion(){
+    const home = $('homeVersionSmall');
+    if(home) home.textContent = VERSION;
+    const badge = $('appVersionBadge');
+    if(badge) badge.textContent = 'App version: ' + VERSION;
+  }
+
+  function val(id){
+    return ($(id)?.value || '').toString().trim();
+  }
+
+  function setVal(id, value){
+    const el = $(id);
+    if(el) el.value = value;
+  }
+
+  function esc(v){
+    return String(v == null ? '' : v).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+  }
+
+  function moneySafe(n){
+    const num = Number(n || 0);
+    if(!num) return 'To confirm';
+    try{
+      if(typeof money === 'function') return money(num);
+    }catch(e){}
+    return '£' + Math.round(num).toLocaleString();
+  }
+
+  function quoteSafe(){
+    try{
+      if(typeof quote === 'function') return quote();
+    }catch(e){}
+    return {};
+  }
+
+  function getSaved(){
+    try{
+      if(typeof getSavedSurveys === 'function') return getSavedSurveys();
+    }catch(e){}
+    try{ return JSON.parse(localStorage.getItem(SURVEYS_NAME) || '[]'); }catch(e){ return []; }
+  }
+
+  function setSaved(arr){
+    try{
+      if(typeof setSavedSurveys === 'function') return setSavedSurveys(arr);
+    }catch(e){}
+    localStorage.setItem(SURVEYS_NAME, JSON.stringify(arr));
+  }
+
+  function surveyName(d){
+    const name = (d.customerName || val('customerName') || 'Untitled survey').trim();
+    return name || 'Untitled survey';
+  }
+
+  function silentSaveSurvey(){
+    let draft = {};
+    try{
+      draft = typeof getData === 'function' ? getData() : {};
+    }catch(e){}
+    const now = new Date().toISOString();
+    let arr = getSaved();
+    let id = '';
+    try{ id = currentSavedId || ''; }catch(e){}
+    if(!id) id = 'svy_' + Date.now();
+    const existing = arr.find(s => s && s.id === id);
+    const name = surveyName(draft);
+    const record = {
+      ...draft,
+      id,
+      name,
+      customerName: draft.customerName || name,
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
+      currentSavedId: id
+    };
+    if(existing) arr = arr.map(s => s.id === id ? record : s);
+    else arr.push(record);
+    try{ currentSavedId = id; }catch(e){}
+    setSaved(arr);
+    try{ localStorage.setItem(KEY_NAME, JSON.stringify(record)); }catch(e){}
+    try{ if($('saveName')) $('saveName').value = name; }catch(e){}
+    try{ if(typeof updateSaveStatus === 'function') updateSaveStatus(); }catch(e){}
+    try{ if(typeof renderSavedList === 'function') renderSavedList(); }catch(e){}
+    try{ if(typeof renderHomeSavedList === 'function') renderHomeSavedList(); }catch(e){}
+    return record;
+  }
+
+  function hasSignature(){
+    try{
+      if(window.LGSurveySignature && typeof window.LGSurveySignature.hasInk === 'function'){
+        return !!window.LGSurveySignature.hasInk();
+      }
+    }catch(e){}
+    const canvas = $('signatureCanvas');
+    if(!canvas) return false;
+    try{
+      const ctx = canvas.getContext('2d', {willReadFrequently:true});
+      const data = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+      for(let i=3;i<data.length;i+=4){
+        if(data[i] > 10) return true;
+      }
+    }catch(e){
+      try{ return !!(signatureData && signatureData.length > 1000); }catch(err){}
+    }
+    return false;
+  }
+
+  function captureSignature(){
+    try{
+      if(window.LGSurveySignature && typeof window.LGSurveySignature.get === 'function'){
+        const data = window.LGSurveySignature.get();
+        if(data){
+          signatureData = data;
+          window.signatureData = data;
+        }
+      }
+    }catch(e){}
+  }
+
+  function modeFromLikelihood(){
+    const v = val('customerLikelihood').toLowerCase();
+    if(v.includes('question') || v.includes('not ready')) return 'followup';
+    return 'accepted';
+  }
+
+  function setLikelihood(value){
+    setVal('customerLikelihood', value);
+    document.querySelectorAll('#likelihoodButtons button').forEach(btn => {
+      btn.classList.toggle('selected', btn.dataset.likelihood === value);
+    });
+    const prompt = $('blockerPrompt');
+    const follow = $('saveFollowUpPack');
+    if(prompt){
+      prompt.className = 'blockerPrompt';
+      if(!value){
+        prompt.textContent = 'Choose the closest option above.';
+      }else if(value.includes('Ready')){
+        prompt.textContent = 'Great. Ask for the signature below, then download the customer pack.';
+        prompt.classList.add('good');
+        setVal('salesStatus','Formal quote needed');
+        setVal('mainBlocker','None known');
+      }else if(value.includes('Question')){
+        prompt.textContent = 'Add the question or change, then save a follow-up pack without needing a signature.';
+        prompt.classList.add('warn');
+        setVal('salesStatus','Proposal to prepare');
+        if(!val('mainBlocker') || val('mainBlocker') === 'None known') setVal('mainBlocker','Needs more information');
+      }else{
+        prompt.textContent = 'Add the reason, then save a follow-up pack so nothing is lost.';
+        prompt.classList.add('danger');
+        setVal('salesStatus','Follow-up required');
+        if(!val('mainBlocker') || val('mainBlocker') === 'None known') setVal('mainBlocker','Needs more information');
+      }
+    }
+    if(follow) follow.hidden = !value || value.includes('Ready');
+    try{ if(typeof save === 'function') save(); }catch(e){}
+  }
+
+  function firstName(){
+    return (val('customerName').split(/\s+/)[0] || 'there');
+  }
+
+  function emailBody(mode){
+    const follow = mode === 'followup';
+    const next = val('nextAction') || (follow ? 'I will follow up on the point we discussed.' : 'I will review the final details and come back with the formal proposal for review.');
+    const q = quoteSafe();
+    const summary = [
+      'SUMMARY',
+      `Customer goal: ${val('wants') || 'To confirm'}`,
+      `Solar: ${val('panelCount') || 0} panels${q.kWp ? ' / ' + q.kWp + ' kWp' : ''}`,
+      `Battery: ${q.batteryText || val('batteryBrand') || 'To confirm'}`,
+      `Proposal position: ${moneySafe(q.total)}`,
+      follow ? `Point to resolve: ${val('blockerReason') || 'To confirm'}` : '',
+      `Next step: ${next}`
+    ].filter(Boolean).join('\r\n');
+    return [
+      `Hi ${firstName()},`,
+      '',
+      'Thank you for going through the survey today.',
+      '',
+      follow
+        ? 'Here is the follow-up summary from today, including the recommendation we discussed and the point to resolve before we finalise anything.'
+        : 'Here is the survey recommendation summary from today.',
+      '',
+      summary,
+      '',
+      'Everything remains subject to final roof, electrical, DNO and design checks before formal paperwork is issued.',
+      '',
+      next,
+      '',
+      'Kind regards,',
+      'James Cooling',
+      'The Little Green Energy Company',
+      '01622 832834',
+      '07714292169'
+    ].join('\r\n');
+  }
+
+  async function copyEmailBody(mode){
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        await navigator.clipboard.writeText(emailBody(mode));
+      }
+    }catch(e){}
+  }
+
+  function openEmail(mode){
+    const subject = mode === 'followup'
+      ? 'Your Little Green Energy survey follow-up'
+      : 'Your Little Green Energy survey pack';
+    const href = `mailto:${encodeURIComponent(val('email'))}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody(mode))}`;
+    copyEmailBody(mode);
+    window.location.href = href;
+  }
+
+  function finishMetric(label, value){
+    return `<div class="finishPackMetric"><span>${esc(label)}</span><b>${esc(value || 'To confirm')}</b></div>`;
+  }
+
+  function showFinish(mode, result){
+    lastFinishMode = mode || 'accepted';
+    const card = $('finishPackCard');
+    if(!card) return;
+    const q = quoteSafe();
+    const follow = lastFinishMode === 'followup';
+    const file = result?.filename || window.LGSurveyLastPack?.filename || 'the downloaded customer pack';
+    if($('finishPackKicker')) $('finishPackKicker').textContent = follow ? 'Follow-up saved' : 'Survey accepted';
+    if($('finishPackTitle')) $('finishPackTitle').textContent = follow ? 'Follow-up pack ready' : 'Customer pack ready';
+    if($('finishPackSubtitle')) $('finishPackSubtitle').textContent = follow
+      ? 'The visit is saved, the reason is captured, and the pack is ready for follow-up.'
+      : 'The signed survey is saved and the customer pack is ready to email or share.';
+    const solar = `${val('panelCount') || '0'} panels${q.kWp ? ' / ' + q.kWp + ' kWp' : ''}`;
+    const battery = q.batteryText || val('batteryBrand') || 'Battery route to confirm';
+    const status = follow ? 'Follow-up required' : 'Formal quote needed';
+    const next = val('nextAction') || (follow ? 'Follow up with customer' : 'Prepare formal quote');
+    if($('finishPackSummary')){
+      $('finishPackSummary').innerHTML = [
+        finishMetric('Customer', val('customerName') || 'Customer'),
+        finishMetric('Status', status),
+        finishMetric('Solar', solar),
+        finishMetric('Battery', battery),
+        finishMetric('Proposal', moneySafe(q.total)),
+        finishMetric('Next action', next),
+        finishMetric('Pack file', file),
+        finishMetric('Follow-up', val('followUp') || 'No date set')
+      ].join('');
+    }
+    if($('finishPackInstructions')){
+      $('finishPackInstructions').textContent = `Android tablet shortcut: the pack has downloaded as ${file}. Open the email, then attach this ZIP from Downloads or your pinned customer folder.`;
+    }
+    if($('finishPackNotice')){
+      $('finishPackNotice').innerHTML = result
+        ? `<b>Downloaded.</b> ${esc(file)} includes the polished customer summary, recommendation, email text, data backup and site media.`
+        : 'Use Download customer pack if the browser did not download automatically.';
+    }
+    card.hidden = false;
+    card.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+
+  function setBusy(on){
+    ['stampAccept','saveFollowUpPack','finishDownloadPack'].forEach(id => {
+      const btn = $(id);
+      if(btn) btn.disabled = !!on;
+    });
+  }
+
+  async function createPack(mode){
+    setBusy(true);
+    try{
+      const api = window.LGSurveyExportPack;
+      const result = api && typeof api.create === 'function'
+        ? await api.create(mode)
+        : null;
+      showFinish(mode, result);
+      return result;
+    }catch(err){
+      console.error('Finish pack failed', err);
+      alert('Could not create the customer pack on this device. Try closing other tabs, then tap Download customer pack again.');
+      showFinish(mode, null);
+      return null;
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  async function finishAccepted(e){
+    e.preventDefault();
+    e.stopPropagation();
+    if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+    captureSignature();
+    if(!hasSignature()){
+      alert('Please ask the customer to sign before accepting. If they are not ready to sign, use Save follow-up pack.');
+      return;
+    }
+    setLikelihood('Ready to formalise the quote');
+    setVal('salesStatus','Formal quote needed');
+    setVal('mainBlocker','None known');
+    setVal('nextAction','Prepare formal quote and send paperwork for review');
+    const stamp = $('acceptanceStamp');
+    if(stamp){
+      stamp.innerHTML = `<div class="thanksCard enhancedThanks"><b>Thank you. The customer pack is ready.</b><p>The survey has been accepted and saved. Download the pack, then open the email and attach the ZIP from Downloads.</p><small>${esc(val('customerName') || 'Customer')} accepted the survey guidance on ${esc(new Date().toLocaleString())}. Final design checks still apply.</small></div>`;
+    }
+    silentSaveSurvey();
+    await createPack('accepted');
+  }
+
+  async function finishFollowUp(e){
+    e.preventDefault();
+    e.stopPropagation();
+    if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+    if(!val('customerLikelihood') || val('customerLikelihood').includes('Ready')){
+      setLikelihood('Question or change before quote');
+    }
+    setVal('salesStatus','Follow-up required');
+    if(!val('mainBlocker') || val('mainBlocker') === 'None known') setVal('mainBlocker','Needs more information');
+    if(!val('nextAction')) setVal('nextAction','Follow up with customer and resolve question before quote');
+    const stamp = $('acceptanceStamp');
+    if(stamp){
+      stamp.innerHTML = `<div class="thanksCard enhancedThanks"><b>Follow-up saved.</b><p>No signature was required. The customer response, blocker and next action are captured in the downloaded pack.</p></div>`;
+    }
+    silentSaveSurvey();
+    await createPack('followup');
+  }
+
+  function bindLikelihood(){
+    document.querySelectorAll('#likelihoodButtons button').forEach(btn => {
+      btn.addEventListener('click', function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+        setLikelihood(btn.dataset.likelihood || '');
+      }, true);
+    });
+    setLikelihood(val('customerLikelihood'));
+  }
+
+  function bindFinishButtons(){
+    const accept = $('stampAccept');
+    if(accept && !accept.dataset.v63FinishBound){
+      accept.dataset.v63FinishBound = 'yes';
+      accept.textContent = 'Accept and download pack';
+      accept.addEventListener('click', finishAccepted, true);
+    }
+    const follow = $('saveFollowUpPack');
+    if(follow && !follow.dataset.v63FinishBound){
+      follow.dataset.v63FinishBound = 'yes';
+      follow.textContent = 'Save follow-up pack';
+      follow.addEventListener('click', finishFollowUp, true);
+    }
+    const download = $('finishDownloadPack');
+    if(download && !download.dataset.v63FinishBound){
+      download.dataset.v63FinishBound = 'yes';
+      download.addEventListener('click', function(e){
+        e.preventDefault();
+        createPack(lastFinishMode || modeFromLikelihood());
+      });
+    }
+    const email = $('finishOpenEmail');
+    if(email && !email.dataset.v63FinishBound){
+      email.dataset.v63FinishBound = 'yes';
+      email.addEventListener('click', function(e){
+        e.preventDefault();
+        openEmail(lastFinishMode || modeFromLikelihood());
+      });
+    }
+    const next = $('finishNextSurvey');
+    if(next && !next.dataset.v63FinishBound){
+      next.dataset.v63FinishBound = 'yes';
+      next.addEventListener('click', function(e){
+        e.preventDefault();
+        try{
+          if(typeof saveAndStartNew === 'function') saveAndStartNew();
+          else location.href = location.pathname + '?newSurvey=' + Date.now() + '#customer';
+        }catch(err){
+          location.href = location.pathname + '?newSurvey=' + Date.now() + '#customer';
+        }
+      });
+    }
+  }
+
+  function bind(){
+    setVersion();
+    bindLikelihood();
+    bindFinishButtons();
+    setTimeout(() => { setVersion(); bindLikelihood(); bindFinishButtons(); }, 700);
+    setTimeout(() => { setVersion(); bindFinishButtons(); }, 1600);
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+
+
 /* v41 local-only survey quality, panel sense check, extras and safer handover */
 (function(){
   const VERSION = 'v62';
@@ -2211,14 +3758,14 @@ Extras notes: ${val('extrasNote')}`;
       autoBtn.onclick = e => { e.preventDefault(); document.querySelectorAll('.roofPanels').forEach(i=>{i.dataset.manual='';}); autoFitRoofPanels(true); renderPanelSenseCheck(); try{ if(typeof save==='function') save(); }catch(err){} };
     }
     document.addEventListener('input', e => {
-      if(e.target && (e.target.closest('#roofPlanes') || ['autoPanelChoice','autoPanelMargin','panelModel','panelCount','tigo','ev','eddi','otherExtra','eddiPrice','otherExtraName','otherExtraPrice','extrasNote'].includes(e.target.id))){
+      if(e.target && (e.target.closest('#roofPlanes') || ['autoPanelChoice','autoPanelMargin','panelModel','tigo','ev','eddi','otherExtra','eddiPrice','otherExtraName','otherExtraPrice','extrasNote'].includes(e.target.id))){
         syncPanelSenseEvents();
         if(!e.target.classList.contains('roofPanels')) autoFitRoofPanels(false);
         renderPanelSenseCheck();
       }
     }, true);
     document.addEventListener('change', e => {
-      if(e.target && (e.target.closest('#roofPlanes') || ['autoPanelChoice','autoPanelMargin','panelModel','panelCount','tigo','ev','eddi','otherExtra','eddiPrice','otherExtraName','otherExtraPrice','extrasNote'].includes(e.target.id))){
+      if(e.target && (e.target.closest('#roofPlanes') || ['autoPanelChoice','autoPanelMargin','panelModel','tigo','ev','eddi','otherExtra','eddiPrice','otherExtraName','otherExtraPrice','extrasNote'].includes(e.target.id))){
         syncPanelSenseEvents();
         if(e.target.id === 'panelModel' && $('autoPanelChoice')) $('autoPanelChoice').value = e.target.value || 'AUTO';
         autoFitRoofPanels(false);
@@ -3495,7 +5042,7 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
       '',
       'Thank you for going through the survey today.',
       '',
-      'I’ve attached your Little Green Energy survey recommendation based on what we reviewed at the property. This remains subject to final roof, electrical, DNO and design checks before the formal paperwork is issued.',
+      'Here is your Little Green Energy survey recommendation summary based on what we reviewed at the property. This remains subject to final roof, electrical, DNO and design checks before the formal paperwork is issued.',
       '',
       'I’ll review the final details and come back to you with the full proposal and paperwork for review.',
       '',
@@ -3682,16 +5229,35 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
     return `<!doctype html><html><head><meta charset="utf-8"><title>LG Survey Recommendation</title></head><body><pre>${currentPrompt().replace(/[<>&]/g, ch => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]))}</pre></body></html>`;
   }
 
-  function shortEmailText(){
+  function canvasHasInk(canvas){
+    if(!canvas) return false;
+    try{
+      const ctx = canvas.getContext('2d', {willReadFrequently:true});
+      const pixels = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+      for(let i=3;i<pixels.length;i+=4){
+        if(pixels[i] > 10) return true;
+      }
+    }catch(e){
+      try{ return !!(signatureData && signatureData.length > 1000); }catch(err){}
+    }
+    return false;
+  }
+
+  function shortEmailText(source){
     const first = firstNameSafe();
+    const d = currentSurveyData();
+    const followUp = packMode(source, d) === 'followup';
+    const next = d.nextAction || (followUp ? 'I will follow up on the point we discussed.' : 'I will review the final details and come back to you with the full proposal and paperwork for review.');
     return [
       `Hi ${first},`,
       '',
       'Thank you for going through the survey today.',
       '',
-      'I’ve attached your Little Green Energy survey recommendation based on what we reviewed at the property. This remains subject to final roof, electrical, DNO and design checks before the formal paperwork is issued.',
+      followUp
+        ? 'Here is the follow-up summary from today, including the recommendation we discussed and the point to resolve before anything is finalised.'
+        : 'Here is your Little Green Energy survey recommendation summary based on what we reviewed at the property.',
       '',
-      'I’ll review the final details and come back to you with the full proposal and paperwork for review.',
+      next,
       '',
       'Kind regards,',
       'James Cooling',
@@ -3708,7 +5274,7 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
         if(typeof signatureData !== 'undefined' && signatureData) data = signatureData;
         if(!data && window.signatureData) data = window.signatureData;
         const canvas = $('signatureCanvas');
-        if(!data && canvas){
+        if(!data && canvas && canvasHasInk(canvas)){
           try{ data = canvas.toDataURL('image/png'); }catch(e){}
         }
         if(!data || !data.startsWith('data:image')) return resolve(null);
@@ -3873,11 +5439,124 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
     if(el) el.innerHTML = message;
   }
 
+  function escapeHTML(v){
+    return escText(v).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+  }
+
+  function dataVal(d, key, fallback){
+    const value = d && d[key] != null ? String(d[key]).trim() : '';
+    return value || fallback || '';
+  }
+
+  function moneyText(n){
+    const num = Number(n || 0);
+    if(!num) return 'To be confirmed';
+    try{
+      if(typeof money === 'function') return money(num);
+    }catch(e){}
+    return '£' + Math.round(num).toLocaleString();
+  }
+
+  function customerFileStem(){
+    const raw = fullNameSafe().trim();
+    const parts = raw.split(/\s+/).filter(Boolean);
+    const stem = parts.length > 1 ? `${parts[parts.length-1]}_${parts.slice(0,-1).join('_')}` : (raw || 'LG_Survey');
+    return safeFilePart(stem, 'LG_Survey').toLowerCase();
+  }
+
+  function packMode(source, d){
+    const signal = `${source || ''} ${dataVal(d,'customerLikelihood')} ${dataVal(d,'salesStatus')}`.toLowerCase();
+    if(signal.includes('follow') || signal.includes('question') || signal.includes('not ready')) return 'followup';
+    return 'accepted';
+  }
+
+  function customerSummaryHTML(source){
+    const d = currentSurveyData();
+    const q = d.quote || {};
+    const mode = packMode(source, d);
+    const accepted = mode === 'accepted';
+    const title = accepted ? 'Customer Pack Ready' : 'Follow-Up Pack Ready';
+    const status = accepted ? 'Signed - formal quote needed' : 'Follow-up required';
+    const customer = dataVal(d,'customerName','Customer');
+    const panel = q.panel && q.panel.name ? q.panel.name : dataVal(d,'panelModel','Panel route to confirm');
+    const solar = d.solar === false ? 'Not included' : `${dataVal(d,'panelCount','0')} panels${q.kWp ? ` / ${q.kWp} kWp` : ''}`;
+    const battery = q.batteryText || dataVal(d,'batteryBrand','Battery route to confirm');
+    const blocker = dataVal(d,'blockerReason','No question or blocker recorded.');
+    const next = dataVal(d,'nextAction', accepted ? 'Prepare formal quote and paperwork for review.' : 'Follow up with the customer.');
+    const followUp = dataVal(d,'followUp','No follow-up date set.');
+    const evidence = Array.isArray(d.mediaFiles) && d.mediaFiles.length
+      ? d.mediaFiles.map((f,i) => `<li>${i+1}. ${escapeHTML(f.category || 'Site file')} - ${escapeHTML(f.originalName || f.file || 'file')}</li>`).join('')
+      : '<li>No site media recorded in this export.</li>';
+    return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escapeHTML(title)} - ${escapeHTML(customer)}</title>
+<style>
+body{margin:0;background:#eef5ef;color:#0b1f18;font-family:Arial,Helvetica,sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:28px}
+.hero{background:linear-gradient(135deg,#062819,#0b7a46 58%,#93d328);color:white;border-radius:30px;padding:34px;box-shadow:0 24px 54px rgba(6,40,25,.22)}
+.kicker{text-transform:uppercase;letter-spacing:.12em;font-weight:900;color:#d8ffb8;font-size:12px}
+h1{font-size:44px;line-height:1;margin:10px 0 12px}p{line-height:1.5}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0}.card{background:white;border:1px solid #d9e2da;border-radius:22px;padding:18px;box-shadow:0 8px 24px rgba(6,40,25,.07)}.card b{display:block;font-size:22px}.label{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:#0b7a46;font-weight:900;margin-bottom:7px}.wide{grid-column:1/-1}.status{display:inline-block;background:#dff2d0;color:#073b22;border-radius:999px;padding:9px 14px;font-weight:900}ul{padding-left:20px}@media(max-width:760px){.grid{grid-template-columns:1fr}h1{font-size:34px}.wrap{padding:14px}.hero{padding:24px;border-radius:22px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero">
+    <div class="kicker">The Little Green Energy Company</div>
+    <h1>${escapeHTML(title)}</h1>
+    <p>${escapeHTML(customer)} - ${escapeHTML(dataVal(d,'address','Address not recorded'))}</p>
+    <span class="status">${escapeHTML(status)}</span>
+  </section>
+  <section class="grid">
+    <div class="card"><div class="label">Customer goal</div><b>${escapeHTML(dataVal(d,'wants','Goal to confirm'))}</b></div>
+    <div class="card"><div class="label">Solar</div><b>${escapeHTML(solar)}</b><p>${escapeHTML(panel)}</p></div>
+    <div class="card"><div class="label">Battery</div><b>${escapeHTML(battery)}</b></div>
+    <div class="card"><div class="label">Proposal position</div><b>${escapeHTML(moneyText(q.total))}</b></div>
+    <div class="card"><div class="label">Next action</div><b>${escapeHTML(next)}</b></div>
+    <div class="card"><div class="label">Follow-up</div><b>${escapeHTML(followUp)}</b></div>
+    <div class="card wide"><div class="label">${accepted ? 'Acceptance note' : 'Question / blocker'}</div><p>${escapeHTML(accepted ? dataVal(d,'acceptance','Signed acceptance captured.') : blocker)}</p></div>
+    <div class="card wide"><div class="label">Why this recommendation fits</div><p>${escapeHTML(dataVal(d,'present','Recommendation summary will be reviewed against the survey evidence.'))}</p></div>
+    <div class="card wide"><div class="label">Site evidence included</div><ul>${evidence}</ul></div>
+  </section>
+</div>
+</body>
+</html>`;
+  }
+
+  function followUpSummaryText(source){
+    const d = currentSurveyData();
+    const q = d.quote || {};
+    return [
+      packMode(source, d) === 'accepted' ? 'SIGNED CUSTOMER PACK' : 'FOLLOW-UP CUSTOMER PACK',
+      '',
+      `Customer: ${dataVal(d,'customerName','Customer')}`,
+      `Address: ${dataVal(d,'address','')}`,
+      `Phone: ${dataVal(d,'phone','')}`,
+      `Email: ${dataVal(d,'email','')}`,
+      '',
+      `Customer response: ${dataVal(d,'customerLikelihood','Not recorded')}`,
+      `Question / blocker: ${dataVal(d,'blockerReason','None recorded')}`,
+      `Sales status: ${dataVal(d,'salesStatus','')}`,
+      `Next action: ${dataVal(d,'nextAction','')}`,
+      `Follow-up date: ${dataVal(d,'followUp','')}`,
+      '',
+      `Recommended solar: ${dataVal(d,'panelCount','0')} panels ${q.kWp ? '(' + q.kWp + ' kWp)' : ''}`,
+      `Battery: ${q.batteryText || dataVal(d,'batteryBrand','')}`,
+      `Proposal position: ${moneyText(q.total)}`,
+      '',
+      'Use 00_Open_First_Customer_Summary.html for a clean colleague-friendly view.'
+    ].join('\r\n');
+  }
+
   async function createSurveyPackZip(downloadNow, source){
     const used = new Set();
-    const name = safeFilePart(fullNameSafe(), 'LG_Survey');
+    const name = customerFileStem();
     const stamp = todayStamp();
-    const root = `${name}_LG_Survey_Pack_${stamp}`;
+    const root = `${name}_survey_pack_${stamp}`;
+    const d = currentSurveyData();
+    const mode = packMode(source, d);
     const entries = [];
 
     entries.push(await entryFromText(uniquePath(`${root}/README.txt`, used), [
@@ -3886,6 +5565,8 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
       'This pack was generated locally on this device.',
       '',
       'Contents:',
+      '00_Open_First_Customer_Summary.html - polished survey result view for colleagues and customer follow-up.',
+      '00_Follow_Up_Summary.txt - plain text outcome, blocker and next action summary.',
       '01_Customer_Recommendation.html - customer-facing recommendation. Open it in a browser and use Print / Save as PDF if a PDF copy is needed.',
       '02_Outlook_Email.txt - short email body to send from James.',
       '03_ChatGPT_Survey_Pack_Prompt.txt - full customer survey pack prompt for ChatGPT handover.',
@@ -3894,11 +5575,13 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
       '06_Acceptance_Signature.png - signature where captured.',
       '07_Site_Files - photos, videos, PDFs and files selected in this session.',
       '',
-      'Note: mobile browsers cannot silently attach files to Outlook. Save/share this ZIP or attach the generated recommendation manually from Outlook.'
+      'Android tablet note: browsers cannot silently attach files to Outlook. Download this ZIP, open the email draft, then attach this ZIP from Downloads.'
     ].join('\r\n')));
 
+    entries.push(await entryFromText(uniquePath(`${root}/00_Open_First_Customer_Summary.html`, used), customerSummaryHTML(source), 'text/html'));
+    entries.push(await entryFromText(uniquePath(`${root}/00_Follow_Up_Summary.txt`, used), followUpSummaryText(source), 'text/plain'));
     entries.push(await entryFromText(uniquePath(`${root}/01_Customer_Recommendation.html`, used), currentRecommendationHTML(), 'text/html'));
-    entries.push(await entryFromText(uniquePath(`${root}/02_Outlook_Email.txt`, used), shortEmailText(), 'text/plain'));
+    entries.push(await entryFromText(uniquePath(`${root}/02_Outlook_Email.txt`, used), shortEmailText(source), 'text/plain'));
     entries.push(await entryFromText(uniquePath(`${root}/03_ChatGPT_Survey_Pack_Prompt.txt`, used), currentPrompt(), 'text/plain'));
     entries.push(await entryFromText(uniquePath(`${root}/04_Internal_Brief.txt`, used), currentInternalBrief(), 'text/plain'));
     entries.push(await entryFromText(uniquePath(`${root}/05_Survey_Data.json`, used), JSON.stringify(currentSurveyData(), null, 2), 'application/json'));
@@ -3918,9 +5601,11 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
     const zip = buildZipBlob(entries);
     const filename = `${root}.zip`;
     if(downloadNow !== false) downloadBlob(zip, filename);
-    const message = `<b>Export pack created.</b> ${entries.length} files included${files.length ? `, including ${files.length} selected site file${files.length===1?'':'s'}` : ''}.`;
+    const label = mode === 'followup' ? 'Follow-up pack' : 'Customer pack';
+    const message = `<b>${label} created.</b> ${entries.length} files included${files.length ? `, including ${files.length} selected site file${files.length===1?'':'s'}` : ''}. Filename: ${escapeHTML(filename)}`;
     setNotice('exportPackNotice', message);
     setNotice('toolsExportPackNotice', message);
+    try{ window.LGSurveyLastPack = {filename, mode, entries:entries.length, media:files.length, createdAt:new Date().toISOString()}; }catch(e){}
     return {zip, filename, entries: entries.length, media: files.length};
   }
 
@@ -3999,8 +5684,9 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
     btn.onclick = async e => {
       if(e) e.preventDefault();
       if(typeof old === 'function') old.call(btn, e);
-      setTimeout(() => {
-        createSurveyPackZip(true, 'accept').catch(err => console.error('Export pack failed', err));
+      setTimeout(async () => {
+        const sig = await readSignatureBlob();
+        if(sig) createSurveyPackZip(true, 'accept').catch(err => console.error('Export pack failed', err));
       }, 800);
     };
   }
@@ -4034,8 +5720,8 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
   }
 
   window.LGSurveyExportPack = {
-    create: () => createSurveyPackZip(true, 'manual'),
-    blob: () => createSurveyPackZip(false, 'manual')
+    create: source => createSurveyPackZip(true, source || 'manual'),
+    blob: source => createSurveyPackZip(false, source || 'manual')
   };
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
@@ -6018,6 +7704,11 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
     const tesla=$('teslaBox'), sig=$('sigBox');
     if(tesla) tesla.classList.toggle('selectedBatteryBox', brand==='Tesla');
     if(sig) sig.classList.toggle('selectedBatteryBox', brand==='Sigenergy');
+    document.querySelectorAll('[data-battery-brand]').forEach(btn=>{
+      const selected = btn.dataset.batteryBrand === brand;
+      btn.classList.toggle('selected', selected);
+      btn.setAttribute('aria-pressed', selected ? 'true' : 'false');
+    });
 
     if(brand==='Tesla') safeSyncTeslaUi();
     if(brand==='Sigenergy') safeSyncSigUi();
@@ -6117,6 +7808,16 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
 
     brand.addEventListener('input', handler, true);
     brand.addEventListener('change', handler, true);
+
+    document.querySelectorAll('[data-battery-brand]').forEach(btn=>{
+      if(btn.dataset.v65BatteryButtonBound) return;
+      btn.dataset.v65BatteryButtonBound='yes';
+      btn.addEventListener('click', ()=>{
+        const next = btn.dataset.batteryBrand || 'None';
+        if(brand.value !== next) brand.value = next;
+        handler();
+      });
+    });
   }
 
   function bind(){
@@ -6146,9 +7847,9 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
 })();
 
 
-/* v62 startup rescue and cache tools */
+/* v64 startup rescue and cache tools */
 (function(){
-  const VERSION='v62';
+  const VERSION='v64';
   const $=id=>document.getElementById(id);
   function setVersion(){
     const badge=$('appVersionBadge');
@@ -6161,7 +7862,7 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
     const q=query();
     if(q.get('clearDraft')==='1' || q.get('resetDraft')==='1'){
       try{ localStorage.removeItem('tlgec_current_draft_v1'); }catch(e){}
-      const clean=location.origin + location.pathname.replace(/\/?index\.html$/,'/index.html') + '?v62=' + Date.now();
+      const clean=location.origin + location.pathname.replace(/\/?index\.html$/,'/index.html') + '?v64=' + Date.now();
       location.replace(clean);
     }
   }
@@ -6177,7 +7878,7 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
           await Promise.all(keys.map(k=>caches.delete(k)));
         }
       }catch(e){}
-      location.replace(location.origin + location.pathname.replace(/\/?index\.html$/,'/') + '?v62=' + Date.now());
+      location.replace(location.origin + location.pathname.replace(/\/?index\.html$/,'/') + '?v64=' + Date.now());
     }
     const a=$('updateApp'), b=$('homeUpdateApp');
     if(a) a.onclick=cleanCachesOnly;
@@ -6197,7 +7898,7 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
 
 /* v62 pricing consistency patch: Proposal now uses the same priced inputs as the Design quote. */
 (function(){
-  const VERSION='v62';
+  const VERSION='v64';
   const $=id=>document.getElementById(id);
   const n=v=>Number(v||0)||0;
 
@@ -6232,6 +7933,14 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
   function lockPanelCountToRoofAllocation61(){
     const pc=$('panelCount');
     if(!pc) return n(pc?.value);
+    const manualOverride = pc.dataset.v65ManualOverride === 'yes' || pc.dataset.manual === 'yes';
+    const manualCurrent = n(pc.value);
+    if(manualOverride && manualCurrent>0){
+      pc.dataset.manual='yes';
+      pc.dataset.v62Priced='yes';
+      pc.dataset.pricedPanelCount=String(manualCurrent);
+      return manualCurrent;
+    }
     const roofTotal=roofPanelTotal61();
     if(roofTotal>0){
       pc.value=String(roofTotal);
@@ -6439,5 +8148,93 @@ const SIGENERGY_EMAIL_IMG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+
+
+/* v65 final override: keep latest field workflow active after all legacy layers */
+(function(){
+  const VERSION='v65';
+  const ACTIVE_TAB_KEY='lg_survey_active_tab_v1';
+  const $=id=>document.getElementById(id);
+  function val(id){return ($(id)?.value||'').toString().trim()}
+  function setVersion(){
+    if($('homeVersionSmall')) $('homeVersionSmall').textContent=VERSION;
+    if($('appVersionBadge')) $('appVersionBadge').textContent='App version: '+VERSION;
+  }
+  function activate(tab,scroll=true){
+    if(!$(tab))return;
+    document.querySelectorAll('nav button[data-tab]').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+    document.querySelectorAll('main > section.panel').forEach(p=>p.classList.toggle('on',p.id===tab));
+    try{localStorage.setItem(ACTIVE_TAB_KEY,tab);history.replaceState(null,'',location.pathname+location.search+'#'+tab)}catch(e){}
+    if(scroll)window.scrollTo({top:0,left:0,behavior:'auto'});
+    if(tab==='present'||tab==='agreement')setTimeout(()=>{try{if(typeof refreshPresent==='function')refreshPresent()}catch(e){}},40);
+  }
+  function emailPlainText(){
+    const first=(val('customerName').split(/\s+/)[0]||'there');
+    return [`Hi ${first},`,'','Thank you for going through the survey today.','','I have copied the styled recommendation into this message. If it has not appeared, paste into the email body.','','Everything remains subject to final roof, electrical, DNO and design checks before formal paperwork is issued.','','Kind regards,','James Cooling','The Little Green Energy Company'].join('\r\n');
+  }
+  function recommendationHTML(){
+    try{if(window.LGSurveyRecommendationTemplate&&typeof window.LGSurveyRecommendationTemplate.html==='function')return window.LGSurveyRecommendationTemplate.html()}catch(e){}
+    return '<html><body><h1>Your Little Green Energy recommendation</h1><p>'+($('presentSummary')?.innerText||'Recommendation summary')+'</p></body></html>';
+  }
+  function simpleHealth(){
+    const missing=[];
+    if(!val('customerName'))missing.push('customer name');
+    if(!val('address'))missing.push('address');
+    if(!val('wants'))missing.push('priorities');
+    if(($('solar')?.checked)&&!(Number(val('panelCount'))>0))missing.push('panel count');
+    if(!val('cable'))missing.push('cable route');
+    if(!val('batteryLoc'))missing.push('equipment location');
+    const finance=val('financePlan').toLowerCase();
+    const financeBlock=finance.includes('needs a finance')||finance.includes('unsure');
+    const label=financeBlock?'Finance next step needed':missing.length?'Needs evidence':'Ready to quote';
+    return {label,missing,level:financeBlock||missing.length?'warn':'good'};
+  }
+  function updateHealthCard(){
+    const card=$('homeReadinessCard');
+    if(!card)return;
+    const h=simpleHealth();
+    card.innerHTML=`<b>${h.label}</b><p>${h.missing.length?'Next: '+h.missing.slice(0,5).join(', '):'Core job details look ready.'}</p>`;
+  }
+  async function createCustomerEmail(e){
+    if(e){e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();}
+    try{if(typeof save==='function')save()}catch(err){}
+    let rich=false;
+    try{
+      if(navigator.clipboard&&window.ClipboardItem){
+        await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([recommendationHTML()],{type:'text/html'}),'text/plain':new Blob([emailPlainText()],{type:'text/plain'})})]);
+        rich=true;
+      }else if(navigator.clipboard){await navigator.clipboard.writeText(emailPlainText())}
+    }catch(err){
+      try{if(navigator.clipboard)await navigator.clipboard.writeText(emailPlainText())}catch(_){}
+    }
+    const notice=$('finishPackNotice')||$('templateNotice');
+    if(notice)notice.innerHTML=rich?'<b>Email opened.</b> Tap in the email body and paste. The styled recommendation is already copied.':'<b>Email opened.</b> Paste the copied plain-text fallback into the email body.';
+    window.location.href=`mailto:${encodeURIComponent(val('email'))}?subject=${encodeURIComponent('Your Little Green Energy survey recommendation')}&body=${encodeURIComponent(emailPlainText())}`;
+  }
+  function bind(){
+    setVersion();
+    document.addEventListener('click',e=>{
+      const nav=e.target&&e.target.closest?e.target.closest('nav button[data-tab],.continueBtn[data-next],.journeyStep[data-jump]'):null;
+      if(nav){
+        const tab=nav.dataset.tab||nav.dataset.next||nav.dataset.jump;
+        if(tab){e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();activate(tab,true);return;}
+      }
+      const email=e.target&&e.target.closest?e.target.closest('#finishOpenEmail,#openShortRecommendationEmail'):null;
+      if(email){createCustomerEmail(e);return;}
+    },true);
+    window.LGSurveyActivateTab=function(tab,opts){activate(tab,!(opts&&opts.scroll===false))};
+    document.addEventListener('input',()=>setTimeout(updateHealthCard,30),true);
+    document.addEventListener('change',()=>setTimeout(updateHealthCard,30),true);
+    updateHealthCard();
+    setTimeout(setVersion,600);
+    setTimeout(setVersion,1600);
+    setTimeout(setVersion,2600);
+    setTimeout(setVersion,4200);
+    setTimeout(updateHealthCard,900);
+    setTimeout(updateHealthCard,2200);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);
   else bind();
 })();
