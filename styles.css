@@ -1484,8 +1484,16 @@ label{font-size:15px;color:#263c31}
 .manualPanelCard{display:grid;gap:10px}
 .manualPanelCard span{display:block;color:#58685f;font-weight:750;margin-top:4px}
 .manualPanelCard textarea{min-height:64px}
+.manualPanelCard[hidden]{display:none!important}
+.p6FitControls{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+.panelSuggestionBox.manualActive,.panelSuggestionBox.designOverrideActive{border-color:#79ac20;background:#f1fae8}
 .panelSuggestionBox.manualActive{border-color:#79ac20;background:#f1fae8}
 .panelSuggestionBox.manualActive b:after{content:" - suggestion only";color:#0b7a46}
+@media(max-width:760px){.p6FitControls{grid-template-columns:1fr}}
 .finishPackActions{align-items:stretch}
 .finishPackActions button{min-height:48px}
 .markupModal{position:fixed;inset:0;z-index:99;background:rgba(6,40,25,.72);padding:18px;overflow:auto}

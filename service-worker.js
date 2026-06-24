@@ -1,4 +1,4 @@
-const CACHE='lg-survey-v65-2026-06-24';
+const CACHE='lg-survey-v66-2026-06-24';
 const FILES=['./','./index.html','./styles.css','./app.js','./manifest.json','./icon.svg','./app-icon-192.png','./app-icon-512.png','./tesla-powerwall.webp','./sigenergy-battery.webp','./tlgec-logo.png','./reset.html'];
 
 self.addEventListener('install', event => {

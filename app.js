@@ -1564,6 +1564,509 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 })();
 
 
+/* v66: panel selection and manual override stabilisation */
+(function(){
+  const VERSION='v66';
+  const P6_NAME='SunPower P6 405W Warehouse Deal';
+  const P6_PREFIX='SunPower P6 405W Warehouse Deal|405|';
+  const ACTIVE_TAB_KEY='lg_survey_active_tab_v1';
+  const $=id=>document.getElementById(id);
+  const n=v=>Number(v||0)||0;
+  const val=id=>($(id)?.value||'').toString().trim();
+  const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+
+  function setVersion(){
+    if($('homeVersionSmall')) $('homeVersionSmall').textContent=VERSION;
+    if($('appVersionBadge')) $('appVersionBadge').textContent='App version: '+VERSION;
+  }
+
+  function isP6Value(value){
+    return String(value||'').startsWith(P6_PREFIX) || String(value||'').includes(P6_NAME);
+  }
+
+  function splitPanelValue(value){
+    const parts=String(value||'').split('|');
+    return {
+      name:parts[0]||'Solar panel',
+      watt:n(parts[1]),
+      dim:parts[2]||'',
+      weight:parts[3]||'',
+      value:String(value||'')
+    };
+  }
+
+  function parseDims(dim){
+    const nums=String(dim||'').match(/\d+(?:\.\d+)?/g);
+    if(!nums || nums.length<2) return null;
+    const a=Number(nums[0]), b=Number(nums[1]);
+    if(!a || !b) return null;
+    return {long:Math.max(a,b)/1000, short:Math.min(a,b)/1000};
+  }
+
+  function ensureP6Card(){
+    let input=$('p6PanelUnitCost');
+    if(!input && $('panelModel')){
+      const holder=document.createElement('div');
+      holder.className='manualPanelCard';
+      holder.id='p6DealCard';
+      holder.innerHTML=[
+        '<b>SunPower P6 warehouse deal</b>',
+        '<span>Only used when the P6 panel is selected. Batteries and extras still price normally.</span>',
+        '<div class="p6FitControls">',
+        '<label>P6 panel cost £<input id="p6PanelUnitCost" inputmode="decimal" type="number" value="84"></label>',
+        '<label>Fit length mm<input id="p6PanelLength" inputmode="decimal" type="number" value="1722"></label>',
+        '<label>Fit width mm<input id="p6PanelWidth" inputmode="decimal" type="number" value="1134"></label>',
+        '</div>'
+      ].join('');
+      $('panelModel').closest('label')?.insertAdjacentElement('afterend',holder);
+      input=$('p6PanelUnitCost');
+    }
+    const card=input?.closest('.manualPanelCard');
+    if(card && !card.id) card.id='p6DealCard';
+    if(card && !$('p6PanelLength')){
+      const controls=document.createElement('div');
+      controls.className='p6FitControls';
+      controls.innerHTML='<label>Fit length mm<input id="p6PanelLength" inputmode="decimal" type="number" value="1722"></label><label>Fit width mm<input id="p6PanelWidth" inputmode="decimal" type="number" value="1134"></label>';
+      card.appendChild(controls);
+    }
+    return card||null;
+  }
+
+  function panelFromValue(value){
+    const p=splitPanelValue(value || $('panelModel')?.value || 'AIKO 495W|495|1762 x 1134 x 30 mm|20.6 kg');
+    let dims=parseDims(p.dim);
+    if(isP6Value(p.value)){
+      dims={long:(n(val('p6PanelLength'))||1722)/1000, short:(n(val('p6PanelWidth'))||1134)/1000};
+      p.dim=`${Math.round(dims.long*1000)} x ${Math.round(dims.short*1000)} mm - confirm P6 datasheet`;
+      p.watt=p.watt||405;
+    }
+    if(!dims) dims={long:1.762, short:1.134};
+    return {...p,long:dims.long,short:dims.short};
+  }
+
+  function currentPanel(){
+    return panelFromValue($('panelModel')?.value);
+  }
+
+  function panelPartsV66(){
+    const p=currentPanel();
+    return {name:p.name,watt:p.watt,dim:p.dim,weight:p.weight};
+  }
+
+  function updateP6Visibility(){
+    const card=ensureP6Card();
+    const selected=isP6Value($('panelModel')?.value);
+    if(card) card.hidden=!selected;
+    try{
+      if(window.PRICE_GUIDE && PRICE_GUIDE.panelCosts){
+        PRICE_GUIDE.panelCosts[P6_NAME]=n(val('p6PanelUnitCost'))||84;
+      }
+    }catch(e){}
+  }
+
+  function setDesignManual(active,source){
+    const pc=$('panelCount');
+    if(!pc) return;
+    if(active){
+      pc.dataset.v66Manual='yes';
+      pc.dataset.v66Source='manual';
+      pc.dataset.v65ManualOverride='yes';
+      pc.dataset.manual='yes';
+      pc.dataset.auto='';
+      pc.dataset.v62Priced='yes';
+      pc.dataset.pricedPanelCount=String(n(pc.value));
+    }else{
+      pc.dataset.v66Manual='';
+      pc.dataset.v65ManualOverride='';
+      pc.dataset.manual='';
+      pc.dataset.auto=source||'';
+      pc.dataset.v66Source=source||'';
+      pc.dataset.v62Priced='';
+      pc.dataset.pricedPanelCount='';
+    }
+  }
+
+  function designManualActive(){
+    const pc=$('panelCount');
+    if(!pc) return false;
+    if(pc.dataset.v66Source==='roof' || pc.dataset.v66Source==='auto') return false;
+    return pc.dataset.v66Manual==='yes' || pc.dataset.v65ManualOverride==='yes';
+  }
+
+  function markRoofManual(input){
+    if(!input) return;
+    input.dataset.v66Manual='yes';
+    input.dataset.manual='yes';
+    input.dataset.auto='';
+  }
+
+  function roofRows(){
+    return Array.from(document.querySelectorAll('.roofPlaneRow'));
+  }
+
+  function rowPlane(row,i){
+    return {
+      name:row.querySelector('.roofName')?.value || `Roof ${i+1}`,
+      width:n(row.querySelector('.roofWidth')?.value),
+      slope:n(row.querySelector('.roofSlope')?.value),
+      pitch:row.querySelector('.roofPitch')?.value || '',
+      azimuth:row.querySelector('.roofAzimuth')?.value || '',
+      panels:n(row.querySelector('.roofPanels')?.value)
+    };
+  }
+
+  function roofTotal(){
+    return roofRows().reduce((sum,row)=>sum+n(row.querySelector('.roofPanels')?.value),0);
+  }
+
+  function syncDesignCountFromRoofs(){
+    const total=roofTotal();
+    const pc=$('panelCount');
+    if(!pc || !total || designManualActive()) return;
+    pc.value=String(total);
+    setDesignManual(false,'roof');
+  }
+
+  function markExistingRoofPanels(){
+    document.querySelectorAll('#roofPlanes .roofPanels').forEach(input=>{
+      if(input.value && input.dataset.auto!=='yes') markRoofManual(input);
+    });
+  }
+
+  function availableAutoPanels(){
+    const choice=val('autoPanelChoice');
+    if(choice && choice!=='AUTO') return [panelFromValue(choice)];
+    const selected=$('panelModel')?.value || '';
+    if($('panelModel')?.dataset.v66Manual==='yes' || isP6Value(selected)) return [panelFromValue(selected)];
+    return Array.from($('panelModel')?.options || [])
+      .map(o=>o.value)
+      .filter(value=>value && !isP6Value(value))
+      .map(panelFromValue);
+  }
+
+  function margins(){
+    const basis=val('autoPanelMargin') || 'auto';
+    if(basis==='0.4') return [0.4];
+    if(basis==='0.3') return [0.3];
+    return [0.4,0.3];
+  }
+
+  function layout(roofW,roofS,across,up,margin){
+    const gap=0.02;
+    const availW=Math.max(0,roofW-(margin*2));
+    const availS=Math.max(0,roofS-(margin*2));
+    const cols=Math.max(0,Math.floor((availW+gap)/(across+gap)));
+    const rows=Math.max(0,Math.floor((availS+gap)/(up+gap)));
+    const count=cols*rows;
+    const arrW=cols ? (cols*across)+(Math.max(0,cols-1)*gap) : 0;
+    const arrS=rows ? (rows*up)+(Math.max(0,rows-1)*gap) : 0;
+    return {cols,rows,count,arrW,arrS,margin};
+  }
+
+  function bestFitForPlane(plane,panel){
+    if(!plane.width || !plane.slope) return null;
+    let best=null;
+    const orientations=[
+      {name:'portrait',across:panel.short,up:panel.long},
+      {name:'landscape',across:panel.long,up:panel.short}
+    ];
+    margins().forEach(margin=>{
+      orientations.forEach(o=>{
+        const l=layout(plane.width,plane.slope,o.across,o.up,margin);
+        const kwp=(l.count*(panel.watt||0))/1000;
+        const score=(kwp*100000)+(l.count*100)+(margin===0.4?10:0)+(o.name==='landscape'?1:0);
+        const candidate={...l,panel,orientation:o.name,kwp,score};
+        if(!best || candidate.score>best.score) best=candidate;
+      });
+    });
+    return best;
+  }
+
+  function chooseAutoPanel(rows){
+    const options=availableAutoPanels();
+    let best=null;
+    options.forEach(panel=>{
+      let count=0,kwp=0,squeeze=0;
+      rows.forEach((row,i)=>{
+        const fit=bestFitForPlane(rowPlane(row,i),panel);
+        if(fit){
+          count+=fit.count;
+          kwp+=fit.kwp;
+          if(fit.margin<0.4) squeeze++;
+        }
+      });
+      const score=(kwp*100000)+(count*100)-squeeze+(panel.name.includes('AIKO')?2:0);
+      const candidate={panel,count,kwp,score};
+      if(!best || candidate.score>best.score) best=candidate;
+    });
+    return best?.panel || panelFromValue($('panelModel')?.value);
+  }
+
+  function setBuildPanel(panel,force){
+    const select=$('panelModel');
+    if(!select || !panel?.value) return;
+    if(!force && select.dataset.v66Manual==='yes') return;
+    select.value=panel.value;
+    if(force) select.dataset.v66Manual='';
+    updateP6Visibility();
+  }
+
+  function applyFit(row,fit,force){
+    const input=row.querySelector('.roofPanels');
+    const result=row.querySelector('.roofFitResult');
+    if(!fit){
+      if(result) result.innerHTML='<span class="fitWarn">Add roof width and slope length to calculate this elevation.</span>';
+      return {count:n(input?.value),kwp:0,manual:!!input?.dataset.v66Manual};
+    }
+    const manual=!!(input && (input.dataset.v66Manual==='yes' || (input.dataset.manual==='yes' && input.dataset.auto!=='yes')));
+    if(input && (force || (!manual && (!input.value || input.dataset.auto==='yes')))){
+      input.value=String(fit.count||0);
+      input.dataset.auto='yes';
+      input.dataset.manual='';
+      input.dataset.v66Manual='';
+    }
+    const used=n(input?.value);
+    const p=fit.panel;
+    const kwp=used*(p.watt||0)/1000;
+    const cls=fit.count ? (fit.margin<0.4?'fitSqueeze':'fitGood') : 'fitBad';
+    const marginText=fit.margin<0.4?'300 mm squeeze target':'400 mm preferred margin';
+    const manualText=manual ? `<br><b>Manual value kept:</b> ${used} panel${used===1?'':'s'} here. Auto guide would be ${fit.count}.` : '';
+    if(result){
+      result.innerHTML=`<span class="${cls}"><b>${fit.count} panel${fit.count===1?'':'s'} suggested</b> using ${esc(p.name)} ${esc(fit.orientation)}, ${marginText}. ${(fit.kwp||0).toFixed(2)} kWp DC.${manualText}</span>`;
+    }
+    return {count:used,kwp,manual};
+  }
+
+  function renderPanelStatus(){
+    const pc=$('panelCount');
+    const status=$('manualPanelStatus');
+    const box=$('panelSuggestionBox');
+    if(!pc) return;
+    const roof=roofTotal();
+    const manual=designManualActive();
+    if(box){
+      box.classList.toggle('designOverrideActive',manual);
+      const span=box.querySelector('span');
+      if(span){
+        if(roof){
+          const p=currentPanel();
+          span.textContent=manual
+            ? `Survey roof allocation suggests ${roof} panel${roof===1?'':'s'}, but Design override is ${n(pc.value)}.`
+            : `Survey roof allocation currently suggests ${roof} panel${roof===1?'':'s'} for ${p.name}.`;
+        }else{
+          span.textContent='Run auto-fit from the Survey page to show suggested panel count here.';
+        }
+      }
+    }
+    if(status){
+      status.textContent=manual
+        ? `Design override active: ${n(pc.value)} panel${n(pc.value)===1?'':'s'} will be quoted, even if the survey suggestion differs.`
+        : `Auto-fit is only a starting suggestion. Edit this count to override it.`;
+    }
+  }
+
+  function runAutoFit(force=false){
+    markExistingRoofPanels();
+    const rows=roofRows();
+    const summary=$('autoFitSummary');
+    if(!rows.length){
+      if(summary) summary.innerHTML='Add a roof/elevation to calculate panel fit.';
+      renderPanelStatus();
+      return null;
+    }
+    const selected=chooseAutoPanel(rows);
+    setBuildPanel(selected,force);
+    let total=0,kwp=0,usable=0,squeeze=0,manualRows=0;
+    rows.forEach((row,i)=>{
+      const fit=bestFitForPlane(rowPlane(row,i),selected);
+      const applied=applyFit(row,fit,force);
+      total+=applied.count;
+      kwp+=applied.kwp;
+      if(applied.manual) manualRows++;
+      if(fit && fit.count) usable++;
+      if(fit && fit.count && fit.margin<0.4) squeeze++;
+    });
+    const pc=$('panelCount');
+    if(pc && !designManualActive()){
+      const useTotal=roofTotal() || total;
+      pc.value=String(useTotal||0);
+      setDesignManual(false,roofTotal()?'roof':'auto');
+    }
+    if(summary){
+      const choice=(val('autoPanelChoice') && val('autoPanelChoice')!=='AUTO') || $('panelModel')?.dataset.v66Manual==='yes' ? 'Using selected panel' : 'Auto selected';
+      const squeezeText=squeeze ? ` ${squeeze} elevation${squeeze===1?'':'s'} use the 300 mm squeeze target.` : ' 400 mm preferred margin used where panels fit.';
+      const manualText=manualRows ? ` ${manualRows} manual roof value${manualRows===1?'':'s'} kept.` : '';
+      summary.innerHTML=`<div class="autoFitResult ${total?'fitGood':'fitWarn'}"><b>${choice}: ${esc(selected.name)}</b><p>${total} panel${total===1?'':'s'} allocated across ${usable || rows.length} roof elevation${(usable || rows.length)===1?'':'s'} = ${kwp.toFixed(2)} kWp DC.${squeezeText}${manualText}</p><p>Manual “panels here” values stay put until you tap Auto fit again.</p></div>`;
+    }
+    try{ if(typeof renderPanelSenseCheck==='function') renderPanelSenseCheck(); }catch(e){}
+    renderPanelStatus();
+    try{ if(typeof save==='function') save(); }catch(e){}
+    return {panel:selected,totalPanels:total,totalKwp:kwp};
+  }
+
+  function preserveDesignManual(fn){
+    return function(){
+      const pc=$('panelCount');
+      const keep=pc && designManualActive();
+      const before=pc?.value;
+      const out=fn.apply(this,arguments);
+      if(keep && pc){
+        pc.value=before;
+        setDesignManual(true,'manual');
+      }
+      renderPanelStatus();
+      updateP6Visibility();
+      return out;
+    };
+  }
+
+  function installOverrides(){
+    try{ panelParts=panelPartsV66; window.panelParts=panelPartsV66; }catch(e){ window.panelParts=panelPartsV66; }
+    try{ autoFitRoofPanels=runAutoFit; window.autoFitRoofPanels=runAutoFit; }catch(e){ window.autoFitRoofPanels=runAutoFit; }
+    try{
+      if(typeof refreshPresent==='function' && !refreshPresent.v66PanelWrapped){
+        const old=refreshPresent;
+        refreshPresent=preserveDesignManual(old);
+        refreshPresent.v66PanelWrapped=true;
+        window.refreshPresent=refreshPresent;
+      }
+    }catch(e){}
+    try{
+      if(window.calculateQuote && !window.calculateQuote.v66PanelWrapped){
+        const old=window.calculateQuote;
+        window.calculateQuote=preserveDesignManual(old);
+        window.calculateQuote.v66PanelWrapped=true;
+      }
+    }catch(e){}
+  }
+
+  function ownedPanelEvent(target){
+    return !!(target && (
+      target.classList?.contains('roofPanels') ||
+      ['panelModel','panelCount','autoPanelChoice','autoPanelMargin','p6PanelUnitCost','p6PanelLength','p6PanelWidth'].includes(target.id)
+    ));
+  }
+
+  window.LGSurveyPanelV66={
+    install:installOverrides,
+    run:runAutoFit,
+    status:renderPanelStatus,
+    version:setVersion,
+    p6:updateP6Visibility,
+    mark:markExistingRoofPanels
+  };
+
+  function bind(){
+    setVersion();
+    ensureP6Card();
+    updateP6Visibility();
+    installOverrides();
+    markExistingRoofPanels();
+    syncDesignCountFromRoofs();
+    renderPanelStatus();
+
+    document.addEventListener('input',e=>{
+      const t=e.target;
+      if(!t) return;
+      if(ownedPanelEvent(t)){
+        e.stopPropagation();
+        if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+      }
+      if(t.classList?.contains('roofPanels')){
+        markRoofManual(t);
+        syncDesignCountFromRoofs();
+        setTimeout(()=>runAutoFit(false),0);
+      }
+      if(t.id==='panelCount'){
+        setDesignManual(true,'manual');
+        renderPanelStatus();
+        try{ if(typeof save==='function') save(); }catch(err){}
+      }
+      if(t.id==='panelModel'){
+        t.dataset.v66Manual='yes';
+        if($('autoPanelChoice')) $('autoPanelChoice').value=t.value;
+        updateP6Visibility();
+        setTimeout(()=>runAutoFit(false),0);
+      }
+      if(['p6PanelUnitCost','p6PanelLength','p6PanelWidth','autoPanelChoice','autoPanelMargin'].includes(t.id)){
+        updateP6Visibility();
+        setTimeout(()=>runAutoFit(false),0);
+      }
+    },true);
+
+    document.addEventListener('change',e=>{
+      const t=e.target;
+      if(!t) return;
+      if(ownedPanelEvent(t)){
+        e.stopPropagation();
+        if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+      }
+      if(t.classList?.contains('roofPanels')){
+        markRoofManual(t);
+        syncDesignCountFromRoofs();
+        setTimeout(()=>runAutoFit(false),0);
+      }
+      if(t.id==='panelCount'){
+        setDesignManual(true,'manual');
+        renderPanelStatus();
+        try{ if(typeof save==='function') save(); }catch(err){}
+      }
+      if(t.id==='panelModel'){
+        t.dataset.v66Manual='yes';
+        if($('autoPanelChoice')) $('autoPanelChoice').value=t.value;
+        updateP6Visibility();
+        setTimeout(()=>runAutoFit(false),0);
+      }
+      if(['p6PanelUnitCost','p6PanelLength','p6PanelWidth','autoPanelChoice','autoPanelMargin'].includes(t.id)){
+        updateP6Visibility();
+        setTimeout(()=>runAutoFit(false),0);
+      }
+    },true);
+
+    document.addEventListener('click',e=>{
+      const auto=e.target?.closest?.('#autoFitRoofs');
+      if(auto){
+        e.preventDefault();
+        e.stopPropagation();
+        if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+        document.querySelectorAll('#roofPlanes .roofPanels').forEach(input=>{
+          input.dataset.v66Manual='';
+          input.dataset.manual='';
+          input.dataset.auto='yes';
+        });
+        setDesignManual(false,'auto');
+        runAutoFit(true);
+        return;
+      }
+      const use=e.target?.closest?.('#useRoofSuggestion');
+      if(use){
+        e.preventDefault();
+        e.stopPropagation();
+        if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+        const total=roofTotal();
+        if(!total){ alert('Run auto-fit on the Survey page first, or enter panels on each roof.'); return; }
+        if($('panelCount')){
+          $('panelCount').value=String(total);
+          setDesignManual(false,'roof');
+        }
+        renderPanelStatus();
+        try{ if(typeof renderPanelSenseCheck==='function') renderPanelSenseCheck(); }catch(err){}
+        try{ if(typeof save==='function') save(); }catch(err){}
+      }
+    },true);
+
+    setTimeout(()=>{ installOverrides(); markExistingRoofPanels(); runAutoFit(false); setVersion(); },150);
+    setTimeout(()=>{ installOverrides(); renderPanelStatus(); updateP6Visibility(); setVersion(); },1200);
+    setTimeout(setVersion,3000);
+    setTimeout(setVersion,5200);
+    setTimeout(setVersion,7600);
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bind);
+  else bind();
+})();
+
+
 /* v64: colleague-proof workflow polish */
 (function(){
   const VERSION='v64';
@@ -8237,4 +8740,25 @@ h1{font-size:44px;line-height:1;margin:10px 0 12px}p{line-height:1.5}.grid{displ
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);
   else bind();
+})();
+
+
+/* v66 finaliser: make the panel override layer win after all legacy bindings */
+(function(){
+  function finish(){
+    const api=window.LGSurveyPanelV66;
+    if(!api) return;
+    try{ api.install(); }catch(e){}
+    try{ api.mark(); }catch(e){}
+    try{ api.p6(); }catch(e){}
+    try{ api.status(); }catch(e){}
+    try{ api.version(); }catch(e){}
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',finish);
+  else finish();
+  setTimeout(finish,250);
+  setTimeout(finish,1400);
+  setTimeout(finish,3200);
+  setTimeout(finish,5600);
+  setTimeout(finish,8200);
 })();
