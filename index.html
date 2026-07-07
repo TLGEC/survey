@@ -4,9 +4,9 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
-<title>LG Survey v66</title>
+<title>LG Survey v68</title>
 <meta content="#062819" name="theme-color"/>
-<meta name="lg-survey-version" content="v66"/>
+<meta name="lg-survey-version" content="v68"/>
 <link href="manifest.json" rel="manifest"/>
 <link href="styles.css" rel="stylesheet"/>
 </head>
@@ -43,15 +43,15 @@
 <span>Offline first</span><span>Survey-led</span><span>Shared view</span><span>Handover ready</span>
 </div>
 </div>
-<button class="primary heroButton" id="homeNewSurvey" type="button">Start new consultation</button>
+<button class="primary heroButton" id="homeFocusImport" type="button">Paste monday customer details</button>
 </div>
 <div class="homeCsvStarter" id="homeCsvStarter">
   <div class="miniStepHead">
-    <span>Optional import</span>
-    <b>Start from monday customer import</b>
+    <span>First step</span>
+    <b>Start with monday customer details</b>
   </div>
   <p>Paste the monday customer details here before the visit. It can be a CSV export or AI-wrapped CSV text.</p>
-  <details class="quickDetails compactCsvImport">
+  <details class="quickDetails compactCsvImport" open>
     <summary>Paste or upload monday customer details</summary>
     <label>monday customer text<textarea id="homeCsvPaste" placeholder="Paste Field,Value CSV, a monday row, or AI text that contains CSV here"></textarea></label>
     <div class="two">
@@ -59,7 +59,7 @@
       <button class="secondary" id="homeSkipCsv" type="button">Start blank survey</button>
     </div>
     <label class="fileImportLine">Upload monday file<input accept=".csv,text/csv" id="homeCsvFile" type="file"/></label>
-    <div class="guide" id="homeCsvStatus">No monday customer imported yet.</div>
+    <div aria-live="polite" class="guide" id="homeCsvStatus" role="status">No monday customer imported yet.</div>
   </details>
 </div>
 
@@ -651,7 +651,7 @@
 <details class="internalGroup toolBox appTool">
 <summary>App tools</summary>
 <button class="secondary" id="updateApp" type="button">Refresh app version</button>
-<div class="versionBadge" id="appVersionBadge">App version: v66</div>
+<div class="versionBadge" id="appVersionBadge">App version: v68</div>
 </details>
 </section>
 </main>

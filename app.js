@@ -948,7 +948,6 @@ function applyCRMObject(obj, sourceLabel){
   if($('askTiming')) $('askTiming').checked=true;
   if($('saveName')) $('saveName').value=$('customerName').value || name || 'Untitled survey';
   $('importStatus').innerText=`Imported pre-survey data from ${sourceLabel}. Saved survey and opened Customer page.`;
-  save();
 }
 
 function finishImportFlow(){
@@ -1170,7 +1169,20 @@ function startNewSurveyNow(){
 function saveImportedSurveyAndOpenCustomer(){
   const customer=($('customerName')?.value||'Untitled survey').trim() || 'Untitled survey';
   if($('saveName')) $('saveName').value=customer;
-  const draft=getData();
+  const draft={};
+  ids.forEach(i=>{ if($(i)) draft[i]=$(i).value||''; });
+  checks.forEach(i=>{ if($(i)) draft[i]=!!$(i).checked; });
+  ['financePlan','panelOverrideReason','panelOverrideNote','p6PanelUnitCost'].forEach(i=>{ if($(i)) draft[i]=$(i).value||''; });
+  draft.scope=scope();
+  draft.flags=flags();
+  draft.files=selectedFiles.map(f=>f.name);
+  draft.roofPlanes=getRoofPlanes();
+  draft.batteryGuide=$('batteryGuide')?.textContent||'';
+  draft.quote={};
+  draft.present='';
+  draft.acceptance=$('acceptanceStamp')?.innerText||'';
+  draft.signatureData=signatureData;
+  draft.currentSavedId=currentSavedId;
   let arr=getSavedSurveys();
   const now=new Date().toISOString();
 
@@ -1185,12 +1197,17 @@ function saveImportedSurveyAndOpenCustomer(){
   currentSavedId=id;
   setSavedSurveys(arr);
   localStorage.setItem(KEY,JSON.stringify(record));
-  render();
-  renderSavedList();
-  if(typeof renderHomeSavedList==='function') renderHomeSavedList();
+  try{ localStorage.setItem('tlgec_last_local_save_v65',now); }catch(e){}
+  try{ if(typeof updateHeader==='function') updateHeader(); }catch(e){}
   updateSaveStatus();
-  if($('importStatus')) $('importStatus').innerText='Imported and saved as ' + customer + '. Customer page opened.';
-  openTab('customer');
+  if($('importStatus')) $('importStatus').innerText='Imported and saved as ' + customer + '. Priorities opened.';
+  if($('homeCsvStatus')) $('homeCsvStatus').textContent='Imported ' + customer + '. Opening Priorities.';
+  if(typeof window.LGSurveyActivateTab === 'function') window.LGSurveyActivateTab('customer');
+  else openTab('customer');
+  setTimeout(()=>{
+    try{ renderSavedList(); }catch(e){}
+    try{ if(typeof renderHomeSavedList==='function') renderHomeSavedList(); }catch(e){}
+  },120);
 }
 function readPastedCRMAndSave(){
   const text=($('crmPaste')?.value||'').trim();
@@ -1564,9 +1581,204 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 })();
 
 
+/* v68: isolate survey media so one customer's photos cannot leak into another pack */
+(function(){
+  const VERSION='v68';
+  const KEY='tlgec_current_draft_v1';
+  const SURVEYS_KEY='tlgec_surveys_saved_v1';
+  const SESSION_KEY='lg_survey_media_session_v1';
+  const $=id=>document.getElementById(id);
+
+  function setVersion(){
+    if($('homeVersionSmall')) $('homeVersionSmall').textContent=VERSION;
+    if($('appVersionBadge')) $('appVersionBadge').textContent='App version: '+VERSION;
+  }
+
+  function newMediaSession(){
+    return 'media_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+  }
+
+  function setMediaSession(id){
+    const session=id||newMediaSession();
+    try{ localStorage.setItem(SESSION_KEY,session); }catch(e){}
+    try{ selectedFiles=[]; window.selectedFiles=[]; }catch(e){}
+    try{
+      if(window.LGSurveyMediaGallery&&typeof window.LGSurveyMediaGallery.load==='function'){
+        window.LGSurveyMediaGallery.load();
+      }
+    }catch(e){}
+    return session;
+  }
+
+  function getSaved(){
+    try{ return JSON.parse(localStorage.getItem(SURVEYS_KEY)||'[]'); }catch(e){ return []; }
+  }
+
+  function setSaved(arr){
+    try{ localStorage.setItem(SURVEYS_KEY,JSON.stringify(arr)); }catch(e){}
+  }
+
+  function currentSession(){
+    try{ return localStorage.getItem(SESSION_KEY)||''; }catch(e){ return ''; }
+  }
+
+  function savedById(id){
+    return getSaved().find(s=>s&&s.id===id);
+  }
+
+  function attachMediaSessionToSaved(id,session){
+    if(!id||!session) return;
+    const arr=getSaved();
+    let changed=false;
+    const next=arr.map(s=>{
+      if(!s||s.id!==id) return s;
+      changed=true;
+      return {...s,mediaSessionId:session};
+    });
+    if(changed) setSaved(next);
+    try{
+      const draft=JSON.parse(localStorage.getItem(KEY)||'{}');
+      if(draft&&draft.currentSavedId===id){
+        draft.mediaSessionId=session;
+        localStorage.setItem(KEY,JSON.stringify(draft));
+      }
+    }catch(e){}
+  }
+
+  function prepareImportSession(){
+    const session=setMediaSession(newMediaSession());
+    try{ currentSavedId=null; }catch(e){}
+    try{
+      const draft=JSON.parse(localStorage.getItem(KEY)||'{}');
+      draft.currentSavedId=null;
+      draft.mediaSessionId=session;
+      draft.mediaFiles=[];
+      draft.files=[];
+      localStorage.setItem(KEY,JSON.stringify(draft));
+    }catch(e){}
+    return session;
+  }
+
+  function wrapImports(){
+    if(typeof saveImportedSurveyAndOpenCustomer==='function'&&!saveImportedSurveyAndOpenCustomer.v68MediaWrapped){
+      const old=saveImportedSurveyAndOpenCustomer;
+      saveImportedSurveyAndOpenCustomer=function(){
+        const session=prepareImportSession();
+        const result=old.apply(this,arguments);
+        setTimeout(()=>{
+          try{ attachMediaSessionToSaved(currentSavedId,session); }catch(e){}
+          setMediaSession(session);
+        },80);
+        setTimeout(()=>{
+          try{ attachMediaSessionToSaved(currentSavedId,session); }catch(e){}
+          setMediaSession(session);
+        },450);
+        return result;
+      };
+      saveImportedSurveyAndOpenCustomer.v68MediaWrapped=true;
+    }
+  }
+
+  function wrapSavedSurveyOpen(){
+    if(typeof loadSavedSurvey==='function'&&!loadSavedSurvey.v68MediaWrapped){
+      const old=loadSavedSurvey;
+      loadSavedSurvey=function(id){
+        const rec=savedById(id);
+        const session=rec&&rec.mediaSessionId ? rec.mediaSessionId : newMediaSession();
+        setMediaSession(session);
+        const result=old.apply(this,arguments);
+        setMediaSession(session);
+        setTimeout(()=>setMediaSession(session),120);
+        setTimeout(()=>setMediaSession(session),550);
+        return result;
+      };
+      loadSavedSurvey.v68MediaWrapped=true;
+    }
+  }
+
+  function wrapSaveCurrentSurvey(){
+    if(typeof saveCurrentSurvey==='function'&&!saveCurrentSurvey.v68MediaWrapped){
+      const old=saveCurrentSurvey;
+      saveCurrentSurvey=function(){
+        let session=currentSession();
+        try{
+          if(currentSavedId){
+            const rec=savedById(currentSavedId);
+            if(rec&&rec.mediaSessionId) session=setMediaSession(rec.mediaSessionId);
+          }
+        }catch(e){}
+        if(!session) session=setMediaSession(newMediaSession());
+        const result=old.apply(this,arguments);
+        setTimeout(()=>{
+          try{ attachMediaSessionToSaved(currentSavedId,session); }catch(e){}
+        },60);
+        return result;
+      };
+      saveCurrentSurvey.v68MediaWrapped=true;
+    }
+  }
+
+  function wrapExportApi(){
+    if(window.LGSurveyExportPack&&window.LGSurveyExportPack.create&&!window.LGSurveyExportPack.v68MediaWrapped){
+      const oldCreate=window.LGSurveyExportPack.create;
+      const oldBlob=window.LGSurveyExportPack.blob;
+      async function loadCurrentMedia(){
+        try{
+          const rec=currentSavedId?savedById(currentSavedId):null;
+          const session=(rec&&rec.mediaSessionId)||currentSession()||newMediaSession();
+          setMediaSession(session);
+          if(window.LGSurveyMediaGallery&&typeof window.LGSurveyMediaGallery.load==='function'){
+            await window.LGSurveyMediaGallery.load();
+          }
+          attachMediaSessionToSaved(currentSavedId,session);
+        }catch(e){}
+      }
+      window.LGSurveyExportPack.create=async function(source){
+        await loadCurrentMedia();
+        return oldCreate.call(this,source);
+      };
+      window.LGSurveyExportPack.blob=async function(source){
+        await loadCurrentMedia();
+        return oldBlob.call(this,source);
+      };
+      window.LGSurveyExportPack.v68MediaWrapped=true;
+    }
+  }
+
+  function bindExportClicks(){
+    if(window.__lgSurveyV68ExportClicks) return;
+    window.__lgSurveyV68ExportClicks=true;
+    document.addEventListener('click',event=>{
+      const target=event.target&&event.target.closest?event.target.closest('#exportSurveyPackZip,#toolsExportSurveyPackZip,#finishDownloadPack,#stampAccept,#markSurveyComplete'):null;
+      if(!target) return;
+      try{
+        const rec=currentSavedId?savedById(currentSavedId):null;
+        const session=(rec&&rec.mediaSessionId)||currentSession();
+        if(session) setMediaSession(session);
+      }catch(e){}
+    },true);
+  }
+
+  function finish(){
+    setVersion();
+    wrapImports();
+    wrapSavedSurveyOpen();
+    wrapSaveCurrentSurvey();
+    wrapExportApi();
+    bindExportClicks();
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',finish);
+  else finish();
+  setTimeout(finish,600);
+  setTimeout(finish,2200);
+  setTimeout(setVersion,5000);
+})();
+
+
 /* v66: panel selection and manual override stabilisation */
 (function(){
-  const VERSION='v66';
+  const VERSION='v67';
   const P6_NAME='SunPower P6 405W Warehouse Deal';
   const P6_PREFIX='SunPower P6 405W Warehouse Deal|405|';
   const ACTIVE_TAB_KEY='lg_survey_active_tab_v1';
@@ -2475,8 +2687,9 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
     if(homeHero){
       const card = document.createElement('div');
       card.className = 'localSafetyCard';
-      card.innerHTML = '<b>Local safety save</b><div class="localSavedStatus" id="localSavedStatus">Nothing saved in this session yet.</div><div id="jobHealthLine"></div>';
-      homeHero.insertAdjacentElement('afterend', card);
+      card.innerHTML = '<b>Local safety save</b><div aria-live="polite" class="localSavedStatus" id="localSavedStatus" role="status">Nothing saved in this session yet.</div><div id="jobHealthLine"></div>';
+      const importCard = $('homeCsvStarter');
+      (importCard || homeHero).insertAdjacentElement('afterend', card);
     }
   }
 
@@ -7856,7 +8069,6 @@ h1{font-size:44px;line-height:1;margin:10px 0 12px}p{line-height:1.5}.grid{displ
       warn.textContent=msg;
       warn.classList.toggle('on', !!msg);
     }
-    try{ if(typeof save === 'function') save(); }catch(e){}
   }
 
   // Reassign Sigenergy helpers used by quote, recommendation, payback and handover.
@@ -8205,8 +8417,18 @@ h1{font-size:44px;line-height:1;margin:10px 0 12px}p{line-height:1.5}.grid{displ
     if(battery) battery.checked = brand !== 'None';
 
     const tesla=$('teslaBox'), sig=$('sigBox');
-    if(tesla) tesla.classList.toggle('selectedBatteryBox', brand==='Tesla');
-    if(sig) sig.classList.toggle('selectedBatteryBox', brand==='Sigenergy');
+    if(tesla){
+      const selected=brand==='Tesla';
+      tesla.classList.toggle('selectedBatteryBox', selected);
+      tesla.hidden=!selected;
+      tesla.setAttribute('aria-hidden', selected ? 'false' : 'true');
+    }
+    if(sig){
+      const selected=brand==='Sigenergy';
+      sig.classList.toggle('selectedBatteryBox', selected);
+      sig.hidden=!selected;
+      sig.setAttribute('aria-hidden', selected ? 'false' : 'true');
+    }
     document.querySelectorAll('[data-battery-brand]').forEach(btn=>{
       const selected = btn.dataset.batteryBrand === brand;
       btn.classList.toggle('selected', selected);
@@ -8761,4 +8983,230 @@ h1{font-size:44px;line-height:1;margin:10px 0 12px}p{line-height:1.5}.grid{displ
   setTimeout(finish,3200);
   setTimeout(finish,5600);
   setTimeout(finish,8200);
+})();
+
+
+/* v67/v68: CSV-first start, one navigation path and coalesced duplicate saves */
+(function(){
+  const VERSION='v68';
+  const ACTIVE_TAB_KEY='lg_survey_active_tab_v1';
+  const MANUAL_PANEL_KEY='lg_survey_manual_panel_count_v67';
+  const $=id=>document.getElementById(id);
+  let saveTimer=null;
+  let savePending=false;
+  let criticalSaveTimer=null;
+
+  function setVersion(){
+    if($('homeVersionSmall')) $('homeVersionSmall').textContent=VERSION;
+    if($('appVersionBadge')) $('appVersionBadge').textContent='App version: '+VERSION;
+  }
+
+  function setActiveStage(tab){
+    document.querySelectorAll('nav button[data-tab]').forEach(button=>{
+      const active=button.dataset.tab===tab;
+      button.classList.toggle('on',active);
+      if(active) button.setAttribute('aria-current','page');
+      else button.removeAttribute('aria-current');
+    });
+  }
+
+  function persistCriticalDesign(){
+    try{
+      const key='tlgec_current_draft_v1';
+      const raw=JSON.parse(localStorage.getItem(key)||'{}');
+      ['panelModel','panelCount','batteryBrand','sig6Qty','sig10Qty','sigGateway','pw3Qty','dcExpQty'].forEach(id=>{
+        const field=$(id);
+        if(!field) return;
+        raw[id]=field.type==='checkbox' ? !!field.checked : field.value||'';
+      });
+      raw.localSavedAt=new Date().toISOString();
+      localStorage.setItem(key,JSON.stringify(raw));
+      const count=$('panelCount');
+      if(count && (count.dataset.v66Manual==='yes' || count.dataset.v65ManualOverride==='yes' || count.dataset.manual==='yes')){
+        localStorage.setItem(MANUAL_PANEL_KEY,String(count.value||'0'));
+      }
+    }catch(e){}
+  }
+
+  function clearManualPanelOverride(){
+    try{ localStorage.removeItem(MANUAL_PANEL_KEY); }catch(e){}
+  }
+
+  function queueCriticalDesignSave(){
+    clearTimeout(criticalSaveTimer);
+    criticalSaveTimer=setTimeout(persistCriticalDesign,120);
+  }
+
+  function activate(tab,opts={}){
+    const panel=$(tab);
+    if(!panel) return;
+    persistCriticalDesign();
+    const clearHomeHash=tab==='home'&&location.hash==='#home';
+    setActiveStage(tab);
+    document.querySelectorAll('main > section.panel').forEach(section=>section.classList.toggle('on',section.id===tab));
+    try{
+      localStorage.setItem(ACTIVE_TAB_KEY,tab);
+      const hash=tab==='home'?'':'#'+tab;
+      history.replaceState(null,'',location.pathname+location.search+hash);
+    }catch(e){}
+    if(opts.scroll!==false||clearHomeHash) window.scrollTo({top:0,left:0,behavior:'auto'});
+    if(tab==='present'||tab==='agreement'){
+      setTimeout(()=>{ try{ if(typeof refreshPresent==='function') refreshPresent(); }catch(e){} },40);
+    }
+  }
+
+  function installNavigation(){
+    window.LGSurveyActivateTab=activate;
+    try{ switchTab=function(tab){activate(tab)}; window.switchTab=switchTab; }catch(e){}
+    try{ openTab=function(tab){activate(tab)}; window.openTab=openTab; }catch(e){}
+
+    if(!window.__lgSurveyV67Navigation){
+      window.__lgSurveyV67Navigation=true;
+      window.addEventListener('click',event=>{
+        const importFocus=event.target&&event.target.closest?event.target.closest('#homeFocusImport'):null;
+        if(importFocus){
+          event.preventDefault();
+          event.stopPropagation();
+          if(event.stopImmediatePropagation) event.stopImmediatePropagation();
+          const details=document.querySelector('#homeCsvStarter details');
+          if(details) details.open=true;
+          $('homeCsvStarter')?.scrollIntoView({behavior:'smooth',block:'start'});
+          setTimeout(()=>$('homeCsvPaste')?.focus({preventScroll:true}),280);
+          return;
+        }
+
+        const control=event.target&&event.target.closest
+          ? event.target.closest('nav button[data-tab],.continueBtn[data-next],.journeyStep[data-jump]')
+          : null;
+        if(!control) return;
+        const tab=control.dataset.tab||control.dataset.next||control.dataset.jump;
+        if(!tab||!$(tab)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if(event.stopImmediatePropagation) event.stopImmediatePropagation();
+        activate(tab);
+      },true);
+    }
+  }
+
+  function installCriticalPersistence(){
+    if(window.__lgSurveyV67CriticalPersistence) return;
+    window.__lgSurveyV67CriticalPersistence=true;
+    const critical=new Set(['panelModel','panelCount','batteryBrand','sig6Qty','sig10Qty','sigGateway','pw3Qty','dcExpQty']);
+    window.addEventListener('input',event=>{
+      if(event.target&&critical.has(event.target.id)) queueCriticalDesignSave();
+    },true);
+    window.addEventListener('change',event=>{
+      if(event.target&&critical.has(event.target.id)) queueCriticalDesignSave();
+    },true);
+    window.addEventListener('click',event=>{
+      if(event.target?.closest?.('#autoFitRoofs,#useRoofSuggestion,#homeImportCsv,#homeStartBlank,#homeNewSurvey,#newSurveyTop,#newSurveySaved,#saveAndNew,#reset')){
+        clearManualPanelOverride();
+      }
+      if(event.target?.closest?.('[data-battery-brand]')) setTimeout(persistCriticalDesign,0);
+    },true);
+    window.addEventListener('pagehide',persistCriticalDesign,{capture:true});
+  }
+
+  function installSaveQueue(){
+    try{
+      if(typeof save!=='function'||save.v67Coalesced) return;
+      const immediate=save;
+      let running=false;
+      let lastCompleted=0;
+      let latestArgs=[];
+
+      const run=()=>{
+        if(running) return;
+        running=true;
+        savePending=false;
+        clearTimeout(saveTimer);
+        saveTimer=null;
+        try{ return immediate.apply(this,latestArgs); }
+        finally{ running=false; lastCompleted=Date.now(); }
+      };
+
+      const coalesced=function(){
+        latestArgs=arguments;
+        const duplicate=running||(Date.now()-lastCompleted<240);
+        if(!duplicate) return run();
+        savePending=true;
+        clearTimeout(saveTimer);
+        saveTimer=setTimeout(()=>{ if(savePending) run(); },260);
+      };
+      Object.keys(immediate).forEach(key=>{ try{ coalesced[key]=immediate[key]; }catch(e){} });
+      coalesced.v67Coalesced=true;
+      coalesced.v59BatteryGuard=true;
+      coalesced.v65SafetyWrapped=true;
+      coalesced.flush=()=>{ if(savePending) return run(); };
+      save=coalesced;
+      window.save=coalesced;
+      window.addEventListener('pagehide',()=>coalesced.flush(),{capture:true});
+    }catch(e){}
+  }
+
+  function prepareStart(){
+    const details=document.querySelector('#homeCsvStarter details');
+    if(details) details.open=true;
+    $('homeCsvStarter')?.setAttribute('aria-label','Start with monday customer details');
+    $('homeCsvStatus')?.setAttribute('aria-live','polite');
+    $('localSavedStatus')?.setAttribute('aria-live','polite');
+  }
+
+  function restoreSavedManualDesign(){
+    try{
+      const raw=JSON.parse(localStorage.getItem('tlgec_current_draft_v1')||'{}');
+      const count=$('panelCount');
+      const protectedValue=localStorage.getItem(MANUAL_PANEL_KEY);
+      const stored=protectedValue!==null ? Number(protectedValue) : Number(raw.panelCount||0);
+      if(count&&stored>=0&&(protectedValue!==null||Number(count.value||0)<=0)){
+        count.value=String(stored);
+        count.dataset.manual='yes';
+        count.dataset.v66Manual='yes';
+        count.dataset.v65ManualOverride='yes';
+        count.dataset.v62Priced='yes';
+        count.dataset.pricedPanelCount=String(stored);
+      }
+      const model=$('panelModel');
+      if(model&&raw.panelModel&&model.value!==raw.panelModel){
+        model.value=raw.panelModel;
+        model.dataset.v66Manual='yes';
+      }
+      const api=window.LGSurveyPanelV66;
+      if(api){
+        try{ api.mark(); }catch(e){}
+        try{ api.p6(); }catch(e){}
+        try{ api.status(); }catch(e){}
+      }
+    }catch(e){}
+  }
+
+  function keepVersionStable(){
+    if(window.__lgSurveyV67VersionPulse) return;
+    window.__lgSurveyV67VersionPulse=setInterval(setVersion,250);
+    setTimeout(()=>{
+      clearInterval(window.__lgSurveyV67VersionPulse);
+      window.__lgSurveyV67VersionPulse=null;
+      setVersion();
+    },9000);
+  }
+
+  function finish(){
+    setVersion();
+    installNavigation();
+    installSaveQueue();
+    installCriticalPersistence();
+    prepareStart();
+    restoreSavedManualDesign();
+    keepVersionStable();
+    const tab=(location.hash||'').replace('#','')||localStorage.getItem(ACTIVE_TAB_KEY)||'home';
+    if($(tab)) activate(tab,{scroll:false});
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',finish);
+  else finish();
+  setTimeout(finish,500);
+  setTimeout(finish,1800);
+  setTimeout(finish,4200);
+  setTimeout(setVersion,8500);
 })();
