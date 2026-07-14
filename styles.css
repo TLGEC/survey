@@ -1513,3 +1513,6 @@ label{font-size:15px;color:#263c31}
 .jobHealthBadge.good{background:#e8f7dc;color:#17420c;border-color:#b9dc95}
 .jobHealthBadge.warn{background:#fff5d7;color:#5b3d00;border-color:#f0d276}
 .jobHealthBadge.bad{background:#ffe8e5;color:#721d12;border-color:#eeaaa2}
+.v69RecoveryCard{background:#f2faec;border:1px solid #c9e6b7;border-radius:22px;padding:16px;margin:14px 0;box-shadow:0 12px 30px rgba(6,40,25,.08)}
+.v69RecoveryCard b{display:block;color:#073b22;font-size:20px;margin-bottom:4px}
+.v69RecoveryCard p{margin:0 0 12px;color:#345246;font-weight:750;line-height:1.45}
