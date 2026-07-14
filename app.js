@@ -1581,9 +1581,354 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 })();
 
 
+/* v69: reliability layer - one stable survey ID, immediate autosave, recoverable tablet closes */
+(function(){
+  const VERSION='v69';
+  const DRAFT_KEY='tlgec_current_draft_v1';
+  const SAVED_KEY='tlgec_surveys_saved_v1';
+  const ACTIVE_ID_KEY='tlgec_active_survey_id_v69';
+  const MEDIA_SESSION_KEY='lg_survey_media_session_v1';
+  const LAST_SAVE_KEY='tlgec_last_local_save_v65';
+  const $=id=>document.getElementById(id);
+  let saving=false;
+  let finishTimer=null;
+
+  function now(){ return new Date().toISOString(); }
+  function newId(){ return 'svy_' + Date.now() + '_' + Math.random().toString(16).slice(2,8); }
+
+  function setVersion(){
+    if($('homeVersionSmall')) $('homeVersionSmall').textContent=VERSION;
+    if($('appVersionBadge')) $('appVersionBadge').textContent='App version: '+VERSION;
+  }
+
+  function getSaved(){
+    try{ return JSON.parse(localStorage.getItem(SAVED_KEY)||'[]'); }catch(e){ return []; }
+  }
+
+  function setSaved(arr){
+    localStorage.setItem(SAVED_KEY,JSON.stringify(arr));
+  }
+
+  function readDraft(){
+    try{ return JSON.parse(localStorage.getItem(DRAFT_KEY)||'{}'); }catch(e){ return {}; }
+  }
+
+  function hasUsefulData(d){
+    if(!d) return false;
+    return ['customerName','address','phone','email','mondayId','wants','annualKwh','roof','batteryLoc','meter','cable','photoNotes']
+      .some(k=>String(d[k]||'').trim());
+  }
+
+  function savedById(id){
+    return getSaved().find(s=>s&&s.id===id);
+  }
+
+  function mediaSessionFor(id){
+    const rec=savedById(id);
+    return (rec&&rec.mediaSessionId)||id;
+  }
+
+  function setMediaSession(session){
+    if(!session) return '';
+    try{ localStorage.setItem(MEDIA_SESSION_KEY,session); }catch(e){}
+    return session;
+  }
+
+  function ensureActiveId(opts={}){
+    let id='';
+    try{ id=currentSavedId||''; }catch(e){}
+    if(!id) id=localStorage.getItem(ACTIVE_ID_KEY)||'';
+    if(!id){
+      const draft=readDraft();
+      id=draft.currentSavedId||draft.id||draft.surveyId||'';
+    }
+    if(!id&&opts.create!==false) id=newId();
+    if(id){
+      try{ currentSavedId=id; }catch(e){}
+      localStorage.setItem(ACTIVE_ID_KEY,id);
+      setMediaSession(mediaSessionFor(id));
+    }
+    return id;
+  }
+
+  function nameFor(d){
+    return ((d&&d.customerName)||($('customerName')?.value)||'Untitled survey').trim()||'Untitled survey';
+  }
+
+  function stampSavedStatus(iso){
+    const el=$('localSavedStatus');
+    if(el){
+      const t=iso?new Date(iso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}):'now';
+      el.className='localSavedStatus good';
+      el.textContent=`Saved locally at ${t}. You can close the tablet and reopen this survey.`;
+    }
+    const status=$('saveStatus');
+    if(status) status.innerText='Autosaved. This survey is recoverable from this device.';
+  }
+
+  function refreshListsSoon(){
+    clearTimeout(finishTimer);
+    finishTimer=setTimeout(()=>{
+      try{ if(document.querySelector('#home.panel.on')&&typeof renderHomeSavedList==='function') renderHomeSavedList(); }catch(e){}
+      try{ if(document.querySelector('#internal.panel.on')&&typeof renderSavedList==='function') renderSavedList(); }catch(e){}
+      try{ if(typeof updateHeader==='function') updateHeader(); }catch(e){}
+    },160);
+  }
+
+  function buildData(){
+    let d={};
+    try{ d=typeof getData==='function'?getData():readDraft(); }catch(e){ d=readDraft(); }
+    const id=ensureActiveId({create:hasUsefulData(d)});
+    if(!id) return d;
+    const existing=savedById(id)||{};
+    const session=existing.mediaSessionId||id;
+    setMediaSession(session);
+    const iso=now();
+    d={...d,
+      id,
+      surveyId:id,
+      currentSavedId:id,
+      name:nameFor(d),
+      customerName:nameFor(d),
+      mediaSessionId:session,
+      localSavedAt:iso,
+      updatedAt:iso,
+      createdAt:existing.createdAt||d.createdAt||iso
+    };
+    return d;
+  }
+
+  function upsertSaved(d){
+    if(!d||!d.id||!hasUsefulData(d)) return d;
+    const arr=getSaved();
+    const idx=arr.findIndex(s=>s&&s.id===d.id);
+    if(idx>=0) arr[idx]={...arr[idx],...d,mediaSessionId:d.mediaSessionId||arr[idx].mediaSessionId||d.id};
+    else arr.push(d);
+    setSaved(arr);
+    return d;
+  }
+
+  function saveNow(){
+    if(saving) return;
+    saving=true;
+    try{
+      const d=buildData();
+      if(d&&d.currentSavedId){
+        try{ currentSavedId=d.currentSavedId; }catch(e){}
+        localStorage.setItem(ACTIVE_ID_KEY,d.currentSavedId);
+      }
+      localStorage.setItem(DRAFT_KEY,JSON.stringify(d||{}));
+      upsertSaved(d);
+      const iso=(d&&d.localSavedAt)||now();
+      localStorage.setItem(LAST_SAVE_KEY,iso);
+      stampSavedStatus(iso);
+      refreshListsSoon();
+      return d;
+    }catch(e){
+      console.error('LG Survey v69 autosave failed', e);
+      const el=$('localSavedStatus');
+      if(el){
+        el.className='localSavedStatus bad';
+        el.textContent='Autosave could not complete on this device. Export a backup from Tools before closing.';
+      }
+    }finally{
+      saving=false;
+    }
+  }
+
+  function installImmediateSave(){
+    if(typeof save==='function'&&!save.v69Reliable){
+      const reliable=function(){ return saveNow(); };
+      reliable.v69Reliable=true;
+      reliable.flush=saveNow;
+      save=reliable;
+      window.save=reliable;
+    }
+    if(typeof getData==='function'&&!getData.v69Reliable){
+      const oldGet=getData;
+      getData=function(){
+        const d=oldGet.apply(this,arguments)||{};
+        const id=ensureActiveId({create:hasUsefulData(d)});
+        if(id){
+          d.id=id;
+          d.surveyId=id;
+          d.currentSavedId=id;
+          d.mediaSessionId=mediaSessionFor(id);
+        }
+        return d;
+      };
+      getData.v69Reliable=true;
+    }
+  }
+
+  function installSaveTriggers(){
+    if(window.__lgSurveyV69SaveTriggers) return;
+    window.__lgSurveyV69SaveTriggers=true;
+    document.addEventListener('input',()=>setTimeout(saveNow,0),true);
+    document.addEventListener('change',()=>setTimeout(saveNow,0),true);
+    window.addEventListener('pagehide',saveNow,{capture:true});
+    window.addEventListener('beforeunload',saveNow,{capture:true});
+    document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') saveNow(); },true);
+  }
+
+  function installSurveySwitching(){
+    if(typeof loadSavedSurvey==='function'&&!loadSavedSurvey.v69Reliable){
+      const oldLoad=loadSavedSurvey;
+      loadSavedSurvey=function(id){
+        if(!id) return;
+        const rec=savedById(id);
+        localStorage.setItem(ACTIVE_ID_KEY,id);
+        try{ currentSavedId=id; }catch(e){}
+        setMediaSession((rec&&rec.mediaSessionId)||id);
+        const result=oldLoad.apply(this,arguments);
+        setMediaSession((rec&&rec.mediaSessionId)||id);
+        setTimeout(()=>{ setMediaSession((rec&&rec.mediaSessionId)||id); saveNow(); },120);
+        return result;
+      };
+      loadSavedSurvey.v69Reliable=true;
+    }
+
+    if(typeof saveCurrentSurvey==='function'&&!saveCurrentSurvey.v69Reliable){
+      saveCurrentSurvey=function(){
+        const d=saveNow();
+        try{ if(typeof renderSavedList==='function') renderSavedList(); }catch(e){}
+        try{ if(typeof renderHomeSavedList==='function') renderHomeSavedList(); }catch(e){}
+        alert('Survey saved');
+        return d;
+      };
+      saveCurrentSurvey.v69Reliable=true;
+    }
+
+    if(typeof saveImportedSurveyAndOpenCustomer==='function'&&!saveImportedSurveyAndOpenCustomer.v69Reliable){
+      const oldImport=saveImportedSurveyAndOpenCustomer;
+      saveImportedSurveyAndOpenCustomer=function(){
+        const id=newId();
+        try{ currentSavedId=id; }catch(e){}
+        localStorage.setItem(ACTIVE_ID_KEY,id);
+        setMediaSession(id);
+        const result=oldImport.apply(this,arguments);
+        setMediaSession(id);
+        setTimeout(saveNow,80);
+        setTimeout(saveNow,500);
+        return result;
+      };
+      saveImportedSurveyAndOpenCustomer.v69Reliable=true;
+    }
+
+    document.addEventListener('click',event=>{
+      const target=event.target&&event.target.closest?event.target.closest('#homeNewSurvey,#newSurveyTop,#newSurveySaved,#saveAndNew,#homeSkipCsv'):null;
+      if(!target) return;
+      const id=newId();
+      localStorage.setItem(ACTIVE_ID_KEY,id);
+      try{ currentSavedId=id; }catch(e){}
+      setMediaSession(id);
+    },true);
+  }
+
+  function installMediaGuard(){
+    if(!window.LGSurveyMediaGallery||window.LGSurveyMediaGallery.v69Reliable) return;
+    const api=window.LGSurveyMediaGallery;
+    const oldAdd=api.addFiles;
+    const oldLoad=api.load;
+    const oldFiles=api.files;
+    const oldItems=api.items;
+    api.addFiles=async function(files,category){
+      const id=ensureActiveId({create:true});
+      setMediaSession(mediaSessionFor(id));
+      const result=oldAdd?await oldAdd.call(this,files,category):undefined;
+      saveNow();
+      return result;
+    };
+    api.load=async function(){
+      const id=ensureActiveId({create:false});
+      if(id) setMediaSession(mediaSessionFor(id));
+      return oldLoad?oldLoad.call(this):undefined;
+    };
+    api.files=function(){
+      const id=ensureActiveId({create:false});
+      if(id) setMediaSession(mediaSessionFor(id));
+      return oldFiles?oldFiles.call(this):[];
+    };
+    api.items=function(){
+      const id=ensureActiveId({create:false});
+      if(id) setMediaSession(mediaSessionFor(id));
+      return oldItems?oldItems.call(this):[];
+    };
+    api.session=function(){
+      const id=ensureActiveId({create:false});
+      return id?mediaSessionFor(id):localStorage.getItem(MEDIA_SESSION_KEY)||'';
+    };
+    api.v69Reliable=true;
+  }
+
+  function installExportGuard(){
+    if(!window.LGSurveyExportPack||window.LGSurveyExportPack.v69Reliable) return;
+    const api=window.LGSurveyExportPack;
+    const oldCreate=api.create;
+    const oldBlob=api.blob;
+    async function beforeExport(){
+      const d=saveNow();
+      const id=(d&&d.currentSavedId)||ensureActiveId({create:false});
+      if(id) setMediaSession(mediaSessionFor(id));
+      try{
+        if(window.LGSurveyMediaGallery&&typeof window.LGSurveyMediaGallery.load==='function'){
+          await window.LGSurveyMediaGallery.load();
+        }
+      }catch(e){}
+      return d;
+    }
+    api.create=async function(source){ await beforeExport(); return oldCreate.call(this,source); };
+    api.blob=async function(source){ await beforeExport(); return oldBlob.call(this,source); };
+    api.v69Reliable=true;
+  }
+
+  function recoverDraft(){
+    const draft=readDraft();
+    if(!hasUsefulData(draft)) return;
+    const id=draft.currentSavedId||draft.id||draft.surveyId||ensureActiveId({create:true});
+    const session=draft.mediaSessionId||mediaSessionFor(id)||id;
+    try{ currentSavedId=id; }catch(e){}
+    localStorage.setItem(ACTIVE_ID_KEY,id);
+    setMediaSession(session);
+    upsertSaved({...draft,id,surveyId:id,currentSavedId:id,mediaSessionId:session,updatedAt:draft.updatedAt||now(),createdAt:draft.createdAt||now(),name:nameFor(draft),customerName:nameFor(draft)});
+  }
+
+  function installRecoveryCard(){
+    if($('v69RecoveryCard')) return;
+    const home=$('homeCsvStarter')||document.querySelector('#home .landingHero');
+    if(!home) return;
+    const card=document.createElement('div');
+    card.className='v69RecoveryCard';
+    card.id='v69RecoveryCard';
+    card.innerHTML='<b>Recovery is on</b><p>Every change is saved as a real survey record on this tablet. If the browser closes mid-visit, reopen the app and use Local saved surveys.</p><button class="secondary smallBtn" type="button" id="v69ForceSave">Save now</button>';
+    home.insertAdjacentElement('afterend',card);
+    $('v69ForceSave')?.addEventListener('click',e=>{ e.preventDefault(); saveNow(); alert('Survey saved locally'); });
+  }
+
+  function finish(){
+    setVersion();
+    installImmediateSave();
+    recoverDraft();
+    installSaveTriggers();
+    installSurveySwitching();
+    installMediaGuard();
+    installExportGuard();
+    installRecoveryCard();
+    stampSavedStatus(localStorage.getItem(LAST_SAVE_KEY)||'');
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',finish);
+  else finish();
+  setTimeout(finish,500);
+  setTimeout(finish,1800);
+  setTimeout(finish,4200);
+  setInterval(setVersion,1000);
+})();
+
+
 /* v68: isolate survey media so one customer's photos cannot leak into another pack */
 (function(){
-  const VERSION='v68';
+  const VERSION='v69';
   const KEY='tlgec_current_draft_v1';
   const SURVEYS_KEY='tlgec_surveys_saved_v1';
   const SESSION_KEY='lg_survey_media_session_v1';
@@ -1660,7 +2005,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
   }
 
   function wrapImports(){
-    if(typeof saveImportedSurveyAndOpenCustomer==='function'&&!saveImportedSurveyAndOpenCustomer.v68MediaWrapped){
+    if(typeof saveImportedSurveyAndOpenCustomer==='function'&&!saveImportedSurveyAndOpenCustomer.v68MediaWrapped&&!saveImportedSurveyAndOpenCustomer.v69Reliable){
       const old=saveImportedSurveyAndOpenCustomer;
       saveImportedSurveyAndOpenCustomer=function(){
         const session=prepareImportSession();
@@ -1680,7 +2025,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
   }
 
   function wrapSavedSurveyOpen(){
-    if(typeof loadSavedSurvey==='function'&&!loadSavedSurvey.v68MediaWrapped){
+    if(typeof loadSavedSurvey==='function'&&!loadSavedSurvey.v68MediaWrapped&&!loadSavedSurvey.v69Reliable){
       const old=loadSavedSurvey;
       loadSavedSurvey=function(id){
         const rec=savedById(id);
@@ -1697,7 +2042,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
   }
 
   function wrapSaveCurrentSurvey(){
-    if(typeof saveCurrentSurvey==='function'&&!saveCurrentSurvey.v68MediaWrapped){
+    if(typeof saveCurrentSurvey==='function'&&!saveCurrentSurvey.v68MediaWrapped&&!saveCurrentSurvey.v69Reliable){
       const old=saveCurrentSurvey;
       saveCurrentSurvey=function(){
         let session=currentSession();
@@ -1719,7 +2064,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
   }
 
   function wrapExportApi(){
-    if(window.LGSurveyExportPack&&window.LGSurveyExportPack.create&&!window.LGSurveyExportPack.v68MediaWrapped){
+    if(window.LGSurveyExportPack&&window.LGSurveyExportPack.create&&!window.LGSurveyExportPack.v68MediaWrapped&&!window.LGSurveyExportPack.v69Reliable){
       const oldCreate=window.LGSurveyExportPack.create;
       const oldBlob=window.LGSurveyExportPack.blob;
       async function loadCurrentMedia(){
@@ -2668,7 +3013,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.
 
   function patchSaveStatus(){
     try{
-      if(typeof save === 'function' && !save.v65SafetyWrapped){
+      if(typeof save === 'function' && !save.v65SafetyWrapped && !save.v69Reliable){
         const oldSave = save;
         save = function(){
           const out = oldSave.apply(this, arguments);
@@ -8442,7 +8787,7 @@ h1{font-size:44px;line-height:1;margin:10px 0 12px}p{line-height:1.5}.grid{displ
   // Re-wrap save with a hard re-entrancy guard. This prevents legacy quote -> Sig sync -> save recursion.
   function patchSaveGuard(){
     try{
-      if(typeof save === 'function' && !save.v59BatteryGuard){
+      if(typeof save === 'function' && !save.v59BatteryGuard && !save.v69Reliable){
         const oldSave = save;
         save = function(){
           if(window.__lgSurveySaveBusy) return;
@@ -8988,7 +9333,7 @@ h1{font-size:44px;line-height:1;margin:10px 0 12px}p{line-height:1.5}.grid{displ
 
 /* v67/v68: CSV-first start, one navigation path and coalesced duplicate saves */
 (function(){
-  const VERSION='v68';
+  const VERSION='v69';
   const ACTIVE_TAB_KEY='lg_survey_active_tab_v1';
   const MANUAL_PANEL_KEY='lg_survey_manual_panel_count_v67';
   const $=id=>document.getElementById(id);
@@ -9110,7 +9455,7 @@ h1{font-size:44px;line-height:1;margin:10px 0 12px}p{line-height:1.5}.grid{displ
 
   function installSaveQueue(){
     try{
-      if(typeof save!=='function'||save.v67Coalesced) return;
+      if(typeof save!=='function'||save.v67Coalesced||save.v69Reliable) return;
       const immediate=save;
       let running=false;
       let lastCompleted=0;
@@ -9209,4 +9554,19 @@ h1{font-size:44px;line-height:1;margin:10px 0 12px}p{line-height:1.5}.grid{displ
   setTimeout(finish,1800);
   setTimeout(finish,4200);
   setTimeout(setVersion,8500);
+})();
+
+
+/* v69 final lock: keep the reliability release visible after legacy version pulses */
+(function(){
+  const VERSION='v69';
+  function setVersion(){
+    const home=document.getElementById('homeVersionSmall');
+    const badge=document.getElementById('appVersionBadge');
+    if(home) home.textContent=VERSION;
+    if(badge) badge.textContent='App version: '+VERSION;
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',setVersion);
+  else setVersion();
+  setInterval(setVersion,250);
 })();
