@@ -1,47 +1,99 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LG Survey reset</title>
-<style>
-body{font-family:Arial,sans-serif;background:#f5f7f3;color:#0b1f18;margin:0;padding:24px}
-.card{max-width:620px;margin:40px auto;background:#fff;border-radius:18px;padding:24px;box-shadow:0 20px 50px rgba(0,0,0,.12)}
-button{display:block;width:100%;margin:12px 0;padding:14px 16px;border-radius:12px;border:0;background:#0b6b3a;color:white;font-weight:700;font-size:16px}
-.secondary{background:#2c3b34}.danger{background:#8f1d1d}.hint{color:#4d5d55;line-height:1.5}.small{font-size:13px;color:#68766f}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#062819">
+  <title>LG Survey Pro v2 reset</title>
+  <style>
+    :root{--deep:#062819;--green:#0b7a46;--lime:#8fd02a;--line:#d8e5dc;--muted:#64786e}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:22px;background:linear-gradient(135deg,#f5f9f2,#e8f4e9);color:var(--deep);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+    .card{width:min(720px,100%);background:#fff;border:1px solid var(--line);border-radius:30px;padding:clamp(22px,4vw,38px);box-shadow:0 24px 70px rgba(6,40,25,.15)}
+    small{display:block;color:var(--green);font-weight:950;letter-spacing:.14em;text-transform:uppercase}
+    h1{margin:8px 0 10px;font-size:clamp(34px,6vw,58px);line-height:.96;letter-spacing:-.06em}
+    p{color:#39564a;font-size:18px;line-height:1.45}
+    button{display:block;width:100%;min-height:56px;margin:12px 0;border:0;border-radius:999px;padding:14px 18px;background:linear-gradient(135deg,var(--lime),#dbff73);color:var(--deep);font:inherit;font-weight:950}
+    .secondary{background:#edf5ef;color:var(--deep);border:1px solid var(--line)}
+    .danger{background:#fff1f1;color:#9c2430;border:1px solid #ecc3c8}
+    pre{min-height:90px;white-space:pre-wrap;background:#f6faf6;border:1px solid var(--line);border-radius:18px;padding:14px;color:var(--muted);font-size:13px}
+  </style>
 </head>
 <body>
-<div class="card">
-<h1>LG Survey rescue</h1>
-<p class="hint">Use this if the app is stuck on an old version or freezing before the update button can be used.</p>
-<button id="cache">Update app cache only</button>
-<button class="secondary" id="draft">Clear current draft only</button>
-<button class="danger" id="all">Clear all LG Survey data</button>
-<p class="small">Use “Clear all” only after exporting a backup, because it removes saved surveys from this browser.</p>
-<pre id="status"></pre>
-</div>
-<script>
-const statusBox=document.getElementById('status');
-function log(t){statusBox.textContent += t + "\n";}
-async function cleanCaches(){
-  log('Clearing app cache...');
-  try{
-    if('serviceWorker' in navigator){
-      const regs=await navigator.serviceWorker.getRegistrations();
-      for(const r of regs){try{await r.unregister(); log('Service worker removed');}catch(e){}}
+  <main class="card">
+    <small>LG Survey Pro v2</small>
+    <h1>Reset this tablet cache</h1>
+    <p>Use this if the app is stuck on an old version, will not boot offline, or still shows v69 after publishing.</p>
+    <button id="cache">Update app cache only</button>
+    <button class="secondary" id="active">Forget current active survey only</button>
+    <button class="danger" id="all">Clear all local survey data on this browser</button>
+    <pre id="status">Ready.</pre>
+  </main>
+  <script>
+    const ACTIVE_SURVEY_KEY = 'lg-v2-active-survey-id';
+    const DB_NAME = 'lg-survey-pro-v2';
+    const statusBox = document.getElementById('status');
+    const log = text => { statusBox.textContent += `\n${text}`; };
+    const appUrl = () => `./?v2reset=${Date.now()}`;
+
+    async function cleanAppShell() {
+      log('Removing service workers...');
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(reg => reg.unregister().catch(() => false)));
+        log(`Service workers removed: ${regs.length}`);
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(key => caches.delete(key)));
+        log(`Caches cleared: ${keys.length}`);
+      }
     }
-    if('caches' in window){
-      const keys=await caches.keys();
-      await Promise.all(keys.map(k=>caches.delete(k)));
-      log('Caches cleared: '+keys.length);
+
+    function deleteDb(name) {
+      return new Promise(resolve => {
+        const req = indexedDB.deleteDatabase(name);
+        req.onsuccess = req.onerror = req.onblocked = () => resolve();
+      });
     }
-  }catch(e){log('Cache clear warning: '+e.message);}
-}
-function appUrl(){return './index.html?v62='+Date.now();}
-document.getElementById('cache').onclick=async()=>{await cleanCaches(); location.replace(appUrl());};
-document.getElementById('draft').onclick=async()=>{await cleanCaches(); localStorage.removeItem('tlgec_current_draft_v1'); log('Current draft cleared'); location.replace(appUrl());};
-document.getElementById('all').onclick=async()=>{if(!confirm('This removes all saved LG Survey data in this browser. Continue?'))return; await cleanCaches(); Object.keys(localStorage).filter(k=>k.toLowerCase().includes('tlgec')).forEach(k=>localStorage.removeItem(k)); log('LG Survey local data cleared'); location.replace(appUrl());};
-</script>
+
+    async function clearSurveyData() {
+      log('Clearing v2 survey database...');
+      await deleteDb(DB_NAME);
+      if (indexedDB.databases) {
+        const dbs = await indexedDB.databases();
+        await Promise.all(dbs
+          .map(db => db.name)
+          .filter(name => /survey|tlgec|lg/i.test(name || ''))
+          .map(name => deleteDb(name)));
+      }
+      Object.keys(localStorage)
+        .filter(key => /survey|tlgec|lg/i.test(key))
+        .forEach(key => localStorage.removeItem(key));
+      log('Local survey data cleared.');
+    }
+
+    document.getElementById('cache').onclick = async () => {
+      statusBox.textContent = 'Working...';
+      await cleanAppShell();
+      location.replace(appUrl());
+    };
+
+    document.getElementById('active').onclick = async () => {
+      statusBox.textContent = 'Working...';
+      localStorage.removeItem(ACTIVE_SURVEY_KEY);
+      await cleanAppShell();
+      log('Current active survey pointer cleared. Saved surveys are kept.');
+      location.replace(appUrl());
+    };
+
+    document.getElementById('all').onclick = async () => {
+      if (!confirm('This removes saved LG Survey data from this browser. Continue only if you have exported anything important.')) return;
+      statusBox.textContent = 'Working...';
+      await cleanAppShell();
+      await clearSurveyData();
+      location.replace(appUrl());
+    };
+  </script>
 </body>
 </html>
