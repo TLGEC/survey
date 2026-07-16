@@ -1,8 +1,10 @@
 {
-  "name": "LG Survey",
-  "short_name": "LG Survey",
-  "start_url": "./index.html",
+  "name": "LG Survey Pro v2",
+  "short_name": "Survey Pro v2",
+  "start_url": "./",
   "display": "standalone",
+  "scope": "./",
+  "description": "Offline-first solar survey, pricing and recommendation app for The Little Green Energy Company.",
   "background_color": "#f5f7f3",
   "theme_color": "#062819",
   "icons": [

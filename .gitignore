@@ -3,3 +3,7 @@
 demo-video/
 signs/
 tmp/
+audit/
+output/
+chilli-willy-trade/
+*.patch

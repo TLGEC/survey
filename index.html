@@ -1,685 +1,352 @@
-<!DOCTYPE html>
-
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/>
-<title>LG Survey v69</title>
-<meta content="#062819" name="theme-color"/>
-<meta name="lg-survey-version" content="v69"/>
-<link href="manifest.json" rel="manifest"/>
-<link href="styles.css" rel="stylesheet"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#062819">
+  <meta name="lg-survey-version" content="v2.0.0">
+  <title>LG Survey Pro v2</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header>
-<div class="brandWrap">
-<img alt="The Little Green Energy Company logo" class="brandLogo" src="tlgec-logo.png"/>
-<div class="brandText">
-<small>The Little Green Energy Company</small>
-<h1 id="appTitle">LG Survey</h1>
-<div class="headerContact" id="headerContact">No survey loaded</div>
-</div>
-</div>
-</header>
-<nav><button class="on" data-tab="home">Start</button><button data-tab="customer">Priorities</button><button data-tab="usage">Energy</button><button data-tab="site">Survey</button><button data-tab="build">Design</button><button data-tab="present">Proposal</button><button data-tab="agreement">Acceptance</button><button data-tab="internal">Tools</button></nav>
-<div class="journeyBar" id="journeyBar">
-<div class="journeyRail">
-<button class="journeyStep on" data-jump="customer"><span>1</span><b>Understand</b><small>goals and concern</small></button>
-<button class="journeyStep" data-jump="usage"><span>2</span><b>Energy</b><small>usage and tariff</small></button>
-<button class="journeyStep" data-jump="site"><span>3</span><b>Home survey</b><small>roof, route, access</small></button>
-<button class="journeyStep" data-jump="build"><span>4</span><b>Design</b><small>right-sized system</small></button>
-<button class="journeyStep" data-jump="present"><span>5</span><b>Recommendation</b><small>confidence and value</small></button>
-<button class="journeyStep" data-jump="agreement"><span>6</span><b>Next step</b><small>survey acceptance</small></button>
-</div>
-</div>
-<main><section class="panel on landingPage" id="home">
-<div class="landingHero">
-<div class="homeVersionSmall" id="homeVersionSmall">v57</div>
-<div class="heroCopy">
-<div class="heroKicker">LG Survey</div>
-<h2>Solar consultation</h2>
-<p>A clear local journey for understanding the home, checking the install route, right-sizing the system and agreeing the next step.</p>
-<div class="heroTrustRow">
-<span>Offline first</span><span>Survey-led</span><span>Shared view</span><span>Handover ready</span>
-</div>
-</div>
-<button class="primary heroButton" id="homeFocusImport" type="button">Paste monday customer details</button>
-</div>
-<div class="homeCsvStarter" id="homeCsvStarter">
-  <div class="miniStepHead">
-    <span>First step</span>
-    <b>Start with monday customer details</b>
-  </div>
-  <p>Paste the monday customer details here before the visit. It can be a CSV export or AI-wrapped CSV text.</p>
-  <details class="quickDetails compactCsvImport" open>
-    <summary>Paste or upload monday customer details</summary>
-    <label>monday customer text<textarea id="homeCsvPaste" placeholder="Paste Field,Value CSV, a monday row, or AI text that contains CSV here"></textarea></label>
-    <div class="two">
-      <button class="primary" id="homeImportCustomer" type="button">Import customer and open Priorities</button>
-      <button class="secondary" id="homeSkipCsv" type="button">Start blank survey</button>
+  <header class="appHeader">
+    <div class="brand">
+      <img src="tlgec-logo.png" alt="The Little Green Energy Company logo">
+      <div>
+        <small>The Little Green Energy Company</small>
+        <h1 id="surveyTitle">Solar Survey Pro v2</h1>
+        <p id="surveyMeta">No survey loaded</p>
+      </div>
     </div>
-    <label class="fileImportLine">Upload monday file<input accept=".csv,text/csv" id="homeCsvFile" type="file"/></label>
-    <div aria-live="polite" class="guide" id="homeCsvStatus" role="status">No monday customer imported yet.</div>
-  </details>
-</div>
+    <div class="statusStrip">
+      <span class="pill" id="connectionStatus">Checking</span>
+      <span class="pill saved" id="saveState">Ready</span>
+      <span class="pill" id="appVersion">v2</span>
+    </div>
+  </header>
 
-<div class="quickActions simpleHomeActions">
-<button class="secondary" id="homeSaveCurrent" type="button">Save survey</button>
-<button class="secondary" id="homeDemoSurvey" type="button">Try sample job</button>
-</div>
-<div class="syncNotice">
-<b>Local saved surveys</b>
-<p>Saved surveys are stored on this device for fast offline use. Export backups regularly from Tools.</p>
-</div>
-<div class="syncNotice" id="homeProcessNote"><b>Today’s journey</b><p>Understand what matters, confirm usage, walk the home, build the recommendation, present the reason, then accept the survey guidance.</p></div>
-<div class="readinessBox homeReadinessCard" id="homeReadinessCard">Readiness score will appear once a survey is started.</div>
-<div class="savedList" id="homeSavedList"></div>
-</section>
-<section class="panel" id="customer">
-<div class="sectionTop">
-<h2>Name and motivation</h2>
-<button class="secondary smallBtn" id="newSurveyTop" type="button">New survey</button>
-</div>
-<div class="conversationCard customerCue">
-<div class="stepBadge">1. Understand</div>
-<h3>Your priorities</h3>
-<p>Capture the goals, timing and concerns so the recommendation is built around the home, not a generic package.</p>
-<div class="surveyOutcome">Outcome: clear priorities, decision notes and any concern that needs answering.</div>
-</div>
-<label>Name<input autocomplete="name" id="customerName"/></label>
-<label>Survey date<input id="surveyDate" type="date"/></label>
-<label>Address<textarea autocomplete="street-address" id="address"></textarea></label>
-<div class="two">
-<label>Phone<input autocomplete="tel" id="phone" inputmode="tel"/></label>
-<label>Email<input autocomplete="email" id="email" inputmode="email"/></label>
-</div>
-<details class="quickDetails decisionDetails">
-<summary>Decision and objections</summary>
-<label>Decision makers<input id="decisionMakers" placeholder="Partner, landlord, parent, business partner..."/></label>
-<label>Competitors / other quotes<input id="competitors" placeholder="Who else are they comparing?"/></label>
-</details>
-<h2>Priorities</h2>
-<div class="chips" data-target="wants">
-<button>Lower bills</button><button>Future-proofing</button><button>EV charging</button><button>Backup</button>
-<button>Energy independence</button><button>Battery tariff use</button><button>Maximum return</button><button>Best value</button>
-</div>
-<label>What matters most<textarea id="wants"></textarea></label>
-<label>Why now / main concern<textarea id="whyNow"></textarea></label>
-<div class="financeCheckCard">
-  <h3>Project finance</h3>
-  <p class="hint">Capture this early so the recommendation matches how the customer plans to proceed.</p>
-  <input id="financePlan" type="hidden"/>
-  <div class="financeButtonGrid" id="financeButtons" aria-label="How is the customer planning to fund the project?">
-    <button type="button" data-finance="Own savings / cash">Own savings / cash</button>
-    <button type="button" data-finance="Bank loan arranged or in progress">Bank loan</button>
-    <button type="button" data-finance="Needs a finance company">Needs finance</button>
-    <button type="button" data-finance="Unsure / needs advice">Unsure</button>
-  </div>
-  <div class="financeStatus" id="financeStatus">Finance route not captured yet.</div>
-</div>
-<div class="bottomNav"><button class="primary continueBtn" data-next="usage" type="button">Continue to Energy</button></div>
-</section>
-<section class="panel" id="usage">
-<h2>Energy profile</h2>
-<div class="conversationCard energyCue">
-<div class="stepBadge">2. Energy profile</div>
-<h3>Energy use and tariff</h3>
-<p>Usage, tariff and timing help right-size solar and battery storage around when power is actually used.</p>
-<div class="surveyOutcome">Outcome: a recommendation that links back to real usage and bill behaviour.</div>
-</div>
-<p class="hint">Bills normally arrive by email. Enter annual or daily usage and the other field will calculate automatically.</p>
-<div class="two">
-<label>Annual usage kWh<input id="annualKwh" inputmode="decimal" placeholder="6000" type="number"/></label>
-<label>Daily average kWh<input id="dailyKwh" inputmode="decimal" placeholder="16.4" type="number"/></label>
-</div>
-<label>Current tariff<input id="tariff" placeholder="Octopus Flexible, Go, Tracker..."/></label>
-<div class="two">
-<label>Day / peak p/kWh<input id="peak" inputmode="decimal" type="number"/></label>
-<label>Off-peak p/kWh<input id="offpeak" inputmode="decimal" type="number"/></label>
-</div>
-<div class="two">
-<label>Annual spend £<input id="annualSpend" inputmode="decimal" type="number"/></label>
-<label class="conditionalField" id="evMilesWrap">EV miles/year<input id="miles" inputmode="numeric" type="number"/></label>
-<label>Export rate p/kWh<input id="exportRate" inputmode="decimal" type="number" value="15"/></label>
-</div>
-<div class="scope">
-<label><input id="heatPump" type="checkbox"/> Heat pump</label>
-<label><input id="highEvening" type="checkbox"/> High evening use</label>
-<label><input id="backupNeeded" type="checkbox"/> Backup wanted</label>
-</div>
-<label>Estimated solar self-use %<input id="solarSelfUsePct" inputmode="decimal" type="number" value="75"/></label>
-<div class="guide" id="batteryGuide">Enter annual or daily usage to see the battery guide automatically.</div>
-<div class="bottomNav"><button class="primary continueBtn" data-next="site" type="button">Continue to Home Survey</button></div>
-</section>
-<section class="panel" id="site">
-<h2>Home survey</h2>
-<div class="conversationCard surveyCue">
-<div class="stepBadge">3. Home survey</div>
-<h3>Home suitability check</h3>
-<p>Roof, electrical, equipment locations, cable route and access notes help reduce surprises before the formal quote.</p>
-<div class="surveyOutcome">Outcome: the practical install route is checked before the proposal is finalised.</div>
-</div>
-<div class="simpleRoofPhoto"><b>Local survey evidence</b><p>Use the quick capture gallery as you walk around. Add roof photos, distribution board, meter, cable route, access photos or videos one after another. Nothing is replaced, and everything in the gallery goes into the export pack.</p></div>
-<div class="photoCaptureBox galleryCaptureBox">
-  <div class="quickCaptureHeader">
-    <div>
-      <b>Quick capture gallery</b>
-      <p>Tap a section, snap the evidence, keep moving. You can sort, relabel or remove items later.</p>
+  <nav class="tabs">
+    <button class="navBtn active" data-panel="start">Start</button>
+    <button class="navBtn" data-panel="customer">Customer</button>
+    <button class="navBtn" data-panel="survey">Survey</button>
+    <button class="navBtn" data-panel="design">Design</button>
+    <button class="navBtn" data-panel="recommend">Recommend</button>
+    <button class="navBtn" data-panel="finish">Finish</button>
+    <button class="navBtn" data-panel="tools">Tools</button>
+  </nav>
+
+  <main>
+    <section class="screen active" id="start">
+      <div class="hero">
+        <div>
+          <span class="kicker">Offline-first rebuild</span>
+          <h2>Start clean. Save always. Export with confidence.</h2>
+          <p>This v2 rebuild gives every survey one permanent ID. Customer details, photos, videos, design, pricing, recommendation and exports all belong to that same survey.</p>
+        </div>
+        <div class="heroActions">
+          <button class="primary" id="continueLast">Continue last survey</button>
+          <button class="secondary" id="startBlank">Start blank survey</button>
+        </div>
+      </div>
+
+      <article class="card importCard">
+        <span class="step">First action</span>
+        <h3>Paste Monday customer details</h3>
+        <p>Paste normal CSV, Field/Value CSV, or the Monday AI answer with the CSV wrapped in text.</p>
+        <textarea id="mondayPaste" placeholder="Paste Monday AI text or CSV here"></textarea>
+        <div class="actionRow">
+          <button class="primary" id="importMonday">Import and open customer</button>
+          <span id="mondayStatus" class="hint">Nothing imported yet.</span>
+        </div>
+      </article>
+
+      <div class="grid twoCol">
+        <article class="card">
+          <h3>Local saved surveys</h3>
+          <p>These are stored on this tablet/browser and work offline after the app has loaded once.</p>
+          <div id="savedSurveys" class="savedList"></div>
+        </article>
+        <article class="card">
+          <h3>Reliability rules</h3>
+          <ul class="checkList">
+            <li>New survey means new ID.</li>
+            <li>Photos and videos save immediately to that ID.</li>
+            <li>Manual product, price and panel overrides always win.</li>
+            <li>Closing the tablet midway should reopen the same survey.</li>
+          </ul>
+          <p class="tiny" id="activeSurveyId">No active survey</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="screen" id="customer">
+      <div class="sectionHead">
+        <span class="kicker">Customer</span>
+        <h2>Customer and decision context</h2>
+        <p>Capture the blockers early. Finance is here because it can stop a job before design.</p>
+      </div>
+      <div class="formGrid">
+        <label>Name<input id="customerName" data-bind="customer.name" autocomplete="name"></label>
+        <label>Address<textarea data-bind="customer.address" autocomplete="street-address"></textarea></label>
+        <label>Phone<input data-bind="customer.phone" inputmode="tel"></label>
+        <label>Email<input data-bind="customer.email" inputmode="email"></label>
+        <label>Monday item ID<input data-bind="customer.mondayId"></label>
+        <label>Lead source<input data-bind="customer.leadSource"></label>
+        <label>Appointment time<input data-bind="customer.appointmentTime"></label>
+        <label>CRM status<input data-bind="customer.crmStatus"></label>
+      </div>
+      <div class="formGrid">
+        <label>Main goal<textarea data-bind="priorities.wants" placeholder="Lower bills, backup, EV, better monitoring..."></textarea></label>
+        <label>Why now?<textarea data-bind="priorities.whyNow"></textarea></label>
+        <label>Decision makers<textarea data-bind="priorities.decisionMakers"></textarea></label>
+        <label>Other quotes / competitors<textarea data-bind="priorities.competitors"></textarea></label>
+        <label>Timing<input data-bind="priorities.timing"></label>
+        <label>Promises already made<textarea data-bind="priorities.promises"></textarea></label>
+      </div>
+      <article class="card">
+        <h3>Energy and home context</h3>
+        <p>These values feed the customer recommendation, but can be left rough during the first pass.</p>
+        <div class="formGrid">
+          <label>Annual usage kWh<input id="annualKwh" type="number" inputmode="decimal" data-bind="energy.annualKwh"></label>
+          <label>Daily usage kWh<input id="dailyKwh" type="number" inputmode="decimal" data-bind="energy.dailyKwh"></label>
+          <label>Annual electricity spend<input type="number" inputmode="decimal" data-bind="energy.annualSpend"></label>
+          <label>Import rate p/kWh<input type="number" inputmode="decimal" data-bind="energy.importRate"></label>
+          <label>Export rate p/kWh<input type="number" inputmode="decimal" data-bind="energy.exportRate"></label>
+          <label>Expected self-use %<input type="number" inputmode="decimal" data-bind="energy.selfUsePct"></label>
+        </div>
+        <div class="choiceGrid compact">
+          <label><input type="checkbox" data-check="energy.ev">EV now or soon</label>
+          <label><input type="checkbox" data-check="energy.heatPump">Heat pump / high demand</label>
+          <label><input type="checkbox" data-check="energy.highEvening">High evening use</label>
+          <label><input type="checkbox" data-check="energy.backup">Backup matters</label>
+        </div>
+      </article>
+      <article class="card">
+        <h3>Finance position</h3>
+        <p>This is surveyor-facing language. Pick the nearest route and note anything sensitive separately.</p>
+        <div class="choiceGrid">
+          <label><input type="radio" name="finance" data-bind="priorities.financePlan" value="Own savings / cash">Own savings / cash</label>
+          <label><input type="radio" name="finance" data-bind="priorities.financePlan" value="Bank loan arranged">Bank loan arranged</label>
+          <label><input type="radio" name="finance" data-bind="priorities.financePlan" value="Exploring lending">Exploring lending</label>
+          <label><input type="radio" name="finance" data-bind="priorities.financePlan" value="Needs finance provider">Needs finance provider</label>
+        </div>
+        <label>Finance note<textarea data-bind="priorities.financeNote" placeholder="Keep it professional. Example: customer may need third-party finance before proceeding."></textarea></label>
+      </article>
+    </section>
+
+    <section class="screen" id="survey">
+      <div class="sectionHead">
+        <span class="kicker">Field survey</span>
+        <h2>Evidence first</h2>
+        <p>Photos and videos save to the active survey immediately. Use tags as you capture them.</p>
+      </div>
+      <div class="mediaToolbar" id="mediaCategories"></div>
+      <input id="mediaInput" type="file" accept="image/*,video/*,.pdf,application/pdf" multiple hidden>
+      <div class="mediaCount" id="mediaCount">0 files saved</div>
+      <div class="actionRow safetyRow">
+        <button class="secondary" id="downloadFieldPack">Download safety pack now</button>
+        <span class="hint">Use this before leaving site if the customer has not accepted yet.</span>
+      </div>
+      <div class="mediaGrid" id="mediaGrid"></div>
+
+      <div class="formGrid">
+        <label>Roof notes<textarea data-bind="site.roof"></textarea></label>
+        <label>Dimensions / planes note<textarea data-bind="site.dimensions"></textarea></label>
+        <label>Shading / obstructions<textarea data-bind="site.shade"></textarea></label>
+        <label>Battery / inverter location<textarea data-bind="site.batteryLocation"></textarea></label>
+        <label>Meter / CU / supply<textarea data-bind="site.meter"></textarea></label>
+        <label>Cable route<textarea data-bind="site.cableRoute"></textarea></label>
+        <label>Access / scaffold<textarea data-bind="site.access"></textarea></label>
+        <label>Site risk notes<textarea data-bind="site.riskNotes"></textarea></label>
+      </div>
+      <label class="checkLine"><input type="checkbox" data-check="site.routeAgreed">Route and equipment locations discussed with customer, subject to final checks</label>
+
+      <article class="card">
+        <div class="splitHead">
+          <div><h3>Roof plane panel fit</h3><p>Use this as a suggestion. Manual panel count in Design always wins.</p></div>
+          <button id="addRoof" class="secondary">Add roof</button>
+        </div>
+        <div id="roofPlaneList" class="roofList"></div>
+      </article>
+    </section>
+
+    <section class="screen" id="design">
+      <div class="sectionHead">
+        <span class="kicker">Design and pricing</span>
+        <h2>Surveyor override always wins</h2>
+        <p>Auto suggestions are useful, but the final product, panel count, battery and price are yours to override.</p>
+      </div>
+
+      <div class="grid twoCol">
+        <article class="card">
+          <h3>Solar</h3>
+          <label class="checkLine"><input type="checkbox" data-check="design.solar">Include solar PV</label>
+          <label>Panel model<select id="panelModel" data-bind="design.panelKey"></select></label>
+          <p class="hint" id="selectedPanelMeta">Panel details</p>
+          <div id="p6DealBox" class="dealBox" hidden>SunPower P6 warehouse deal selected. Manual cost can be edited below.</div>
+          <label>Panel internal cost override<input type="number" inputmode="decimal" data-bind="design.panelCostOverride" placeholder="Leave blank for catalogue"></label>
+          <label>Manual panel count<input id="panelCount" type="number" inputmode="numeric" data-bind="design.panelCount"></label>
+          <div class="suggestionLine"><span id="roofSuggestion">0 panel suggestion</span><button class="secondary smallBtn" id="useRoofSuggestion">Use suggestion</button></div>
+          <p class="hint" id="panelCountMode">Manual panel count</p>
+          <label>Panel override reason<textarea data-bind="design.panelOverrideReason" placeholder="Example: roof fits 10, but customer wants 6 due to budget/shading."></textarea></label>
+          <label>Mounting / roof type<select id="mounting" data-bind="design.mounting"></select></label>
+          <label class="checkLine"><input type="checkbox" data-check="design.tigo">Tigo optimisers</label>
+          <label>Tigo quantity<input type="number" data-bind="design.tigoQty"></label>
+          <label>Tigo price each<input type="number" data-bind="design.tigoPrice"></label>
+          <label class="checkLine"><input type="checkbox" data-check="design.bird">Bird protection</label>
+          <label class="checkLine"><input type="checkbox" data-check="design.spds">SPDs</label>
+          <label>Scaffold lifts<input type="number" data-bind="design.scaffoldLifts"></label>
+        </article>
+
+        <article class="card">
+          <h3>Battery route</h3>
+          <label class="checkLine"><input type="checkbox" data-check="design.battery">Include battery/storage</label>
+          <div class="batteryCards">
+            <button class="batteryCard" data-battery-select="Sigenergy" data-battery-card="Sigenergy">Sigenergy</button>
+            <button class="batteryCard" data-battery-select="Tesla" data-battery-card="Tesla">Tesla</button>
+            <button class="batteryCard" data-battery-select="None" data-battery-card="None">No battery</button>
+          </div>
+          <div id="sigConfig">
+            <h4>Sigenergy</h4>
+            <label>BAT 10 quantity<input type="number" data-bind="design.sig10Qty"></label>
+            <label>BAT 6 quantity<input type="number" data-bind="design.sig6Qty"></label>
+            <label>BAT 10 cost<input type="number" data-bind="design.sig10Cost"></label>
+            <label>BAT 6 cost<input type="number" data-bind="design.sig6Cost"></label>
+            <label class="checkLine"><input type="checkbox" data-check="design.sigGateway">Gateway included where required</label>
+            <label>Gateway cost<input type="number" data-bind="design.sigGatewayCost"></label>
+            <label>Controller mode<select data-bind="design.sigControllerMode"><option value="auto">Auto-size from solar</option><option value="manual">Manual controller</option></select></label>
+            <label>Manual controller<select id="sigController" data-bind="design.sigController"></select></label>
+          </div>
+          <div id="teslaConfig" hidden>
+            <h4>Tesla</h4>
+            <label>Powerwall 3 quantity<input type="number" data-bind="design.teslaPw3Qty"></label>
+            <label>DC Expansion quantity<input type="number" data-bind="design.teslaDcQty"></label>
+            <label class="checkLine"><input type="checkbox" data-check="design.teslaGateway">Backup Gateway</label>
+            <label>Powerwall 3 internal cost<input type="number" data-bind="design.teslaPw3Cost"></label>
+            <label>DC Expansion internal cost<input type="number" data-bind="design.teslaDcCost"></label>
+            <label>Gateway internal cost<input type="number" data-bind="design.teslaGatewayCost"></label>
+            <label>Tesla discount<input type="number" data-bind="design.teslaDiscount"></label>
+          </div>
+        </article>
+      </div>
+
+      <div class="grid twoCol">
+        <article class="card">
+          <h3>Extras</h3>
+          <label class="checkLine"><input type="checkbox" data-check="design.ev">Zappi EV charger</label>
+          <label>Zappi price<input type="number" data-bind="design.zappiPrice"></label>
+          <label class="checkLine"><input type="checkbox" data-check="design.eddi">Eddi / hot water diverter</label>
+          <label>Eddi price<input type="number" data-bind="design.eddiPrice"></label>
+          <label class="checkLine"><input type="checkbox" data-check="design.otherExtra">Other extra</label>
+          <label>Other extra name<input data-bind="design.otherExtraName"></label>
+          <label>Other extra price<input type="number" data-bind="design.otherExtraPrice"></label>
+        </article>
+        <article class="card">
+          <h3>Price override</h3>
+          <label>Manual discount<input type="number" data-bind="design.manualDiscount"></label>
+          <label>Final customer price override<input type="number" data-bind="design.finalPriceOverride" placeholder="Leave 0 for calculated"></label>
+          <label>Commercial note<textarea data-bind="design.commercialNote"></textarea></label>
+          <button class="primary" id="calculateQuote">Refresh pricing</button>
+          <div id="quoteLive" class="quoteBox"></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="screen" id="recommend">
+      <div class="sectionHead">
+        <span class="kicker">Customer recommendation</span>
+        <h2>Clean view for the customer</h2>
+        <p>This is the nice-looking result colleagues can use without ChatGPT.</p>
+      </div>
+      <div id="recommendationCard"></div>
+      <details class="card">
+        <summary>Internal pricing breakdown</summary>
+        <div id="internalBreakdown" class="quoteBox"></div>
+      </details>
+    </section>
+
+    <section class="screen" id="finish">
+      <div class="sectionHead">
+        <span class="kicker">Finish</span>
+        <h2>Acceptance and pack</h2>
+        <p>Save the outcome, copy the email, and download the survey pack with photos/videos.</p>
+      </div>
+      <div class="grid twoCol">
+        <article class="card">
+          <h3>Outcome</h3>
+          <label>Customer view<select data-bind="acceptance.customerView"><option>Interested</option><option>Accepted survey recommendation</option><option>Needs time</option><option>Follow-up required</option><option>Not proceeding</option></select></label>
+          <label>Blocker / question<textarea data-bind="acceptance.blocker"></textarea></label>
+          <label>Next action<input data-bind="acceptance.nextAction"></label>
+          <label>Follow-up date<input type="date" data-bind="acceptance.followUp"></label>
+          <label>Acceptance note<textarea data-bind="acceptance.note"></textarea></label>
+        </article>
+        <article class="card">
+          <h3>Signature</h3>
+          <canvas id="signatureCanvas"></canvas>
+          <div class="actionRow">
+            <button class="secondary" id="clearSignature">Clear signature</button>
+            <button class="primary" id="acceptSurvey">Save acceptance</button>
+          </div>
+        </article>
+      </div>
+      <article class="card">
+        <h3>Outlook-ready email</h3>
+        <textarea id="emailDraft"></textarea>
+        <div class="actionRow">
+          <button class="secondary" id="copyEmail">Copy email text</button>
+          <button class="secondary" id="copyHtmlEmail">Copy designed email body</button>
+          <button class="primary" id="downloadPack">Download survey pack ZIP</button>
+        </div>
+        <div id="finishNotice" class="notice">No pack created yet.</div>
+      </article>
+    </section>
+
+    <section class="screen" id="tools">
+      <div class="sectionHead">
+        <span class="kicker">Tools</span>
+        <h2>Minimal admin</h2>
+        <p>No dev clutter. Just backup, app status and pricing reference.</p>
+      </div>
+      <div class="grid twoCol">
+        <article class="card">
+          <h3>Backups</h3>
+          <button class="primary" id="downloadBackup">Download saved survey backup</button>
+          <p class="hint">Backup excludes large photo/video blobs for now. Survey packs include the files for each job.</p>
+        </article>
+        <article class="card">
+          <h3>App status</h3>
+          <p>Version: <b>v2.0.0</b></p>
+          <p>Offline boot: app shell, styles, logic and assets are cached after first load.</p>
+          <p>Pricing updates: edit the catalogue in <code>app.js</code> at the top, then publish.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <div class="markupModal" id="markupModal" hidden>
+    <div class="markupPanel">
+      <div class="splitHead">
+        <div><h3>Mark up photo</h3><p>Tap to place labels, or draw a box/line. Save creates a marked-up copy in the survey files.</p></div>
+        <button class="ghost" id="closeMarkup">Close</button>
+      </div>
+      <div class="markupToolbar">
+        <button data-markup-label="Battery location">Battery location</button>
+        <button data-markup-label="Inverter location">Inverter location</button>
+        <button data-markup-label="Gateway location">Gateway location</button>
+        <button data-markup-label="Cable route">Cable route</button>
+        <button data-markup-label="Earth rod location">Earth rod location</button>
+        <button data-markup-tool="box">Box</button>
+        <button data-markup-tool="line">Line</button>
+      </div>
+      <canvas id="markupCanvas"></canvas>
+      <div class="actionRow">
+        <button class="secondary" id="undoMarkup">Undo</button>
+        <button class="primary" id="saveMarkup">Save marked-up copy</button>
+      </div>
     </div>
   </div>
-  <div class="quickCaptureGrid">
-    <button type="button" class="mediaQuickBtn" data-media-cat="Roof">Roof</button>
-    <button type="button" class="mediaQuickBtn" data-media-cat="Distribution board / CU">Dist board / CU</button>
-    <button type="button" class="mediaQuickBtn" data-media-cat="Meter / fuse">Meter / fuse</button>
-    <button type="button" class="mediaQuickBtn" data-media-cat="Battery / controller location">Battery / controller</button>
-    <button type="button" class="mediaQuickBtn" data-media-cat="Cable route">Cable run</button>
-    <button type="button" class="mediaQuickBtn" data-media-cat="Access / scaffold">Access</button>
-    <button type="button" class="mediaQuickBtn" data-media-cat="Other">Other</button>
-  </div>
-  <div class="quickCaptureActions">
-    <button type="button" class="secondary smallBtn" id="addSiteFiles">Add photos / files</button>
-    <button type="button" class="secondary smallBtn" id="recordSiteVideo">Record video</button>
-    <button type="button" class="secondary smallBtn dangerLight" id="clearSiteGallery">Clear gallery</button>
-  </div>
-  <input accept="image/*" capture="environment" id="quickPhotoInput" type="file" hidden />
-  <input accept="video/*" capture="environment" id="quickVideoInput" type="file" hidden />
-  <input accept="image/*,video/*,.pdf,application/pdf" id="filesInput" multiple="" type="file" hidden />
-  <div class="fileNames" id="fileNames">No site media captured yet.</div>
-  <div class="mediaGallery" id="mediaGallery"></div>
-  <div class="photos legacyPreview" id="preview"></div>
-</div>
-<div class="photoChecklist">
-<h3>Required evidence checklist</h3>
-<div class="checks photoChecks">
-<label><input id="photoRoofFront" type="checkbox"/> Roof front / access</label>
-<label><input id="photoRoofRear" type="checkbox"/> Roof rear / main plane</label>
-<label><input id="photoMeter" type="checkbox"/> Meter position</label>
-<label><input id="photoCU" type="checkbox"/> Consumer unit</label>
-<label><input id="photoFuse" type="checkbox"/> Incoming supply / fuse</label>
-<label><input id="photoBatteryLoc" type="checkbox"/> Battery / controller location</label>
-<input id="photoInverterLoc" type="checkbox" hidden/>
-<label><input id="photoCableRoute" type="checkbox"/> Cable route</label>
-<label><input id="photoAccess" type="checkbox"/> Scaffold/access</label>
-</div>
-<label>Photo / evidence notes<textarea id="photoNotes" placeholder="Any missing photos, why missing, or extra files captured."></textarea></label>
-</div>
-<h2>Roof dimensions</h2>
-<p class="hint">Add each elevation or roof plane separately. Use metres. These feed the design brief and layout check.</p>
-<div class="autoFitPanelCard">
-  <div class="panelSenseHead">
-    <b>Auto panel fit</b>
-    <button class="secondary smallBtn" id="autoFitRoofs" type="button">Auto fit best panel</button>
-  </div>
-  <p class="hint">Uses the roof dimensions, pitch/azimuth notes and the available AIKO/SunPower panel sizes to suggest the highest sensible panel count. It prefers 400 mm margins and can use a 300 mm squeeze target where that gives a better result. You can still edit “panels here” manually for obstructions.</p>
-  <div class="two">
-    <label>Panel fit choice<select id="autoPanelChoice">
-      <option selected value="AUTO">Auto select best output</option>
-      <option value="AIKO 495W|495|1762 x 1134 x 30 mm|20.6 kg">AIKO 495W</option>
-      <option value="AIKO 540W|540|1954 x 1134 x 30 mm|27.1 kg">AIKO 540W</option>
-      <option value="SunPower P6 405W Warehouse Deal|405|Editable - confirm datasheet|Manual stock deal">SunPower P6 405W warehouse deal</option>
-      <option value="SunPower P7 500W|500|1996 x 1134 x 30 mm|27.5 kg">SunPower P7 500W</option>
-      <option value="SunPower P7 450W|450|1790 x 1134 x 30 mm|24.8 kg">SunPower P7 450W</option>
-    </select></label>
-    <label>Margin basis<select id="autoPanelMargin">
-      <option selected value="auto">Best 400 mm / 300 mm squeeze</option>
-      <option value="0.4">400 mm preferred only</option>
-      <option value="0.3">300 mm squeeze allowed</option>
-    </select></label>
-  </div>
-  <div class="autoFitSummary" id="autoFitSummary">Add roof dimensions to calculate the best panel option.</div>
-</div>
-<div id="roofPlanes"></div>
-<button class="secondary" id="addRoofPlane" type="button">Add roof/elevation</button>
-<details class="quickDetails">
-<summary>Advanced roof notes</summary>
-<label>Roof notes<textarea id="roof" placeholder="Tile/slate, pitch, azimuth, roof planes..."></textarea></label>
-<label>Reference measurement / roof dimension notes<textarea id="dims" placeholder="Laser measure notes, tile count, Google Earth check, sketch notes..."></textarea></label>
-</details>
-<label>Obstructions / shading<textarea id="shade" placeholder="Chimney, trees, dormers, skylights, neighbour shading..."></textarea></label>
-<label>Battery / controller location<textarea id="batteryLoc" placeholder="Battery, Powerwall, inverter or controller position. Note wall type, clearance, outside/inside location and any customer preference."></textarea><span class="fieldHint">Use this single box when the equipment is going in the same area.</span></label>
-<input id="invLoc" type="hidden"/>
-<label>Meter / CU / incoming supply<textarea id="meter"></textarea></label>
-<label>Cable route<textarea id="cable"></textarea></label>
-<label>Access / scaffold<textarea id="access"></textarea></label>
-<label>Site notes / things to confirm<textarea id="siteRiskNotes" placeholder="Anything to confirm for design, DNO, survey sign-off, scaffold, cable run or install."></textarea></label>
-<div class="checks agreementCheck">
-<label><input id="customerRouteAgreed" type="checkbox"/> Route and equipment locations discussed and accepted, subject to final design and survey checks</label>
-</div>
-<div class="bottomNav"><button class="primary continueBtn" data-next="build" type="button">Continue to Design</button></div>
-</section>
-<section class="panel" id="build">
-<h2>Design and investment</h2>
-<div class="conversationCard designCue">
-<div class="stepBadge">4. Design</div>
-<h3>Right-sized system</h3>
-<p>Panel count, battery storage, extras and price are checked against the roof, energy profile and installation route.</p>
-<div class="surveyOutcome">Outcome: a clear recommendation with sensible options, not just the largest possible system.</div>
-</div>
-<div class="scope">
-<label><input id="solar" type="checkbox"/> Solar</label>
-<label><input id="battery" type="checkbox"/> Battery</label>
-</div>
-<h2>Solar</h2>
-<label>Panel model<select id="panelModel">
-<option value="AIKO 540W|540|1954 x 1134 x 30 mm|27.1 kg">AIKO 540W</option>
-<option selected="" value="AIKO 495W|495|1762 x 1134 x 30 mm|20.6 kg">AIKO 495W</option>
-<option value="SunPower P6 405W Warehouse Deal|405|Editable - confirm datasheet|Manual stock deal">SunPower P6 405W warehouse deal</option>
-<option value="SunPower P7 500W|500|1996 x 1134 x 30 mm|27.5 kg">SunPower P7 500W</option>
-<option value="SunPower P7 450W|450|1790 x 1134 x 30 mm|24.8 kg">SunPower P7 450W</option>
-</select></label>
-<div class="two">
-<label>Panel count<input id="panelCount" inputmode="numeric" type="number" value="0"/><span class="fieldHint">Surveyor-adjustable. Roof auto-fit gives a suggestion, but this can be overridden for obstructions or judgement on site.</span></label>
-<label>System override price £<input id="systemOverride" inputmode="decimal" type="number" value="0"/></label>
-</div>
-<div class="panelSuggestionBox" id="panelSuggestionBox">
-  <b>Roof suggestion</b>
-  <span>Run auto-fit from the Survey page to show suggested panel count here.</span>
-  <button class="secondary smallBtn" id="useRoofSuggestion" type="button">Use roof suggestion</button>
-</div>
-<div class="manualPanelCard" id="manualPanelCard">
-  <div>
-    <b>Manual panel judgement</b>
-    <span id="manualPanelStatus">Auto-fit is only a starting suggestion. Your quoted panel count wins once edited.</span>
-  </div>
-  <label>Override reason<select id="panelOverrideReason">
-    <option value="">No manual reason selected</option>
-    <option>Shading / trees</option>
-    <option>Customer budget</option>
-    <option>Customer preference</option>
-    <option>Roof obstruction</option>
-    <option>Installer judgement</option>
-    <option>Other</option>
-  </select></label>
-  <label>Manual panel note<textarea id="panelOverrideNote" placeholder="Example: rear roof can physically take 10, but customer wants 6 due to budget/shading."></textarea></label>
-</div>
-<p class="hint">Pricing follows Residential Pricing V8.6 cost build. Use system override only for an approved final proposal position.</p>
-<div class="panelSenseCard">
-<div class="panelSenseHead">
-<b>Panel-first roof sense check</b>
-<button class="secondary smallBtn" id="runPanelSenseCheck" type="button">Sense check</button>
-</div>
-<div class="panelSenseCheck" id="panelSenseCheck">Enter roof dimensions and panel count to sense check the fit. This does not block the survey.</div>
-</div>
-<label>Roof mounting / framing<select id="framingSelection">
-<option selected="" value="Plain Tile">Plain Tile</option>
-<option value="Pantile">Pantile</option>
-<option value="Slate">Slate</option>
-<option value="Trapezoidal">Trapezoidal</option>
-<option value="Standing Seam">Standing Seam</option>
-<option value="Flat Roof">Flat Roof</option>
-<option value="In-Roof">In-Roof</option>
-<option value="Fibre Cement">Fibre Cement</option>
-<option value="Quattro">Quattro</option>
-<option value="Ground Screws">Ground Screws</option>
-</select></label>
-<div class="scope">
-<label><input id="tigo" type="checkbox"/> Tigo optimisers</label>
-<label><input checked="" id="bird" type="checkbox"/> Bird protection</label>
-<label><input checked="" id="spds" type="checkbox"/> SPDs</label>
-</div>
-<details class="quickDetails advancedPricing">
-<summary>Advanced solar pricing</summary>
-<div class="two">
-<label>Tigo quantity<input id="tigoQty" inputmode="numeric" type="number" min="0" value="0"/><span class="fieldHint">Use only the number of optimisers actually needed.</span></label>
-<label>Tigo £/panel<input id="tigoPrice" inputmode="decimal" type="number" value="30"/></label>
-<label>Manual discount £<input id="manualDiscount" type="number" value="0"/></label>
-</div>
-</details>
-<h2>Battery</h2>
-<label class="hiddenSelectLabel">Battery brand<select id="batteryBrand">
-<option value="None">None</option>
-<option value="Tesla">Tesla</option>
-<option value="Sigenergy">Sigenergy</option>
-</select></label>
-<div class="batteryButtonGrid" id="batteryBrandButtons" aria-label="Choose battery route">
-  <button type="button" data-battery-brand="None">No battery</button>
-  <button type="button" data-battery-brand="Tesla">Tesla Powerwall</button>
-  <button type="button" data-battery-brand="Sigenergy">Sigenergy</button>
-</div>
-<div class="quoteBox batteryChoiceCard teslaChoice" id="teslaBox">
-<div class="batteryBrandHead"><span class="batteryLogo teslaLogo">TESLA</span><span>Powerwall battery option</span></div>
-<input id="teslaSaleType" type="hidden" value="solarBattery"/>
-<div class="teslaQuickCard">
-  <b>Usual Tesla route</b>
-  <p>Powerwall 3 is the main selection. Add Gateway when backup or future backup readiness is part of the recommendation.</p>
-  <label class="gatewayToggle"><input checked="" id="gateway" type="checkbox"/> Backup Gateway included</label>
-</div>
-<div class="two">
-<label>Powerwall 3 units<input id="pw3Qty" max="4" min="0" type="number" value="1"/><span class="fieldHint">Tesla supports up to 4 Powerwall 3 units.</span></label>
-<label>DC Expansion packs<input id="dcExpQty" max="3" min="0" type="number" value="0"/><span class="fieldHint">Max 3 expansions total. Expansions require a Powerwall 3.</span></label>
-</div>
-<div aria-hidden="true" class="legacyTeslaChecks">
-<input checked="" id="pw3" type="checkbox" hidden/>
-<input id="dcExp" type="checkbox" hidden/>
-</div>
-<details class="quickDetails">
-<summary>Unusual Tesla setup note</summary>
-<label>Other Tesla setup notes<textarea id="teslaOtherNotes" placeholder="Gateway only, retrofit notes, customer already has solar, backup expectation, or anything unusual."></textarea></label>
-</details>
-<div class="teslaConfigGuide" id="teslaConfigGuide">1 x Powerwall 3 + Backup Gateway, no DC Expansion selected.</div>
-<details class="quickDetails advancedPricing">
-<summary>Advanced Tesla pricing</summary>
-<p class="hint">Guide prices are used for the Tesla net position guide. Internal proposal total still follows the quote builder unless a system override is entered.</p>
-<div class="two">
-<label>Powerwall 3 £<input id="pw3Price" type="number" value="6500"/></label>
-<label>Gateway £<input id="gatewayPrice" type="number" value="1000"/></label>
-<label>DC Expansion £<input id="dcPrice" type="number" value="5200"/></label>
-<label>Rebate / LG discounts £<input id="teslaDiscounts" type="number" value="0"/></label>
-</div>
-</details>
-</div>
-<div class="quoteBox batteryChoiceCard sigChoice sigCleanCard" id="sigBox">
-<div class="batteryBrandHead"><span class="batteryLogo sigLogo">Sigenergy</span><span>SigenStor battery option</span></div>
-<p class="hint">Choose the exact Sigenergy stack. The datasheet route allows 1 to 6 battery modules per controller, so mixed 10.0 and 6.0 combinations are supported up to 6 modules total.</p>
-<input id="sigBatteryModel" type="hidden" value="10"/>
-<input id="sigModuleQty" type="hidden" value="0"/>
-<div class="sigRouteBox">
-  <label>Sigenergy route<select id="sigInstallType">
-    <option selected value="solarBattery">Solar + battery</option>
-    <option value="batteryOnly">Battery only</option>
-    <option value="retrofit">Retrofit / existing solar</option>
-    <option value="other">Other / survey note</option>
-  </select></label>
-</div>
-<div class="two sigStackGrid">
-  <label>SigenStor BAT 10.0 modules<input id="sig10Qty" min="0" max="6" inputmode="numeric" type="number" value="1"/><span class="fieldHint">9.04 kWh total / 8.76 kWh usable each.</span></label>
-  <label>SigenStor BAT 6.0 modules<input id="sig6Qty" min="0" max="6" inputmode="numeric" type="number" value="0"/><span class="fieldHint">6.02 kWh total / 5.84 kWh usable each.</span></label>
-</div>
-<div class="scope">
-<label><input checked id="sigGateway" type="checkbox"/> Sigenergy Gateway included where required</label>
-</div>
-<div class="two sigControllerGrid">
-  <label>Controller route<select id="sigControllerMode">
-    <option selected value="auto">Auto-size controller from solar size</option>
-    <option value="manual">Manual controller selection</option>
-  </select><span class="fieldHint">Use manual for battery-only, retrofit or special controller selection.</span></label>
-  <label>Controller<select id="sigBatteryOnlyController">
-<option value="0|None">None</option>
-<option value="780|Sigenstor Controller 3.6kW">3.6 kW</option>
-<option value="850|Sigenstor Controller 4.0kW">4.0 kW</option>
-<option value="835|Sigenstor Controller 5.0kW">5.0 kW</option>
-<option value="866|Sigenstor Controller 6.0kW">6.0 kW</option>
-<option value="1287|Sigenstor Controller 8.0kW">8.0 kW</option>
-<option value="1402.5|Sigenstor Controller 10kW">10 kW</option>
-<option value="1520|Sigenstor Controller 12kW">12 kW</option>
-<option value="2081|Sigenstor Controller 15kW">15 kW</option>
-<option value="1976|Sigenstor Controller 20kW">20 kW</option>
-<option value="2289.1|Sigenstor Controller 25kW">25 kW</option>
-</select><span class="fieldHint">Used when Controller route is manual or when no solar is selected.</span></label>
-</div>
-<div class="sigPreview" id="sigPreviewBox">
-  <div class="sigPreviewMain">SigenStor stack</div>
-  <div class="sigPreviewSub">1 x BAT 10.0 selected. Gateway included. Controller auto-sized.</div>
-</div>
-<div class="sigConfigWarning" id="sigConfigWarning"></div>
-<details class="quickDetails advancedPricing">
-<summary>Advanced Sigenergy pricing</summary>
-<p class="hint">Use only when the pricing matrix changes. Defaults are pulled into the quote builder automatically.</p>
-<div class="two">
-  <label>BAT 6.0 internal cost £<input id="sig6Price" inputmode="decimal" type="number" value="1575"/></label>
-  <label>BAT 10.0 internal cost £<input id="sig10Price" inputmode="decimal" type="number" value="2050"/></label>
-  <label>Gateway internal cost £<input id="sigGatewayPrice" inputmode="decimal" type="number" value="785"/></label>
-</div>
-</details>
-</div>
-<h2>Extras</h2>
-<div class="scope extrasScope">
-<label><input id="ev" type="checkbox"/> Zappi EV charger</label>
-<label><input id="eddi" type="checkbox"/> Eddi / hot water diverter</label>
-<label><input id="otherExtra" type="checkbox"/> Other extra</label>
-</div>
-<div class="two">
-<label>Scaffold lifts<input id="scaffoldLifts" type="number" value="0"/></label>
-<label>Zappi EV charger cost £<input id="zappiPrice" type="number" value="900"/></label>
-<label>Eddi / diverter manual cost £<input id="eddiPrice" type="number" value="0"/></label>
-<label>Other extra name<input id="otherExtraName" placeholder="Immersion timer, extra socket, monitoring..."/></label>
-<label>Other extra manual cost £<input id="otherExtraPrice" type="number" value="0"/></label>
-</div>
-<label>Extras notes<textarea id="extrasNote" placeholder="Eddi, EV charger, extra electrical work, requested add-ons..."></textarea></label>
-<p class="hint">Extras use manual pricing. They are included in the proposal total when ticked, but are not treated as blockers.</p>
-<p class="hint">Scaffolding follows the internal pricing sheet. No scaffold total is itemised on the shared view.</p>
-<label>Commercial note<textarea id="commercialNote" placeholder="Month-end position, supplied cable, quote includes..."></textarea></label>
-<div class="quoteCheckBox">
-<button class="primary" id="calculateQuote" type="button">Calculate quote</button>
-<div class="quoteCheck" id="quoteCheck">Quote not calculated yet.</div>
-</div>
-<div class="bottomNav"><button class="primary continueBtn" data-next="present" type="button">Build proposal view</button></div>
-</section>
-<section class="panel customerPage" id="present">
-<div class="presentHero">
-<div class="heroKicker">The Little Green Energy Company</div>
-<h2>Your energy recommendation</h2>
-<p>A survey-led recommendation built around the home, the usage and what matters most.</p>
-</div>
-<div class="consultationProof" id="consultationProof">
-<div><span>1</span><b>Understood</b><small>Priorities will appear here</small></div>
-<div><span>2</span><b>Checked</b><small>roof, route and access reviewed</small></div>
-<div><span>3</span><b>Right-sized</b><small>system selected around usage</small></div>
-<div><span>4</span><b>Protected</b><small>formal quote and DNO next</small></div>
-</div>
-<div class="customerStoryCard" id="customerStoryCard"></div>
-<div class="designConfidenceCard" id="designConfidenceCard"></div>
-<div class="presentVisuals" id="presentVisuals"></div>
-<div class="batteryImagePanel" id="batteryImagePanel"></div>
-<div class="paybackSummary" id="paybackSummary"></div>
-<div class="whySystemCard" id="whyThisSystem"></div>
-<div class="summaryBox presenterSummary" id="presentSummary"></div>
-<button class="primary" id="refreshPresent" type="button">Refresh summary</button>
-<div class="bottomNav proposalNext"><button class="primary continueBtn" data-next="agreement" type="button">Continue to survey acceptance</button></div></section>
-<section class="panel agreementPage" id="agreement">
-<div class="presentHero agreementHero">
-<div class="heroKicker">Survey acceptance</div>
-<h2>Formalise the quote</h2>
-<p>Accept today’s survey guidance so the formal quote can be prepared. Final roof, electrical, DNO and design checks still apply.</p>
-</div>
 
-<div class="closingCheck customerClose">
-<h2>Ready to formalise?</h2>
-<p class="hint">Choose the closest next step. This simply guides how the formal quote is prepared.</p>
-<input id="customerLikelihood" type="hidden">
-<div class="likelihoodButtons" id="likelihoodButtons">
-<button type="button" data-likelihood="Ready to formalise the quote">Looks right</button>
-<button type="button" data-likelihood="Question or change before quote">One question first</button>
-<button type="button" data-likelihood="Not ready to formalise">Not ready yet</button>
-</div>
-<div class="blockerPrompt" id="blockerPrompt">Choose the closest option above.</div>
-<label>Question, concern or change to note<textarea id="blockerReason" placeholder="Only use this if something needs clarifying or changing."></textarea></label>
-<button class="primary followUpPackBtn" id="saveFollowUpPack" type="button">Save follow-up pack</button>
-</div>
-
-<div class="acceptSurveyCard">
-<h2>Accept survey guidance</h2>
-<p class="hint">Sign below to confirm you are happy for the recommendation to be formalised into a quote for review. The final proposal remains subject to design checks.</p>
-<div class="agreementSummary" id="customerAgreementSummary">Summary will refresh from the survey details.</div>
-<details class="acceptanceNoteWrap"><summary>Optional note for quote handover</summary><label>Note<textarea id="acceptanceNote" placeholder="Any detail to remember before preparing the formal quote."></textarea></label></details>
-<div class="signatureBox">
-<div class="signatureTitle">Signature</div>
-<canvas height="260" id="signatureCanvas" width="700"></canvas>
-<div class="signatureActions">
-<button class="secondary" id="clearSignature" type="button">Clear signature</button>
-</div>
-</div>
-<button class="primary" id="stampAccept" type="button">Accept and create recommendation</button>
-<div class="guide acceptanceThanks" id="acceptanceStamp">No survey acceptance recorded yet.</div>
-</div>
-
-<div class="templateActionCard" id="recommendationTemplateCard">
-  <h2>Recommendation document</h2>
-  <p class="hint">Create the branded customer recommendation from the survey details. Use Print / Save as PDF, then send from Outlook with the short email draft.</p>
-  <div class="templateButtonGrid">
-    <button class="primary" id="previewRecommendationTemplate" type="button">Preview recommendation</button>
-    <button class="secondary" id="printRecommendationTemplate" type="button">Print / save as PDF</button>
-    <button class="secondary" id="downloadRecommendationTemplate" type="button">Download HTML copy</button>
-    <button class="secondary" id="openShortRecommendationEmail" type="button">Open Outlook email draft</button>
-    <button class="secondary" id="preparePandaDocQuoteTop" type="button">Prepare PandaDoc quote</button>
-    <button class="secondary" id="downloadEvidenceSoFarTop" type="button">Download evidence so far</button>
-    <button class="primary" id="exportSurveyPackZip" type="button">Export full survey pack ZIP</button>
-  </div>
-  <div class="guide templateNotice" id="templateNotice">The recommendation will use the selected battery brand, panel model, extras, bird protection and SPDs.</div>
-  <div class="guide" id="exportPackNotice">Export pack creates a local ZIP with the recommendation, survey prompt, internal brief, data file, signature and selected site photos/videos.</div>
-</div>
-
-<div class="finishPackCard" id="finishPackCard" hidden>
-  <div class="finishPackGlow"></div>
-  <div class="finishPackHead">
-    <span id="finishPackKicker">Customer pack ready</span>
-    <h2 id="finishPackTitle">Customer pack ready</h2>
-    <p id="finishPackSubtitle">The survey has been saved and the customer pack is ready to use.</p>
-  </div>
-  <div class="finishPackGrid" id="finishPackSummary"></div>
-  <div class="finishChecklist" id="finishChecklist"></div>
-  <div class="finishPackInstructions" id="finishPackInstructions">Create the customer email first, then download the internal pack for records.</div>
-  <div class="finishPackActions">
-    <button class="primary" id="finishOpenEmail" type="button">Create customer email</button>
-    <button class="secondary" id="preparePandaDocQuote" type="button">Prepare PandaDoc quote</button>
-    <button class="secondary" id="downloadEvidenceSoFar" type="button">Download evidence so far</button>
-    <button class="secondary" id="finishDownloadPack" type="button">Download internal pack</button>
-    <button class="secondary" id="finishNextSurvey" type="button">Start next survey</button>
-  </div>
-  <div class="guide" id="finishPackNotice">No pack created yet.</div>
-</div>
-
-</section>
-<section class="panel internalPanel" id="internal">
-<h2>Tools</h2>
-<p class="hint">Job admin, import, internal packs, backups and app maintenance. Saved surveys stay on Start.</p>
-
-<details class="internalGroup toolBox importTool" open>
-<summary>Import</summary>
-<p class="hint">Use this when the survey was not started from the Start page monday customer import.</p>
-<label>monday customer text<textarea id="crmPaste" placeholder="Paste Field,Value CSV, a monday row, or AI text that contains CSV here"></textarea></label>
-<button class="primary" id="importPastedCRM" type="button">Import customer, save survey and open Priorities</button>
-<label class="fileImportLine">Import monday file<input accept=".csv,text/csv" id="mondayImport" type="file"/></label>
-<div class="guide" id="importStatus">No monday customer imported yet.</div>
-<div class="two">
-<label>monday item ID<input id="mondayId" placeholder="Imported from monday where available"/></label>
-<label>Lead source<input id="leadSource" placeholder="Referral, web, showroom, event..."/></label>
-</div>
-<label>Pre-survey interest<textarea id="preInterest" placeholder="Solar, battery, EV, Tesla, Sigenergy, backup, budget or reason for enquiry."></textarea></label>
-<label>Promises already made<textarea id="promisesMade" placeholder="Anything already promised before survey."></textarea></label>
-<label>Customer timescale<input id="timing" placeholder="ASAP, this month, quote comparison, future planning..."/></label>
-<div class="checks">
-<label><input id="askBill" type="checkbox"/> Confirm usage/tariff</label>
-<label><input id="askDecisionMaker" type="checkbox"/> Confirm decision maker</label>
-<label><input id="askCompetitors" type="checkbox"/> Ask competitors</label>
-<label><input id="askTiming" type="checkbox"/> Confirm timing</label>
-<label><input id="askBackup" type="checkbox"/> Clarify backup</label>
-<label><input id="askBudget" type="checkbox"/> Test budget comfort</label>
-</div>
-<div class="two">
-<label>Appointment time<input id="appointmentTime" type="datetime-local"/></label>
-<label>Current CRM status<input id="crmStatus" placeholder="Survey booked, quote sent..."/></label>
-</div>
-<label>Existing notes<textarea id="crmNotes" placeholder="monday notes, call history or pre-survey comments"></textarea></label>
-<label>Known usage / bill notes<textarea id="preUsage" placeholder="Annual kWh, tariff, EV miles, heat pump, bill received..."></textarea></label>
-</details>
-
-<details class="internalGroup toolBox actionTool" open>
-<summary>Next action and sales status</summary>
-<div class="two">
-<label>Sales status<select id="salesStatus">
-<option value="">Select status</option>
-<option>Survey booked</option>
-<option>Survey completed</option>
-<option>Proposal to prepare</option>
-<option>Formal quote needed</option>
-<option>Quote sent</option>
-<option>Follow-up required</option>
-<option>Closed won</option>
-<option>Closed lost</option>
-</select></label>
-<label>Main blocker<select id="mainBlocker">
-<option>None known</option>
-<option>Price</option>
-<option>Timing</option>
-<option>Needs more information</option>
-<option>Competitor quote</option>
-<option>Technical/design concern</option>
-<option>DNO or survey blocker</option>
-</select></label>
-<label>Next action<input id="nextAction" placeholder="Prepare formal quote"/></label>
-<label>Follow-up date<input id="followUp" type="date"/></label>
-<label>Confidence<select id="confidence">
-<option value="">Select confidence</option>
-<option>High</option>
-<option>Medium</option>
-<option>Low</option>
-</select></label>
-</div>
-<label>Gut feel / internal sales note<textarea id="gut" placeholder="Buying signals, objections, urgency, household decision dynamic, quote risk."></textarea></label>
-</details>
-
-<details class="internalGroup toolBox readinessTool">
-<summary>Readiness and completion</summary>
-<button class="primary" id="checkReadiness" type="button">Check job readiness</button>
-<div class="readinessBox" id="readinessBox">Readiness check will show what is ready and what to capture next.</div>
-<button class="primary" id="markSurveyComplete" type="button">Mark survey complete</button>
-</details>
-
-<details class="internalGroup toolBox exportTool" open>
-<summary>Internal pack</summary>
-<p class="hint">Creates one local ZIP for records: customer summary, recommendation, email text, data backup, internal notes and selected site photos/videos.</p>
-<button class="primary" id="toolsExportSurveyPackZip" type="button">Download internal pack ZIP</button>
-<div class="guide" id="toolsExportPackNotice">No internal pack created yet.</div>
-</details>
-
-<details class="internalGroup toolBox managerTool">
-<summary>Manager summary</summary>
-<p class="hint">A short internal outcome summary for pipeline review, follow-up and blockers.</p>
-<button class="primary" id="downloadManagerSummary" type="button">Download manager summary</button>
-<div class="guide" id="managerSummaryNotice">No manager summary downloaded yet.</div>
-</details>
-
-<details class="internalGroup toolBox handoverTool">
-<summary>ChatGPT handover</summary>
-<p class="hint">Copy this into a new ChatGPT chat for that customer. Start the chat with the customer name so ChatGPT titles it clearly.</p>
-<button class="primary" id="copy">Copy ChatGPT customer pack</button>
-<button id="txt">Download notes TXT</button>
-<button class="secondary" id="brief">Download internal brief</button>
-<h2>Preview</h2>
-<pre id="out"></pre>
-</details>
-
-<details class="internalGroup toolBox backupTool">
-<summary>Data and backups</summary>
-<p class="hint">Use these for device backup, recovery or moving saved survey data. Keep this separate from the normal handover tools.</p>
-<button id="json">Download data file</button>
-<button class="secondary" id="exportBackup" type="button">Export saved survey backup</button>
-<label class="importBackupLabel">Import saved survey backup<input accept=".json,application/json" id="importBackup" type="file"/></label>
-</details>
-
-<details class="internalGroup toolBox appTool">
-<summary>App tools</summary>
-<button class="secondary" id="updateApp" type="button">Refresh app version</button>
-<div class="versionBadge" id="appVersionBadge">App version: v69</div>
-</details>
-</section>
-</main>
-<div class="markupModal" id="markupModal" hidden>
-  <div class="markupPanel">
-    <div class="markupHead">
-      <div><b>Mark up photo</b><span>Tap a label, draw a box or line, then save the marked-up copy.</span></div>
-      <button class="secondary smallBtn" id="closeMarkupModal" type="button">Close</button>
-    </div>
-    <div class="markupToolbar">
-      <button type="button" data-markup-label="Gateway location">Gateway</button>
-      <button type="button" data-markup-label="Powerwall3 location">Powerwall3</button>
-      <button type="button" data-markup-label="Cable route">Cable route</button>
-      <button type="button" data-markup-label="Earth rod location">Earth rod</button>
-      <button type="button" data-markup-label="DB location">DB</button>
-      <button type="button" data-markup-label="Incoming supply">Incoming supply</button>
-      <button type="button" data-markup-label="Pipework to move">Pipework</button>
-      <button type="button" data-markup-tool="box">Draw box</button>
-      <button type="button" data-markup-tool="line">Draw line</button>
-    </div>
-    <canvas id="markupCanvas" width="1200" height="900"></canvas>
-    <div class="markupActions">
-      <button class="secondary" id="undoMarkup" type="button">Undo last</button>
-      <button class="primary" id="saveMarkup" type="button">Save marked-up copy</button>
-    </div>
-    <div class="guide" id="markupNotice">Choose a label, then tap the photo where it should go.</div>
-  </div>
-</div>
-<script src="app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
