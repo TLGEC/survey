@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#062819">
-  <meta name="lg-survey-version" content="v2.0.0">
+  <meta name="lg-survey-version" content="v2.1.0">
   <title>LG Survey Pro v2</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
@@ -40,9 +40,9 @@
     <section class="screen active" id="start">
       <div class="hero">
         <div>
-          <span class="kicker">Offline-first rebuild</span>
-          <h2>Start clean. Save always. Export with confidence.</h2>
-          <p>This v2 rebuild gives every survey one permanent ID. Customer details, photos, videos, design, pricing, recommendation and exports all belong to that same survey.</p>
+          <span class="kicker">Home solar survey</span>
+          <h2>Build the right recommendation together.</h2>
+          <p>A clear journey from goals and energy use through to the system design, recommendation and next steps.</p>
         </div>
         <div class="heroActions">
           <button class="primary" id="continueLast">Continue last survey</button>
@@ -52,9 +52,9 @@
 
       <article class="card importCard">
         <span class="step">First action</span>
-        <h3>Paste Monday customer details</h3>
-        <p>Paste normal CSV, Field/Value CSV, or the Monday AI answer with the CSV wrapped in text.</p>
-        <textarea id="mondayPaste" placeholder="Paste Monday AI text or CSV here"></textarea>
+        <h3>Bring in appointment details</h3>
+        <p>Paste the customer details from the booking system to start quickly.</p>
+        <textarea id="mondayPaste" placeholder="Paste booking details or CSV here"></textarea>
         <div class="actionRow">
           <button class="primary" id="importMonday">Import and open customer</button>
           <span id="mondayStatus" class="hint">Nothing imported yet.</span>
@@ -63,17 +63,17 @@
 
       <div class="grid twoCol">
         <article class="card">
-          <h3>Local saved surveys</h3>
-          <p>These are stored on this tablet/browser and work offline after the app has loaded once.</p>
+          <h3>Saved surveys</h3>
+          <p>Continue an existing visit or reopen a recommendation already started on this device.</p>
           <div id="savedSurveys" class="savedList"></div>
         </article>
         <article class="card">
-          <h3>Reliability rules</h3>
+          <h3>How today works</h3>
           <ul class="checkList">
-            <li>New survey means new ID.</li>
-            <li>Photos and videos save immediately to that ID.</li>
-            <li>Manual product, price and panel overrides always win.</li>
-            <li>Closing the tablet midway should reopen the same survey.</li>
+            <li>Understand what matters first.</li>
+            <li>Capture photos, videos and survey notes.</li>
+            <li>Adjust the design together.</li>
+            <li>Leave with a clear recommendation and next step.</li>
           </ul>
           <p class="tiny" id="activeSurveyId">No active survey</p>
         </article>
@@ -83,8 +83,8 @@
     <section class="screen" id="customer">
       <div class="sectionHead">
         <span class="kicker">Customer</span>
-        <h2>Customer and decision context</h2>
-        <p>Capture the blockers early. Finance is here because it can stop a job before design.</p>
+        <h2>Goals and home energy</h2>
+        <p>Start with what matters, how the home uses energy, and anything that should shape the recommendation.</p>
       </div>
       <div class="formGrid">
         <label>Name<input id="customerName" data-bind="customer.name" autocomplete="name"></label>
@@ -100,13 +100,13 @@
         <label>Main goal<textarea data-bind="priorities.wants" placeholder="Lower bills, backup, EV, better monitoring..."></textarea></label>
         <label>Why now?<textarea data-bind="priorities.whyNow"></textarea></label>
         <label>Decision makers<textarea data-bind="priorities.decisionMakers"></textarea></label>
-        <label>Other quotes / competitors<textarea data-bind="priorities.competitors"></textarea></label>
+        <label>Other options being considered<textarea data-bind="priorities.competitors"></textarea></label>
         <label>Timing<input data-bind="priorities.timing"></label>
-        <label>Promises already made<textarea data-bind="priorities.promises"></textarea></label>
+        <label>Anything already discussed<textarea data-bind="priorities.promises"></textarea></label>
       </div>
       <article class="card">
         <h3>Energy and home context</h3>
-        <p>These values feed the customer recommendation, but can be left rough during the first pass.</p>
+        <p>These values help estimate the likely benefit. Rough figures are fine at survey stage.</p>
         <div class="formGrid">
           <label>Annual usage kWh<input id="annualKwh" type="number" inputmode="decimal" data-bind="energy.annualKwh"></label>
           <label>Daily usage kWh<input id="dailyKwh" type="number" inputmode="decimal" data-bind="energy.dailyKwh"></label>
@@ -123,48 +123,42 @@
         </div>
       </article>
       <article class="card">
-        <h3>Finance position</h3>
-        <p>This is surveyor-facing language. Pick the nearest route and note anything sensitive separately.</p>
+        <h3>Project funding</h3>
+        <p>Choose the closest option so the next step is realistic.</p>
         <div class="choiceGrid">
           <label><input type="radio" name="finance" data-bind="priorities.financePlan" value="Own savings / cash">Own savings / cash</label>
           <label><input type="radio" name="finance" data-bind="priorities.financePlan" value="Bank loan arranged">Bank loan arranged</label>
           <label><input type="radio" name="finance" data-bind="priorities.financePlan" value="Exploring lending">Exploring lending</label>
           <label><input type="radio" name="finance" data-bind="priorities.financePlan" value="Needs finance provider">Needs finance provider</label>
         </div>
-        <label>Finance note<textarea data-bind="priorities.financeNote" placeholder="Keep it professional. Example: customer may need third-party finance before proceeding."></textarea></label>
+        <label>Funding note<textarea data-bind="priorities.financeNote" placeholder="Optional note about timing, lender discussions or next steps."></textarea></label>
       </article>
     </section>
 
     <section class="screen" id="survey">
       <div class="sectionHead">
-        <span class="kicker">Field survey</span>
-        <h2>Evidence first</h2>
-        <p>Photos and videos save to the active survey immediately. Use tags as you capture them.</p>
+        <span class="kicker">Home survey</span>
+        <h2>Photos, videos and notes</h2>
+        <p>Capture the key details for the recommendation and installation handover.</p>
       </div>
       <div class="mediaToolbar" id="mediaCategories"></div>
       <input id="mediaInput" type="file" accept="image/*,video/*,.pdf,application/pdf" multiple hidden>
       <div class="mediaCount" id="mediaCount">0 files saved</div>
       <div class="actionRow safetyRow">
-        <button class="secondary" id="downloadFieldPack">Download safety pack now</button>
-        <span class="hint">Use this before leaving site if the customer has not accepted yet.</span>
+        <button class="secondary" id="downloadFieldPack">Download extra copy</button>
+        <span class="hint">Download a copy before leaving if you want an extra local record.</span>
       </div>
       <div class="mediaGrid" id="mediaGrid"></div>
 
-      <div class="formGrid">
-        <label>Roof notes<textarea data-bind="site.roof"></textarea></label>
-        <label>Dimensions / planes note<textarea data-bind="site.dimensions"></textarea></label>
-        <label>Shading / obstructions<textarea data-bind="site.shade"></textarea></label>
-        <label>Battery / inverter location<textarea data-bind="site.batteryLocation"></textarea></label>
-        <label>Meter / CU / supply<textarea data-bind="site.meter"></textarea></label>
-        <label>Cable route<textarea data-bind="site.cableRoute"></textarea></label>
-        <label>Access / scaffold<textarea data-bind="site.access"></textarea></label>
-        <label>Site risk notes<textarea data-bind="site.riskNotes"></textarea></label>
-      </div>
+      <article class="card">
+        <h3>Survey notes</h3>
+        <label>General notes<textarea class="largeNotes" data-bind="site.generalNotes" placeholder="Roof, shading, meter/CU, battery location, cable route, access, scaffold or anything important from the walkthrough."></textarea></label>
+      </article>
       <label class="checkLine"><input type="checkbox" data-check="site.routeAgreed">Route and equipment locations discussed with customer, subject to final checks</label>
 
       <article class="card">
         <div class="splitHead">
-          <div><h3>Roof plane panel fit</h3><p>Use this as a suggestion. Manual panel count in Design always wins.</p></div>
+          <div><h3>Roof plane panel fit</h3><p>This gives a guide. Final panel count can still be adjusted in Design.</p></div>
           <button id="addRoof" class="secondary">Add roof</button>
         </div>
         <div id="roofPlaneList" class="roofList"></div>
@@ -173,9 +167,9 @@
 
     <section class="screen" id="design">
       <div class="sectionHead">
-        <span class="kicker">Design and pricing</span>
-        <h2>Surveyor override always wins</h2>
-        <p>Auto suggestions are useful, but the final product, panel count, battery and price are yours to override.</p>
+        <span class="kicker">Design and recommendation</span>
+        <h2>Shape the right system</h2>
+        <p>Choose the panels, storage and extras, then adjust the customer price if needed.</p>
       </div>
 
       <div class="grid twoCol">
@@ -184,16 +178,19 @@
           <label class="checkLine"><input type="checkbox" data-check="design.solar">Include solar PV</label>
           <label>Panel model<select id="panelModel" data-bind="design.panelKey"></select></label>
           <p class="hint" id="selectedPanelMeta">Panel details</p>
-          <div id="p6DealBox" class="dealBox" hidden>SunPower P6 warehouse deal selected. Manual cost can be edited below.</div>
-          <label>Panel internal cost override<input type="number" inputmode="decimal" data-bind="design.panelCostOverride" placeholder="Leave blank for catalogue"></label>
+          <div id="p6DealBox" class="dealBox" hidden>SunPower P6 warehouse deal selected.</div>
           <label>Manual panel count<input id="panelCount" type="number" inputmode="numeric" data-bind="design.panelCount"></label>
           <div class="suggestionLine"><span id="roofSuggestion">0 panel suggestion</span><button class="secondary smallBtn" id="useRoofSuggestion">Use suggestion</button></div>
           <p class="hint" id="panelCountMode">Manual panel count</p>
-          <label>Panel override reason<textarea data-bind="design.panelOverrideReason" placeholder="Example: roof fits 10, but customer wants 6 due to budget/shading."></textarea></label>
+          <label>Panel note<textarea data-bind="design.panelOverrideReason" placeholder="Example: roof may fit more, but customer prefers a smaller system."></textarea></label>
+          <details class="privateControls">
+            <summary>More settings</summary>
+            <label>Panel cost override<input type="number" inputmode="decimal" data-bind="design.panelCostOverride" placeholder="Leave blank for catalogue"></label>
+            <label>Optimiser adjustment<input type="number" data-bind="design.tigoPrice"></label>
+          </details>
           <label>Mounting / roof type<select id="mounting" data-bind="design.mounting"></select></label>
           <label class="checkLine"><input type="checkbox" data-check="design.tigo">Tigo optimisers</label>
           <label>Tigo quantity<input type="number" data-bind="design.tigoQty"></label>
-          <label>Tigo price each<input type="number" data-bind="design.tigoPrice"></label>
           <label class="checkLine"><input type="checkbox" data-check="design.bird">Bird protection</label>
           <label class="checkLine"><input type="checkbox" data-check="design.spds">SPDs</label>
           <label>Scaffold lifts<input type="number" data-bind="design.scaffoldLifts"></label>
@@ -211,22 +208,28 @@
             <h4>Sigenergy</h4>
             <label>BAT 10 quantity<input type="number" data-bind="design.sig10Qty"></label>
             <label>BAT 6 quantity<input type="number" data-bind="design.sig6Qty"></label>
-            <label>BAT 10 cost<input type="number" data-bind="design.sig10Cost"></label>
-            <label>BAT 6 cost<input type="number" data-bind="design.sig6Cost"></label>
             <label class="checkLine"><input type="checkbox" data-check="design.sigGateway">Gateway included where required</label>
-            <label>Gateway cost<input type="number" data-bind="design.sigGatewayCost"></label>
             <label>Controller mode<select data-bind="design.sigControllerMode"><option value="auto">Auto-size from solar</option><option value="manual">Manual controller</option></select></label>
             <label>Manual controller<select id="sigController" data-bind="design.sigController"></select></label>
+            <details class="privateControls">
+              <summary>More settings</summary>
+              <label>BAT 10 cost<input type="number" data-bind="design.sig10Cost"></label>
+              <label>BAT 6 cost<input type="number" data-bind="design.sig6Cost"></label>
+              <label>Gateway cost<input type="number" data-bind="design.sigGatewayCost"></label>
+            </details>
           </div>
           <div id="teslaConfig" hidden>
             <h4>Tesla</h4>
             <label>Powerwall 3 quantity<input type="number" data-bind="design.teslaPw3Qty"></label>
             <label>DC Expansion quantity<input type="number" data-bind="design.teslaDcQty"></label>
             <label class="checkLine"><input type="checkbox" data-check="design.teslaGateway">Backup Gateway</label>
-            <label>Powerwall 3 internal cost<input type="number" data-bind="design.teslaPw3Cost"></label>
-            <label>DC Expansion internal cost<input type="number" data-bind="design.teslaDcCost"></label>
-            <label>Gateway internal cost<input type="number" data-bind="design.teslaGatewayCost"></label>
-            <label>Tesla discount<input type="number" data-bind="design.teslaDiscount"></label>
+            <details class="privateControls">
+              <summary>More settings</summary>
+              <label>Powerwall 3 cost<input type="number" data-bind="design.teslaPw3Cost"></label>
+              <label>DC Expansion cost<input type="number" data-bind="design.teslaDcCost"></label>
+              <label>Gateway cost<input type="number" data-bind="design.teslaGatewayCost"></label>
+              <label>Tesla discount<input type="number" data-bind="design.teslaDiscount"></label>
+            </details>
           </div>
         </article>
       </div>
@@ -243,10 +246,10 @@
           <label>Other extra price<input type="number" data-bind="design.otherExtraPrice"></label>
         </article>
         <article class="card">
-          <h3>Price override</h3>
-          <label>Manual discount<input type="number" data-bind="design.manualDiscount"></label>
+          <h3>Customer price</h3>
+          <label>Customer discount<input type="number" data-bind="design.manualDiscount"></label>
           <label>Final customer price override<input type="number" data-bind="design.finalPriceOverride" placeholder="Leave 0 for calculated"></label>
-          <label>Commercial note<textarea data-bind="design.commercialNote"></textarea></label>
+          <label>Recommendation note<textarea data-bind="design.commercialNote"></textarea></label>
           <button class="primary" id="calculateQuote">Refresh pricing</button>
           <div id="quoteLive" class="quoteBox"></div>
         </article>
@@ -257,29 +260,25 @@
       <div class="sectionHead">
         <span class="kicker">Customer recommendation</span>
         <h2>Clean view for the customer</h2>
-        <p>This is the nice-looking result colleagues can use without ChatGPT.</p>
+        <p>A simple customer view to talk through before sending the next step.</p>
       </div>
       <div id="recommendationCard"></div>
-      <details class="card">
-        <summary>Internal pricing breakdown</summary>
-        <div id="internalBreakdown" class="quoteBox"></div>
-      </details>
     </section>
 
     <section class="screen" id="finish">
       <div class="sectionHead">
-        <span class="kicker">Finish</span>
-        <h2>Acceptance and pack</h2>
-        <p>Save the outcome, copy the email, and download the survey pack with photos/videos.</p>
+        <span class="kicker">Next step</span>
+        <h2>Send the recommendation</h2>
+        <p>Open an email to the customer with the recommendation summary ready to go.</p>
       </div>
       <div class="grid twoCol">
         <article class="card">
-          <h3>Outcome</h3>
-          <label>Customer view<select data-bind="acceptance.customerView"><option>Interested</option><option>Accepted survey recommendation</option><option>Needs time</option><option>Follow-up required</option><option>Not proceeding</option></select></label>
-          <label>Blocker / question<textarea data-bind="acceptance.blocker"></textarea></label>
+          <h3>Next step</h3>
+          <label>Where we are<select data-bind="acceptance.customerView"><option>Interested</option><option>Happy with recommendation</option><option>Needs time</option><option>Follow-up required</option><option>Not proceeding</option></select></label>
+          <label>Question or follow-up<textarea data-bind="acceptance.blocker"></textarea></label>
           <label>Next action<input data-bind="acceptance.nextAction"></label>
           <label>Follow-up date<input type="date" data-bind="acceptance.followUp"></label>
-          <label>Acceptance note<textarea data-bind="acceptance.note"></textarea></label>
+          <label>Extra note<textarea data-bind="acceptance.note"></textarea></label>
         </article>
         <article class="card">
           <h3>Signature</h3>
@@ -291,14 +290,14 @@
         </article>
       </div>
       <article class="card">
-        <h3>Outlook-ready email</h3>
+        <h3>Email recommendation</h3>
         <textarea id="emailDraft"></textarea>
         <div class="actionRow">
-          <button class="secondary" id="copyEmail">Copy email text</button>
-          <button class="secondary" id="copyHtmlEmail">Copy designed email body</button>
-          <button class="primary" id="downloadPack">Download survey pack ZIP</button>
+          <button class="primary" id="sendRecommendationEmail">Open email to customer</button>
+          <button class="secondary" id="copyHtmlEmail">Copy designed recommendation</button>
+          <button class="primary" id="downloadPack">Download full copy</button>
         </div>
-        <div id="finishNotice" class="notice">No pack created yet.</div>
+        <div id="finishNotice" class="notice">No copy downloaded yet.</div>
       </article>
     </section>
 
@@ -306,7 +305,7 @@
       <div class="sectionHead">
         <span class="kicker">Tools</span>
         <h2>Minimal admin</h2>
-        <p>No dev clutter. Just backup, app status and pricing reference.</p>
+        <p>Backup, app status and pricing reference.</p>
       </div>
       <div class="grid twoCol">
         <article class="card">
@@ -316,7 +315,7 @@
         </article>
         <article class="card">
           <h3>App status</h3>
-          <p>Version: <b>v2.0.0</b></p>
+          <p>Version: <b>v2.1.0</b></p>
           <p>Offline boot: app shell, styles, logic and assets are cached after first load.</p>
           <p>Pricing updates: edit the catalogue in <code>app.js</code> at the top, then publish.</p>
         </article>

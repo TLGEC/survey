@@ -675,6 +675,29 @@ main {
   font-weight: 900;
 }
 
+.largeNotes {
+  min-height: 190px;
+}
+
+.privateControls {
+  margin: 14px 0;
+  border: 1px dashed #b9cdbf;
+  border-radius: 18px;
+  background: #f8fcf7;
+}
+
+.privateControls summary {
+  cursor: pointer;
+  padding: 13px 15px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.privateControls label {
+  margin: 0 14px 14px;
+}
+
 .batteryCards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

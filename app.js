@@ -1,4 +1,4 @@
-const APP_VERSION = 'v2.0.0';
+const APP_VERSION = 'v2.1.0';
 const DB_NAME = 'lg-survey-pro-v2';
 const DB_VERSION = 1;
 const ACTIVE_SURVEY_KEY = 'lg-v2-active-survey-id';
@@ -94,7 +94,7 @@ function defaultSurvey() {
     priorities: { wants:'', whyNow:'', financePlan:'', financeNote:'', timing:'', decisionMakers:'', competitors:'', promises:'', blockers:'' },
     energy: { annualKwh:'', dailyKwh:'', annualSpend:'', importRate:28, peak:'', offpeak:'', exportRate:15, selfUsePct:75, heatPump:false, highEvening:false, backup:false, ev:false },
     site: {
-      roof:'', dimensions:'', shade:'', batteryLocation:'', inverterLocation:'', meter:'', cableRoute:'', access:'', riskNotes:'', routeAgreed:false,
+      generalNotes:'', roof:'', dimensions:'', shade:'', batteryLocation:'', inverterLocation:'', meter:'', cableRoute:'', access:'', riskNotes:'', routeAgreed:false,
       roofPlanes: [{ id: uid('roof'), name:'Main roof', width:'', slope:'', pitch:'', azimuth:'', suggestedPanels:0, manualPanels:'' }]
     },
     design: {
@@ -107,7 +107,7 @@ function defaultSurvey() {
       zappiPrice:900, eddiPrice:0, otherExtraName:'', otherExtraPrice:0,
       manualDiscount:0, finalPriceOverride:0, commercialNote:''
     },
-    acceptance: { customerView:'Interested', status:'Open', blocker:'', nextAction:'Send formal quote', followUp:'', note:'', signatureData:'', acceptedAt:'' }
+    acceptance: { customerView:'Interested', status:'Open', blocker:'', nextAction:'Send recommendation and next steps', followUp:'', note:'', signatureData:'', acceptedAt:'' }
   };
 }
 
@@ -305,7 +305,7 @@ function setSaveStatus(text) {
 function go(panel) {
   $$('.navBtn').forEach(btn => btn.classList.toggle('active', btn.dataset.panel === panel));
   $$('.screen').forEach(section => section.classList.toggle('active', section.id === panel));
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.scrollTo({ top: 0, behavior: 'auto' });
   if (panel === 'recommend') renderRecommendation();
   if (panel === 'finish') renderEmailDraft();
 }
@@ -369,7 +369,7 @@ function updateRoofResultText() {
     const roof = state.survey.site.roofPlanes[number(card.dataset.roofIndex)];
     const result = card.querySelector('.roofResult');
     const manual = number(roof?.manualPanels);
-    if (result) result.textContent = `Suggestion: ${roof?.suggestedPanels || 0} panels. ${manual ? `Using manual value: ${manual}.` : 'Manual value always wins.'}`;
+    if (result) result.textContent = `Suggestion: ${roof?.suggestedPanels || 0} panels. ${manual ? `Using manual count: ${manual}.` : 'Enter a manual count if you want to adjust it.'}`;
     const overrideInput = card.querySelector('[data-roof-field="manualPanels"]');
     if (overrideInput) overrideInput.placeholder = String(roof?.suggestedPanels || 0);
   });
@@ -388,7 +388,7 @@ function renderRoofPlanes() {
       <label>Pitch degrees<input data-roof-field="pitch" type="number" value="${esc(roof.pitch || '')}"></label>
       <label>Azimuth<input data-roof-field="azimuth" type="number" value="${esc(roof.azimuth || '')}"></label>
       <label>Panels here override<input data-roof-field="manualPanels" type="number" value="${esc(roof.manualPanels || '')}" placeholder="${roof.suggestedPanels || 0}"></label>
-      <div class="roofResult">Suggestion: ${roof.suggestedPanels || 0} panels. Manual value always wins.</div>
+      <div class="roofResult">Suggestion: ${roof.suggestedPanels || 0} panels. Enter a manual count if you want to adjust it.</div>
     </div>
   `).join('');
 }
@@ -400,7 +400,7 @@ function renderDesign() {
   const suggestion = roofSuggestionTotal();
   $('roofSuggestion').textContent = `${suggestion} panel suggestion from roof measurements`;
   $('panelCountMode').textContent = s.design.panelCountMode === 'auto' ? 'Using roof suggestion' : 'Manual panel count';
-  $('selectedPanelMeta').textContent = `${p.name} | ${p.watts}W | ${p.heightMm} x ${p.widthMm} mm | internal ${money(p.cost)}`;
+  $('selectedPanelMeta').textContent = `${p.name} | ${p.watts}W | ${p.heightMm} x ${p.widthMm} mm`;
   $('p6DealBox').hidden = p.key !== 'sunpowerP6_405';
   $$('[data-battery-card]').forEach(card => {
     const selected = card.dataset.batteryCard === s.design.batteryBrand;
@@ -544,17 +544,28 @@ function scaffoldCost(lifts, hasSolar) {
 }
 
 function quoteCardHtml(q) {
+  const perf = estimatePerformance(q);
   return `
     <div class="quoteBig">${money(q.total)}</div>
-    <div class="muted">${q.override ? 'Manual final price override active' : `Calculated from ${CATALOG.pricingVersion}`}</div>
+    <div class="muted">${q.override ? 'Customer price set for this recommendation' : 'Customer proposal guide, subject to final checks'}</div>
     <div class="quoteGrid">
-      <span>${q.panelCount} x ${esc(q.panel.name)}</span><b>${q.kWp.toFixed(2)} kWp</b>
-      <span>Battery</span><b>${esc(q.batteryText)}</b>
-      <span>Mounting</span><b>${esc(state.survey.design.mounting)}</b>
-      <span>Labour</span><b>${money(q.labour)}</b>
-      <span>Scaffold/access</span><b>${money(q.scaffold)}</b>
-      <span>Extras</span><b>${money(q.ev + q.eddi + q.otherExtra + q.bird)}</b>
+      <span>Solar PV</span><b>${q.panelCount} x ${esc(q.panel.name)} (${q.kWp.toFixed(2)} kWp)</b>
+      <span>Storage</span><b>${esc(q.batteryText)}</b>
+      <span>Estimated generation</span><b>${perf.generation.toLocaleString('en-GB')} kWh/year</b>
+      <span>Estimated benefit</span><b>${money(perf.annualBenefit)} / year</b>
+      <span>Included</span><b>${esc(customerIncludedText(q))}</b>
+      <span>Next step</span><b>Subject to final technical checks</b>
     </div>`;
+}
+
+function customerIncludedText(q) {
+  const included = [];
+  if (q.hasSolar) included.push('solar design');
+  if (q.hasBattery) included.push('battery storage');
+  if (state.survey?.design?.bird) included.push('bird protection');
+  if (state.survey?.design?.ev) included.push('EV charger');
+  if (state.survey?.design?.eddi) included.push('hot water diverter');
+  return included.join(', ') || 'recommendation to be confirmed';
 }
 
 function renderRecommendation() {
@@ -572,7 +583,7 @@ function renderRecommendation() {
       <div class="docGrid">
         <div><small>Recommended system</small><b>${q.panelCount} x ${esc(q.panel.name)}</b><span>${q.kWp.toFixed(2)} kWp solar PV</span></div>
         <div><small>Storage</small><b>${esc(q.batteryText)}</b><span>${q.controllerText ? esc(q.controllerText) : 'Battery route can be adjusted'}</span></div>
-        <div><small>Proposal position</small><b>${money(q.total)}</b><span>${q.override ? 'Manual price agreed by surveyor' : 'Subject to final checks'}</span></div>
+        <div><small>Proposal position</small><b>${money(q.total)}</b><span>Subject to final checks</span></div>
       </div>
       <div class="docBenefits">
         <div><small>Estimated generation</small><b>${perf.generation.toLocaleString('en-GB')} kWh/year</b></div>
@@ -583,11 +594,11 @@ function renderRecommendation() {
       <p>${esc(s.priorities.wants || 'The recommendation is based on the goals and site details captured during the survey.')}</p>
       <ul>
         <li>${esc(customerFitLine(s, q))}</li>
-        <li>Photos and videos are saved to this survey for the handover pack.</li>
+        <li>Designed around the priorities and site details discussed today.</li>
         <li>Final design remains subject to technical checks, access and DNO where required.</li>
       </ul>
     </section>`;
-  $('internalBreakdown').innerHTML = quoteCardHtml(q);
+  if ($('internalBreakdown')) $('internalBreakdown').innerHTML = quoteCardHtml(q);
   renderEmailDraft();
 }
 
@@ -610,6 +621,21 @@ function customerFitLine(s, q) {
   if (s.energy?.backup) bits.push('backup requirement considered');
   if (s.energy?.ev || s.design?.ev) bits.push('EV usage considered');
   return bits.length ? `Recommended route: ${bits.join(', ')}.` : 'The final route can be adjusted from the survey data.';
+}
+
+function siteNotes() {
+  const site = state.survey?.site || {};
+  if (clean(site.generalNotes)) return clean(site.generalNotes);
+  return [
+    site.roof && `Roof: ${site.roof}`,
+    site.dimensions && `Dimensions: ${site.dimensions}`,
+    site.shade && `Shading: ${site.shade}`,
+    site.batteryLocation && `Battery/inverter: ${site.batteryLocation}`,
+    site.meter && `Meter/CU: ${site.meter}`,
+    site.cableRoute && `Cable route: ${site.cableRoute}`,
+    site.access && `Access: ${site.access}`,
+    site.riskNotes && `Notes: ${site.riskNotes}`
+  ].filter(Boolean).join('\n');
 }
 
 function syncUsage(changed) {
@@ -783,21 +809,38 @@ async function removeMedia(id) {
 
 function renderEmailDraft() {
   if (!state.survey) return;
+  $('emailDraft').value = recommendationEmailPlainText();
+}
+
+function recommendationEmailPlainText() {
   const s = state.survey;
   const q = calculateQuote();
-  $('emailDraft').value = [
+  const perf = estimatePerformance(q);
+  return [
     `Hi ${firstName(s.customer.name) || 'there'},`,
     '',
     'Thank you for going through the survey.',
     '',
-    `I have attached the survey recommendation pack for ${s.customer.address || 'your property'}. The current proposal position is ${money(q.total)}, subject to final technical checks.`,
+    `Based on what we discussed, the current recommendation for ${s.customer.address || 'your property'} is:`,
     '',
-    s.acceptance.nextAction || 'I will send the formal quote and next steps.',
+    `Solar PV: ${q.panelCount} x ${q.panel.name} (${q.kWp.toFixed(2)} kWp)`,
+    `Storage: ${q.batteryText}`,
+    `Estimated generation: ${perf.generation.toLocaleString('en-GB')} kWh/year`,
+    `Estimated benefit: ${money(perf.annualBenefit)} per year`,
+    `Proposal position: ${money(q.total)}, subject to final technical checks.`,
+    '',
+    s.acceptance.nextAction || 'I will send the recommendation and next steps.',
     '',
     'Kind regards,',
     'James Cooling',
     'The Little Green Energy Company'
   ].join('\n');
+}
+
+function emailSubject() {
+  const s = state.survey;
+  const target = s.customer.address || s.customer.name || 'your home';
+  return `Solar recommendation for ${target}`;
 }
 
 function firstName(name) {
@@ -815,7 +858,7 @@ function customerRecommendationHtml() {
   return `<!doctype html><html><head><meta charset="utf-8"><title>Survey recommendation</title><style>${documentCssForExport()}</style></head><body>${$('recommendationCard').innerHTML}</body></html>`;
 }
 
-async function copyDesignedEmail() {
+async function copyRecommendationHtmlToClipboard() {
   if (!state.survey) return;
   const html = customerRecommendationHtml();
   const plain = $('emailDraft').value;
@@ -827,14 +870,35 @@ async function copyDesignedEmail() {
           'text/plain': new Blob([plain], { type:'text/plain' })
         })
       ]);
-      $('finishNotice').innerHTML = '<b>Designed email copied.</b> Paste into Outlook to keep the styled recommendation.';
-      return;
+      return true;
     }
   } catch (error) {
     console.warn('HTML clipboard failed, falling back to plain text', error);
   }
   await navigator.clipboard?.writeText(plain);
-  $('finishNotice').innerHTML = '<b>Email text copied.</b> Styled HTML copy was not available in this browser.';
+  return false;
+}
+
+async function copyDesignedEmail() {
+  const rich = await copyRecommendationHtmlToClipboard();
+  $('finishNotice').innerHTML = rich
+    ? '<b>Designed email copied.</b> Paste into Outlook to keep the styled recommendation.'
+    : '<b>Email text copied.</b> Styled HTML copy was not available in this browser.';
+}
+
+async function sendRecommendationEmail() {
+  if (!state.survey) await startSurvey();
+  await flushSave();
+  renderEmailDraft();
+  const rich = await copyRecommendationHtmlToClipboard();
+  window.location.href = recommendationMailto();
+  $('finishNotice').innerHTML = '<b>Email opened.</b> ' +
+    (rich ? 'The designed recommendation is also copied, so you can paste it into Outlook if the email opens as plain text.' : 'The recommendation summary has been added as plain text.');
+}
+
+function recommendationMailto() {
+  const to = clean(state.survey?.customer?.email);
+  return `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(emailSubject())}&body=${encodeURIComponent(recommendationEmailPlainText())}`;
 }
 
 function internalSummaryText() {
@@ -850,12 +914,7 @@ function internalSummaryText() {
     `Finance: ${s.priorities.financePlan} ${s.priorities.financeNote}`,
     `Decision makers: ${s.priorities.decisionMakers}`,
     '',
-    `Roof: ${s.site.roof}`,
-    `Shading: ${s.site.shade}`,
-    `Battery location: ${s.site.batteryLocation}`,
-    `Meter/CU: ${s.site.meter}`,
-    `Cable route: ${s.site.cableRoute}`,
-    `Access: ${s.site.access}`,
+    `Survey notes: ${siteNotes()}`,
     '',
     `Design: ${q.panelCount} x ${q.panel.name} (${q.kWp.toFixed(2)} kWp)`,
     `Battery: ${q.batteryText}`,
@@ -1196,8 +1255,9 @@ function setupEvents() {
   $('downloadPack').addEventListener('click', exportPack);
   $('downloadFieldPack')?.addEventListener('click', exportPack);
   $('downloadBackup').addEventListener('click', exportBackup);
-  $('copyEmail').addEventListener('click', () => navigator.clipboard?.writeText($('emailDraft').value));
+  $('copyEmail')?.addEventListener('click', () => navigator.clipboard?.writeText($('emailDraft').value));
   $('copyHtmlEmail')?.addEventListener('click', copyDesignedEmail);
+  $('sendRecommendationEmail')?.addEventListener('click', sendRecommendationEmail);
   $('closeMarkup').addEventListener('click', () => $('markupModal').hidden = true);
   $('saveMarkup').addEventListener('click', saveMarkupCopy);
   $('undoMarkup').addEventListener('click', () => { markup.actions.pop(); drawMarkup(); });
@@ -1227,9 +1287,9 @@ async function init() {
 function populateCatalogControls() {
   $('panelModel').innerHTML = Object.entries(CATALOG.panels).map(([key, p]) => `<option value="${key}">${p.name}</option>`).join('');
   $('mounting').innerHTML = Object.keys(CATALOG.mounting).map(name => `<option>${name}</option>`).join('');
-  $('sigController').innerHTML = CATALOG.sigenergy.controllers.map(c => `<option value="${c.id}">${c.name} - ${money(c.cost)}</option>`).join('');
+  $('sigController').innerHTML = CATALOG.sigenergy.controllers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
   $('mediaCategories').innerHTML = MEDIA_CATEGORIES.map(c => `<button class="mediaCat" data-cat="${esc(c)}">${esc(c)}</button>`).join('');
 }
 
 document.addEventListener('DOMContentLoaded', init);
-window.LGV2 = { calculateQuote, estimatePerformance, exportPack, loadSurvey, listSurveys, startSurvey, addMedia, mediaForSurvey, objectFromMonday, CATALOG };
+window.LGV2 = { calculateQuote, estimatePerformance, exportPack, loadSurvey, listSurveys, startSurvey, addMedia, mediaForSurvey, objectFromMonday, recommendationEmailPlainText, recommendationMailto, CATALOG };
