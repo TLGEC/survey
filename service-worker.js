@@ -1,8 +1,10 @@
-const CACHE = 'lg-survey-pro-v2-2026-07-17-1';
+const CACHE = 'lg-survey-pro-v3-2026-08-06-2';
 const APP_SHELL = [
   './',
   './index.html',
   './styles.css',
+  './catalog.js',
+  './storage.js',
   './app.js',
   './manifest.json',
   './icon.svg',
@@ -53,7 +55,7 @@ async function networkFirst(request, fallbackUrl) {
     if (response && response.ok) cache.put(request, response.clone());
     return response;
   } catch (error) {
-    return (await cache.match(request)) || cache.match(fallbackUrl);
+    return (await cache.match(request)) || cache.match(fallbackUrl) || new Response('LG Survey Pro is not cached on this device yet.', { status: 503, headers: { 'Content-Type': 'text/plain' } });
   }
 }
 

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#062819">
-  <title>LG Survey Pro v2 reset</title>
+  <title>LG Survey Pro V3 reset</title>
   <style>
     :root{--deep:#062819;--green:#0b7a46;--lime:#8fd02a;--line:#d8e5dc;--muted:#64786e}
     *{box-sizing:border-box}
@@ -21,7 +21,7 @@
 </head>
 <body>
   <main class="card">
-    <small>LG Survey Pro v2</small>
+    <small>LG Survey Pro V3</small>
     <h1>Reset this tablet cache</h1>
     <p>Use this if the app is stuck on an old version, will not boot offline, or still shows v69 after publishing.</p>
     <button id="cache">Update app cache only</button>
@@ -34,7 +34,7 @@
     const DB_NAME = 'lg-survey-pro-v2';
     const statusBox = document.getElementById('status');
     const log = text => { statusBox.textContent += `\n${text}`; };
-    const appUrl = () => `./?v2reset=${Date.now()}`;
+    const appUrl = () => `./?v3reset=${Date.now()}`;
 
     async function cleanAppShell() {
       log('Removing service workers...');
@@ -58,7 +58,7 @@
     }
 
     async function clearSurveyData() {
-      log('Clearing v2 survey database...');
+      log('Clearing the survey database...');
       await deleteDb(DB_NAME);
       if (indexedDB.databases) {
         const dbs = await indexedDB.databases();
