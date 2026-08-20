@@ -7,15 +7,19 @@ LG Survey Pro V3 is an offline-first customer journey and technical solar survey
 - Imports one or more Monday.com appointments from an original CSV or an AI-wrapped CSV response.
 - Keeps imported values for traceability and avoids overwriting unrelated local survey work.
 - Separates a practical Surveyor View from a polished Customer View.
+- Keeps tablet pages short with focused subsection tabs and moves the imported-customer start action to the top.
+- Uses quick-tap choices for common discovery answers and limits each major working area to one notes box.
 - Saves every meaningful change to IndexedDB and restores an interrupted visit.
 - Stores each customer's photos and videos against that survey ID.
-- Calculates portrait and landscape roof fit using the selected panel dimensions and preferred 400 mm edge margins.
+- Calculates portrait, landscape and genuine mixed-orientation roof fit using the selected panel dimensions, 30 mm installation gaps and preferred 400 mm edge margins.
+- Suggests a battery capacity from recorded consumption, usage profile, tariff strategy, backup needs and expected future loads, while keeping application of the suggestion explicit.
 - Prevents a solar price from appearing before roof-fit validation.
 - Allows explicit surveyor overrides with recorded reasons and warnings.
 - Generates separate customer, technical survey and CRM outputs.
 - Prepares a plain-text customer email for the device's default email application.
 - Queues formal-quote handoffs when the device is offline.
 - Stores privacy-conscious visit metrics locally on the device.
+- Includes the proposed panel layout in both customer and internal outputs.
 
 ## Pricing authority
 

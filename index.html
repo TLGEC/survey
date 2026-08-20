@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#082c1c">
-  <meta name="lg-survey-version" content="v3.0.0">
+  <meta name="lg-survey-version" content="v3.1.0">
   <title>LG Survey Pro V3</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="manifest" href="manifest.json">
@@ -42,6 +42,7 @@
       <button class="navBtn" data-panel="complete"><span>5</span>Complete</button>
       <button class="navBtn" data-panel="tools"><span>6</span>Tools</button>
     </nav>
+    <nav class="pageShortcuts" id="pageShortcuts" aria-label="Shortcuts within this page"></nav>
 
     <main class="surveyorMain">
       <section class="screen active" id="prepare">
@@ -77,8 +78,12 @@
               <div><h3>What V3 found</h3><p id="importSummary">Review the detected information.</p></div>
               <button class="ghost" id="cancelImport">Clear preview</button>
             </div>
-            <div id="columnMapping" class="mappingGrid"></div>
+            <p class="shortcutPrompt">Choose the customer and start immediately.</p>
             <div id="importRecords" class="recordGrid"></div>
+            <details class="mappingDetails">
+              <summary>Check or change detected columns</summary>
+              <div id="columnMapping" class="mappingGrid"></div>
+            </details>
           </div>
         </article>
 
@@ -107,13 +112,13 @@
           <button class="customerLaunch" data-open-customer-stage="welcome">Present to customer</button>
         </div>
 
-        <article class="card" id="previsitCard">
+        <article class="card" id="previsitCard" data-shortcut-label="Summary">
           <div class="cardHead"><div><span class="kicker">Pre-visit summary</span><h3 id="previsitName">No customer selected</h3></div><span class="sourceBadge" id="previsitSource">Not imported</span></div>
           <div id="previsitSummary" class="summaryGrid"></div>
           <div id="missingInfo" class="notice soft">Start or import a visit to see what still needs collecting.</div>
         </article>
 
-        <div class="grid twoCol">
+        <div class="grid twoCol" id="customerDetails" data-shortcut-label="Details" data-shortcut-default>
           <article class="card">
             <h3>Customer and appointment</h3>
             <div class="formGrid compactFields">
@@ -121,35 +126,30 @@
               <label>Email<input data-bind="customer.email" type="email" autocomplete="email"></label>
               <label>Phone<input data-bind="customer.phone" inputmode="tel" autocomplete="tel"></label>
               <label>Appointment<input data-bind="customer.appointmentTime"></label>
-              <label class="wide">Address<textarea data-bind="customer.address" autocomplete="street-address"></textarea></label>
+              <label class="wide">Address<input data-bind="customer.address" autocomplete="street-address"></label>
               <label>Opportunity stage<input data-bind="customer.crmStatus"></label>
               <label>Monday item ID<input data-bind="customer.mondayId"></label>
-              <label class="wide">Imported notes<textarea data-bind="customer.notes"></textarea></label>
+              <label class="wide">Imported notes<input data-bind="customer.notes"></label>
             </div>
           </article>
 
           <article class="card">
             <h3>Decision context</h3>
-            <div class="formGrid compactFields">
-              <label>Who else is involved?<textarea data-bind="priorities.decisionMakers"></textarea></label>
-              <label>Preferred timescale<input data-bind="priorities.timing" placeholder="For example, before winter"></label>
-              <label>Main concern<textarea data-bind="priorities.mainConcern"></textarea></label>
-              <label>Customer's own words<textarea data-bind="priorities.ownWords"></textarea></label>
-            </div>
+            <span class="fieldLabel">Who else is involved?</span><div id="decisionMakerChoices" class="quickChoices"></div>
+            <label>Names or details, when useful<input data-bind="priorities.decisionMakers"></label>
+            <span class="fieldLabel">Preferred timescale</span><div id="timescaleChoices" class="quickChoices"></div>
+            <span class="fieldLabel">Main concern</span><div id="initialConcernChoices" class="quickChoices"></div>
           </article>
         </div>
 
-        <article class="card">
+        <article class="card" id="customerPriorities" data-shortcut-label="Priorities">
           <div class="cardHead"><div><span class="kicker">Priorities</span><h3>What prompted the customer to look now?</h3></div><span class="hint">Choose more than one, then select the main priority.</span></div>
           <div id="priorityChoices" class="tileChoices"></div>
           <div id="primaryPriorityChoices" class="primaryPicker"></div>
-          <div class="formGrid">
-            <label>What would a good result look like?<textarea data-bind="priorities.goodResult"></textarea></label>
-            <label>Why now?<textarea data-bind="priorities.whyNow"></textarea></label>
-          </div>
+          <label>Discovery notes<textarea data-bind="priorities.ownWords" placeholder="Capture only what is specific to this customer: their words, what a good result looks like, or anything not covered above."></textarea></label>
         </article>
 
-        <div class="grid twoCol">
+        <div class="grid twoCol" id="customerEnergy" data-shortcut-label="Energy & funding">
           <article class="card">
             <h3>Energy use</h3>
             <div class="formGrid compactFields">
@@ -159,8 +159,10 @@
               <label>Annual electricity spend (£)<input data-bind="energy.annualSpend" type="number" inputmode="decimal"></label>
               <label>Import rate (p/kWh)<input data-bind="energy.importRate" type="number" inputmode="decimal"></label>
               <label>Export rate (p/kWh)<input data-bind="energy.exportRate" type="number" inputmode="decimal"></label>
-              <label>Daytime use<input data-bind="energy.daytimeUse" placeholder="Low, medium, high or known kWh"></label>
-              <label>Overnight use<input data-bind="energy.overnightUse" placeholder="Low, medium, high or known kWh"></label>
+              <div><span class="fieldLabel">Daytime use</span><div id="daytimeUseChoices" class="quickChoices"></div></div>
+              <div><span class="fieldLabel">Evening / overnight use</span><div id="overnightUseChoices" class="quickChoices"></div></div>
+              <div class="wide"><span class="fieldLabel">Tariff goal</span><div id="tariffStrategyChoices" class="quickChoices"></div></div>
+              <label>Battery tariff use<select data-bind="energy.arbitrage"><option value="false">No planned tariff charging</option><option value="true">Use off-peak / flexible tariff charging</option></select></label>
             </div>
             <div class="toggleGrid">
               <label><input type="checkbox" data-check="energy.ev">EV now or planned</label>
@@ -168,14 +170,14 @@
               <label><input type="checkbox" data-check="energy.backup">Backup matters</label>
               <label><input type="checkbox" data-check="energy.existingSolar">Existing solar</label>
             </div>
-            <label>Future changes and tariff strategy<textarea data-bind="energy.futureChanges"></textarea></label>
+            <label>Other future changes<input data-bind="energy.futureChanges" placeholder="Only add something not covered above"></label>
           </article>
 
           <article class="card">
             <h3>Project funding</h3>
             <p>Position this as planning the right next step, not as a finance pitch.</p>
             <div id="fundingChoices" class="stackChoices"></div>
-            <label>Funding note<textarea data-bind="priorities.financeNote"></textarea></label>
+            <label>Funding detail, if needed<input data-bind="priorities.financeNote"></label>
           </article>
         </div>
         <div class="pageActions"><button class="primary" data-next-panel="property">Continue to property survey</button></div>
@@ -192,12 +194,12 @@
           <button class="primary" id="validateRoof">Validate roof fit</button>
         </div>
 
-        <article class="card">
-          <div class="splitHead"><div><span class="kicker">Roof areas</span><h3>Panel-fit measurements</h3><p>V3 tests portrait and landscape using the selected panel dimensions and preferred edge margins.</p></div><button class="secondary" id="addRoof">Add roof area</button></div>
+        <article class="card" id="roofAreas" data-shortcut-label="Roof" data-shortcut-default>
+          <div class="splitHead"><div><span class="kicker">Roof areas</span><h3>Panel-fit measurements</h3><p>V3 compares portrait, landscape and mixed layouts using the selected panel dimensions and preferred edge margins.</p></div><button class="secondary" id="addRoof">Add roof area</button></div>
           <div id="roofPlaneList" class="roofList"></div>
         </article>
 
-        <div class="grid twoCol">
+        <div class="grid twoCol" id="propertyDetails" data-shortcut-label="Install & media">
           <article class="card">
             <h3>Installation details</h3>
             <div class="formGrid compactFields">
@@ -205,10 +207,10 @@
               <label>Roof covering<input data-bind="site.roofCovering" placeholder="Tile, slate, metal..."></label>
               <label>Cable distance (approx. m)<input data-bind="site.cableDistance" type="number" inputmode="decimal"></label>
               <label>Scaffold requirement<select data-bind="site.scaffoldRequirement"><option value="Auto from roof width">Auto from roof width</option><option value="One lift">One lift</option><option value="Two lifts">Two lifts</option><option value="Survey dependent">Survey dependent</option><option value="Not required">Not required</option></select></label>
-              <label>Battery / inverter location<textarea data-bind="site.batteryLocation"></textarea></label>
-              <label>Cable route<textarea data-bind="site.cableRoute"></textarea></label>
-              <label>Access and scaffold<textarea data-bind="site.access"></textarea></label>
-              <label>Constraints / checks outstanding<textarea data-bind="site.outstandingChecks"></textarea></label>
+              <label>Battery / inverter location<input data-bind="site.batteryLocation"></label>
+              <label>Cable route<input data-bind="site.cableRoute"></label>
+              <label>Access and scaffold<input data-bind="site.access"></label>
+              <label>Checks outstanding<input data-bind="site.outstandingChecks"></label>
             </div>
             <label class="checkLine"><input type="checkbox" data-check="site.routeAgreed">Proposed route and equipment locations discussed, subject to final checks</label>
             <label>General survey notes<textarea class="largeNotes" data-bind="site.generalNotes"></textarea></label>
@@ -238,7 +240,7 @@
           <button data-system-type="battery-only">Battery only</button>
         </div>
 
-        <div class="grid twoCol">
+        <div class="grid twoCol" id="systemDesign" data-shortcut-label="System" data-shortcut-default>
           <article class="card" id="solarDesignCard">
             <div class="cardHead"><div><span class="kicker">Solar design</span><h3>Panel layout</h3></div><span id="roofFitPill" class="sourceBadge">Not validated</span></div>
             <label>Panel model<select id="panelModel" data-bind="design.panelKey"></select></label>
@@ -250,7 +252,7 @@
               <button data-step-panel="1" aria-label="Add one panel">+</button>
             </div>
             <div class="suggestionBar"><span id="roofSuggestion">No roof suggestion yet</span><button id="useRoofSuggestion" class="secondary small">Use fit result</button></div>
-            <label>Reason for manual count<textarea data-bind="design.panelOverrideReason" placeholder="Required when the selected count differs from the validated fit."></textarea></label>
+            <label>Reason for manual count<input data-bind="design.panelOverrideReason" placeholder="Required when the selected count differs from the validated fit."></label>
             <div class="formGrid compactFields">
               <label>Mounting / roof type<select id="mounting" data-bind="design.mounting"></select></label>
               <label>Panel orientation<select data-bind="design.orientation"><option>Best fit</option><option>Portrait</option><option>Landscape</option><option>Mixed</option></select></label>
@@ -284,17 +286,19 @@
               <label class="checkLine"><input type="checkbox" data-check="design.teslaGateway">Gateway included</label>
               <p class="hint">Current Powerwall prices are configured with no rebate.</p>
             </div>
-            <label>Why this battery size?<textarea data-bind="design.batteryReason"></textarea></label>
+            <div id="batterySizingGuide" class="notice soft"></div>
+            <button id="useBatterySuggestion" class="secondary full">Use battery sizing starting point</button>
+            <label>Why this battery size?<input data-bind="design.batteryReason"></label>
           </article>
         </div>
 
-        <div class="grid twoCol">
+        <div class="grid twoCol" id="recommendationPricing" data-shortcut-label="Reason & price">
           <article class="card">
             <h3>Recommendation reasoning</h3>
             <label>Why this suits the customer<textarea data-bind="design.reasonForRecommendation"></textarea></label>
-            <label>Important limitations or assumptions<textarea data-bind="design.limitations"></textarea></label>
-            <label>Warranty and support information<textarea data-bind="design.warrantyInfo"></textarea></label>
-            <label>Alternative genuinely considered<textarea data-bind="design.alternativeConsidered" placeholder="Leave blank unless there is a meaningful trade-off."></textarea></label>
+            <label>Important limitations or assumptions<input data-bind="design.limitations" placeholder="Final checks, access, DNO or another specific limitation"></label>
+            <label>Warranty and support information<input data-bind="design.warrantyInfo"></label>
+            <label>Alternative genuinely considered<input data-bind="design.alternativeConsidered" placeholder="Leave blank unless there is a meaningful trade-off."></label>
           </article>
 
           <article class="card pricingCard">
@@ -306,8 +310,8 @@
             <details class="advancedSettings">
               <summary>Additional works and approved adjustments</summary>
               <label>Scaffold lifts<input data-bind="design.scaffoldLifts" type="number" min="0" inputmode="numeric"></label>
-              <label>Included works<textarea data-bind="design.inclusions"></textarea></label>
-              <label>Customer-requested changes<textarea data-bind="design.customerRequestedChanges"></textarea></label>
+              <label>Included works<input data-bind="design.inclusions"></label>
+              <label>Customer-requested changes<input data-bind="design.customerRequestedChanges"></label>
               <label>Explicitly authorised discount (£)<input data-bind="design.manualDiscount" type="number" min="0" inputmode="decimal"></label>
               <label>Discount authorisation<input data-bind="design.discountAuthorisation" placeholder="Leave blank when no discount applies"></label>
             </details>
@@ -323,13 +327,13 @@
           <button class="customerLaunch" data-open-customer-stage="decision">Return to customer decision</button>
         </div>
 
-        <div class="grid twoCol">
+        <div class="grid twoCol" id="decisionOutcome" data-shortcut-label="Decision" data-shortcut-default>
           <article class="card">
             <h3>Decision and next action</h3>
             <div class="formGrid compactFields">
               <label>Decision status<select data-bind="decision.status"><option value="Not discussed">Not discussed</option><option value="Feels right">Feels right</option><option value="Concern raised">Concern raised</option><option value="Changes requested">Changes requested</option><option value="Needs another decision maker">Needs another decision maker</option><option value="Not proceeding">Not proceeding</option></select></label>
               <label>Concern category<select data-bind="decision.concernCategory" id="concernCategory"></select></label>
-              <label class="wide">Concern detail<textarea data-bind="decision.concernDetail"></textarea></label>
+              <label class="wide">Concern detail<input data-bind="decision.concernDetail"></label>
               <label>Concern status<select data-bind="decision.concernStatus"><option>Not raised</option><option>Open</option><option>Clarified</option><option>Resolved</option></select></label>
               <label>Next action<input data-bind="decision.nextAction"></label>
               <label>Owner<input data-bind="decision.owner" placeholder="James"></label>
@@ -350,7 +354,7 @@
           </article>
         </div>
 
-        <article class="card formalQuoteCard">
+        <article class="card formalQuoteCard" id="formalQuoteHandoff" data-shortcut-label="Formal quote">
           <span class="kicker">Formal quote handoff</span>
           <h3>What happens next</h3>
           <p id="formalQuoteParagraph"></p>
@@ -360,13 +364,13 @@
           </div>
         </article>
 
-        <div class="outputGrid">
+        <div class="outputGrid" id="visitOutputs" data-shortcut-label="Outputs">
           <article class="outputCard"><span>Customer</span><h3>Customer summary</h3><p>Priorities, recommendation, price, assumptions and next steps.</p><button id="downloadCustomer" class="primary">Download customer summary</button></article>
           <article class="outputCard"><span>Operations</span><h3>Technical survey pack</h3><p>Complete survey data, media, calculations, warnings and checks.</p><button id="downloadPack" class="primary">Download full survey pack</button></article>
           <article class="outputCard"><span>CRM</span><h3>CRM handover</h3><p>Job value, decision status, concern, owner and next action.</p><button id="copyCrm" class="secondary">Copy CRM summary</button><button id="copySidekick" class="ghost">Create Sidekick AI Prompt</button></article>
         </div>
 
-        <article class="card emailCard">
+        <article class="card emailCard" id="customerEmail" data-shortcut-label="Email">
           <div class="splitHead"><div><span class="kicker">Customer communication</span><h3>Email the recommendation</h3></div><span class="sourceBadge">Outlook-ready plain text</span></div>
           <textarea id="emailDraft" aria-label="Customer email draft"></textarea>
           <div class="actionRow">

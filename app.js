@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v3.0.0';
+  const APP_VERSION = 'v3.1.0';
   const Catalog = window.LGV3Catalog;
   const Store = window.LGV3Store;
   const PRIORITIES = [
@@ -17,8 +17,12 @@
   ];
   const FUNDING = ['Own savings / cash', 'Bank loan arranged', 'Exploring lending', 'Optional Hometree Finance route', 'Still considering'];
   const CONCERNS = ['Total price', 'Expected savings or payback', 'Roof or appearance', 'Battery size', 'Product choice', 'Installation disruption', 'Warranty or aftercare', 'Funding', 'Need to involve someone else', 'Comparing quotations', 'Timing', 'Another concern'];
+  const DECISION_MAKERS = ['Just me', 'Partner / spouse', 'Family member', 'Business partner / other'];
+  const TIMESCALES = ['As soon as practical', 'Within 3 months', 'Within 6 months', 'Before winter', 'Just exploring'];
+  const USAGE_LEVELS = ['Low', 'Medium', 'High', 'Not sure'];
+  const TARIFF_STRATEGIES = ['Maximise self-use', 'Maximise export', 'Use off-peak tariff charging', 'Still to discuss'];
   const MEDIA_CATEGORIES = ['Roof', 'Meter / fuse', 'Distribution board / CU', 'Battery / inverter location', 'Cable route', 'Access / scaffold', 'Customer document', 'Video walkthrough', 'Other'];
-  const CUSTOMER_STAGES = ['welcome', 'priorities', 'energy', 'home', 'recap', 'recommendation', 'decision', 'confirmation'];
+  const CUSTOMER_STAGES = ['welcome', 'priorities', 'context', 'energy', 'home', 'recap', 'recommendation', 'decision', 'confirmation'];
   const IMPORT_FIELDS = [
     ['ignore', 'Do not import'],
     ['customer.name', 'Customer name'],
@@ -59,6 +63,7 @@
     pendingSave: false,
     online: navigator.onLine,
     currentView: 'surveyor',
+    pageFocus: {},
     stageEnteredAt: Date.now(),
     markup: { item: null, img: null, actions: [], tool: 'label', label: 'Battery location', start: null }
   };
@@ -90,7 +95,7 @@
       },
       energy: {
         annualKwh: '', dailyKwh: '', annualSpend: '', tariff: '', importRate: 28, exportRate: 15, selfUsePct: 75,
-        daytimeUse: '', overnightUse: '', exportStrategy: '', futureChanges: '', existingEquipment: '', existingSolar: false,
+        daytimeUse: '', overnightUse: '', exportStrategy: '', tariffStrategy: '', arbitrage: false, futureChanges: '', existingEquipment: '', existingSolar: false,
         existingBattery: false, heatPump: false, backup: false, ev: false
       },
       site: {
@@ -124,7 +129,7 @@
   function defaultRoof(name = 'Roof area') {
     return {
       id: uid('roof'), name, width: '', slope: '', pitch: '', azimuth: '', shading: '', obstructions: '',
-      suggestedPanels: 0, portraitPanels: 0, landscapePanels: 0, bestOrientation: '', manualPanels: '',
+      shape: 'Rectangular', suggestedPanels: 0, portraitPanels: 0, landscapePanels: 0, mixedPanels: 0, bestOrientation: '', manualPanels: '',
       reducedMarginConfirmed: false, fitState: 'estimated'
     };
   }
@@ -179,7 +184,7 @@
   function fieldValue(element) {
     if (element.type === 'checkbox') return !!element.checked;
     if (element.type === 'number') return element.value === '' ? '' : num(element.value);
-    if (element.dataset.bind === 'design.sigGateway') return element.value === 'true';
+    if (['design.sigGateway', 'energy.arbitrage'].includes(element.dataset.bind)) return element.value === 'true';
     return element.value;
   }
 
@@ -217,6 +222,7 @@
     if (!raw) return null;
     state.survey = migrateSurvey(raw);
     state.media = await Store.getMedia(id);
+    state.pageFocus = {};
     if (recovered) {
       state.survey.meta.recoveredCount = num(state.survey.meta.recoveredCount) + 1;
       await track('survey_recovered', {}, false);
@@ -233,6 +239,7 @@
     survey.meta.startSource = source;
     state.survey = survey;
     state.media = [];
+    state.pageFocus = {};
     await saveSurvey('silent');
     await track('visit_started', { source });
     renderAll();
@@ -370,7 +377,26 @@
     if (panel === 'tools') { renderDiagnostics(); renderAnalytics(); renderQueue(); }
     if (panel === 'complete') { renderCompletion(); renderEmailDraft(); }
     if (panel === 'design') renderDesign();
+    renderPageShortcuts(panel);
     window.scrollTo({ top: 0, behavior: 'auto' });
+  }
+
+  function renderPageShortcuts(panel) {
+    const nav = $('pageShortcuts');
+    const screen = document.getElementById(panel);
+    if (!nav || !screen) return;
+    const sections = [...screen.querySelectorAll('[data-shortcut-label]')];
+    nav.hidden = sections.length < 2;
+    if (sections.length < 2) {
+      nav.innerHTML = '';
+      sections.forEach(section => section.classList.remove('sectionFocusedOut'));
+      return;
+    }
+    const preferred = sections.find(section => section.hasAttribute('data-shortcut-default')) || sections[0];
+    const focusedId = sections.some(section => section.id === state.pageFocus[panel]) ? state.pageFocus[panel] : preferred.id;
+    state.pageFocus[panel] = focusedId;
+    sections.forEach(section => section.classList.toggle('sectionFocusedOut', section.id !== focusedId));
+    nav.innerHTML = `<span>Choose section</span>${sections.map(section => `<button type="button" class="${section.id === focusedId ? 'active' : ''}" data-page-shortcut="${esc(section.id)}" aria-pressed="${section.id === focusedId}">${esc(section.dataset.shortcutLabel)}</button>`).join('')}`;
   }
 
   function recordStageExit() {
@@ -425,6 +451,22 @@
     $('priorityChoices').innerHTML = PRIORITIES.map(item => `<button class="tileChoice ${selected.includes(item) ? 'selected' : ''}" data-priority="${esc(item)}" aria-pressed="${selected.includes(item)}">${esc(item)}</button>`).join('');
     $('primaryPriorityChoices').innerHTML = selected.map(item => `<button class="primaryChoice ${s?.priorities?.primary === item ? 'selected' : ''}" data-primary-priority="${esc(item)}">${esc(item)}</button>`).join('');
     $('fundingChoices').innerHTML = FUNDING.map(item => `<button class="stackChoice ${s?.priorities?.financePlan === item ? 'selected' : ''}" data-funding="${esc(item)}">${esc(item)}</button>`).join('');
+    renderQuickChoices('decisionMakerChoices', 'priorities.decisionMakers', DECISION_MAKERS);
+    renderQuickChoices('timescaleChoices', 'priorities.timing', TIMESCALES);
+    renderQuickChoices('initialConcernChoices', 'priorities.mainConcern', CONCERNS.slice(0, 8));
+    renderQuickChoices('daytimeUseChoices', 'energy.daytimeUse', USAGE_LEVELS);
+    renderQuickChoices('overnightUseChoices', 'energy.overnightUse', USAGE_LEVELS);
+    renderQuickChoices('tariffStrategyChoices', 'energy.exportStrategy', TARIFF_STRATEGIES);
+  }
+
+  function quickChoiceButtons(path, values) {
+    const selected = clean(getPath(state.survey, path, ''));
+    return values.map(value => `<button type="button" class="quickChoice ${selected === value ? 'selected' : ''}" data-field-choice="${esc(path)}" data-field-value="${esc(value)}" aria-pressed="${selected === value}">${esc(value)}</button>`).join('');
+  }
+
+  function renderQuickChoices(id, path, values) {
+    const node = $(id);
+    if (node) node.innerHTML = quickChoiceButtons(path, values);
   }
 
   function togglePriority(value) {
@@ -436,6 +478,7 @@
     state.survey.priorities.secondary = list.filter(item => item !== state.survey.priorities.primary);
     markInformation('priorities.selected', 'Confirmed today', 'confirmed');
     renderPriorityControls();
+    if (state.currentView === 'customer') renderCustomerStage();
     scheduleSave();
   }
 
@@ -444,6 +487,7 @@
     state.survey.priorities.secondary = state.survey.priorities.selected.filter(item => item !== value);
     markInformation('priorities.primary', 'Confirmed today', 'confirmed');
     renderPriorityControls();
+    if (state.currentView === 'customer') renderCustomerStage();
     scheduleSave();
   }
 
@@ -557,7 +601,7 @@
     $('importRecords').innerHTML = draft.records.map((record, index) => {
       const values = mappedRecord(record, draft.mappings);
       const duplicate = draft.duplicates[index];
-      return `<article class="recordCard ${duplicate ? 'duplicate' : ''}"><b>${esc(values['customer.name'] || `Appointment ${index + 1}`)}</b><span>${esc(joinAddress(values) || 'Address not detected')}</span><span>${esc(values['customer.appointmentTime'] || 'Appointment time not detected')}</span>${duplicate ? `<span><b>Possible existing visit:</b> ${esc(duplicate.customer.name || 'Unnamed')}</span>` : ''}<button class="primary" data-import-record="${index}">${duplicate ? 'Update and open existing visit' : 'Start this visit'}</button></article>`;
+      return `<article class="recordCard ${duplicate ? 'duplicate' : ''}"><div class="recordCardHead"><div><b>${esc(values['customer.name'] || `Appointment ${index + 1}`)}</b><span>${esc(values['customer.appointmentTime'] || 'Appointment time not detected')}</span></div><button class="primary" data-import-record="${index}">${duplicate ? 'Open this visit' : 'Start this visit'}</button></div><span>${esc(joinAddress(values) || 'Address not detected')}</span>${duplicate ? `<span><b>Possible existing visit:</b> ${esc(duplicate.customer.name || 'Unnamed')}</span>` : ''}</article>`;
     }).join('');
   }
 
@@ -606,7 +650,7 @@
     const slopeMm = num(roof.slope) * 1000;
     const margin = Catalog.roof.preferredEdgeMarginMm;
     const gap = Catalog.roof.installationGapMm;
-    if (!widthMm || !slopeMm) return { portrait: 0, landscape: 0, best: 0, orientation: '', warning: 'Measurements still required' };
+    if (!widthMm || !slopeMm) return { portrait: 0, landscape: 0, mixed: 0, best: 0, orientation: '', warning: 'Measurements still required' };
     const usableWidth = Math.max(0, widthMm - (margin * 2));
     const usableSlope = Math.max(0, slopeMm - (margin * 2));
     const fit = (areaWidth, areaHeight, panelWidth, panelHeight) => {
@@ -616,13 +660,32 @@
     };
     const portrait = fit(usableWidth, usableSlope, panel.widthMm, panel.heightMm);
     const landscape = fit(usableWidth, usableSlope, panel.heightMm, panel.widthMm);
-    const best = Math.max(portrait, landscape);
-    const orientation = portrait === landscape ? 'portrait or landscape' : portrait > landscape ? 'portrait' : 'landscape';
+    const mixedRows = mixedStripFit(usableWidth, usableSlope, panel.widthMm, panel.heightMm, panel.heightMm, panel.widthMm, gap);
+    const mixedColumns = mixedStripFit(usableSlope, usableWidth, panel.heightMm, panel.widthMm, panel.widthMm, panel.heightMm, gap);
+    const mixed = Math.max(mixedRows, mixedColumns);
+    const best = Math.max(portrait, landscape, mixed);
+    const orientation = mixed > portrait && mixed > landscape ? 'mixed orientation' : portrait === landscape ? 'portrait or landscape' : portrait > landscape ? 'portrait' : 'landscape';
     const manual = num(roof.manualPanels);
     let warning = '';
     if (manual > best) warning = roof.reducedMarginConfirmed ? 'Surveyor-confirmed reduced-margin layout' : 'Manual count exceeds preferred-margin fit';
     if (clean(roof.shading) || clean(roof.obstructions)) warning = [warning, 'Shading or obstructions require review'].filter(Boolean).join('. ');
-    return { portrait, landscape, best, orientation, warning };
+    if (clean(roof.shape) && roof.shape !== 'Rectangular') warning = [warning, `${roof.shape} roof shape requires the calculated layout to be checked against the survey evidence`].filter(Boolean).join('. ');
+    return { portrait, landscape, mixed, best, orientation, warning };
+  }
+
+  function mixedStripFit(areaAcross, areaDepth, firstAcross, firstDepth, secondAcross, secondDepth, gap) {
+    const firstPerStrip = Math.max(0, Math.floor((areaAcross + gap) / (firstAcross + gap)));
+    const secondPerStrip = Math.max(0, Math.floor((areaAcross + gap) / (secondAcross + gap)));
+    const firstMax = Math.max(0, Math.floor((areaDepth + gap) / (firstDepth + gap)));
+    const secondMax = Math.max(0, Math.floor((areaDepth + gap) / (secondDepth + gap)));
+    let best = 0;
+    for (let first = 1; first <= firstMax; first++) {
+      for (let second = 1; second <= secondMax; second++) {
+        const usedDepth = (first * firstDepth) + (second * secondDepth) + ((first + second - 1) * gap);
+        if (usedDepth <= areaDepth) best = Math.max(best, (first * firstPerStrip) + (second * secondPerStrip));
+      }
+    }
+    return best;
   }
 
   function updateRoofCalculations() {
@@ -631,6 +694,7 @@
       const result = calculateRoofPlane(roof);
       roof.portraitPanels = result.portrait;
       roof.landscapePanels = result.landscape;
+      roof.mixedPanels = result.mixed;
       roof.suggestedPanels = result.best;
       roof.bestOrientation = result.orientation;
     });
@@ -654,6 +718,7 @@
         <div class="roofHead"><div><b>Roof area ${index + 1}</b><span class="sourceBadge ${roof.fitState === 'confirmed' ? 'confirmed' : 'estimated'}">${roof.fitState === 'confirmed' ? 'Confirmed today' : 'Estimated'}</span></div><button class="ghost danger small" data-remove-roof="${index}">Remove</button></div>
         <div class="roofCardFields">
           <label>Name<input data-roof-field="name" value="${esc(roof.name)}"></label>
+          <label>Roof shape<select data-roof-field="shape"><option ${roof.shape === 'Rectangular' ? 'selected' : ''}>Rectangular</option><option ${roof.shape === 'Trapezoid' ? 'selected' : ''}>Trapezoid</option><option ${roof.shape === 'Triangle' ? 'selected' : ''}>Triangle</option><option ${roof.shape === 'Irregular' ? 'selected' : ''}>Irregular</option></select></label>
           <label>Width (m)<input data-roof-field="width" value="${esc(roof.width)}" type="number" step="0.1" inputmode="decimal"></label>
           <label>Slope (m)<input data-roof-field="slope" value="${esc(roof.slope)}" type="number" step="0.1" inputmode="decimal"></label>
           <label>Pitch (°)<input data-roof-field="pitch" value="${esc(roof.pitch)}" type="number" inputmode="decimal"></label>
@@ -665,7 +730,7 @@
           <label>Obstructions<input data-roof-field="obstructions" value="${esc(roof.obstructions)}" placeholder="Chimney, vent, tree constraint..."></label>
         </div>
         <label class="checkLine"><input type="checkbox" data-roof-field="reducedMarginConfirmed" ${roof.reducedMarginConfirmed ? 'checked' : ''}>Use a surveyor-confirmed reduced-margin or measured layout when the manual count exceeds the starting fit</label>
-        <div class="roofResult ${result.warning ? 'warning' : ''}">Preferred-margin fit: ${result.portrait} portrait or ${result.landscape} landscape. ${result.best ? `Best starting point: ${result.best} panels in ${result.orientation}.` : 'Enter measurements to calculate a fit.'}${result.warning ? ` ${esc(result.warning)}.` : ''}</div>
+        <div class="roofResult ${result.warning ? 'warning' : ''}">Preferred-margin fit: ${result.portrait} portrait, ${result.landscape} landscape or ${result.mixed} mixed. ${result.best ? `Best starting point: ${result.best} panels in ${result.orientation}.` : 'Enter measurements to calculate a fit.'}${result.warning ? ` ${esc(result.warning)}.` : ''}</div>
       </article>`;
     }).join('');
   }
@@ -690,7 +755,7 @@
     const node = card.querySelector('.roofResult');
     if (!node) return;
     node.classList.toggle('warning', !!result.warning);
-    node.textContent = `Preferred-margin fit: ${result.portrait} portrait or ${result.landscape} landscape. ${result.best ? `Best starting point: ${result.best} panels in ${result.orientation}.` : 'Enter measurements to calculate a fit.'}${result.warning ? ` ${result.warning}.` : ''}`;
+    node.textContent = `Preferred-margin fit: ${result.portrait} portrait, ${result.landscape} landscape or ${result.mixed} mixed. ${result.best ? `Best starting point: ${result.best} panels in ${result.orientation}.` : 'Enter measurements to calculate a fit.'}${result.warning ? ` ${result.warning}.` : ''}`;
   }
 
   function invalidateRoofValidation() {
@@ -727,7 +792,7 @@
       if ($('panelCount')) $('panelCount').value = capacity;
     }
     const status = !solar ? 'not-required' : hardFailure ? 'failed' : warnings.length ? 'validated-with-warnings' : 'validated';
-    state.survey.site.validation = { status, checkedAt: new Date().toISOString(), capacity, selectedCount: num(state.survey.design.panelCount), warnings, method: 'Panel dimensions, portrait/landscape fit and 400 mm preferred edge margins' };
+    state.survey.site.validation = { status, checkedAt: new Date().toISOString(), capacity, selectedCount: num(state.survey.design.panelCount), warnings, method: 'Selected panel dimensions, portrait, landscape and mixed-orientation fit, 30 mm installation gaps and 400 mm preferred edge margins' };
     if (solar) autoScaffold();
     await saveSurvey();
     await track('roof_validation', { status, capacity, warnings: warnings.length });
@@ -807,6 +872,80 @@
     return { text: parts.join(' + ') || 'Sigenergy storage to confirm', usableKwh: storage, referencePrice: 0 };
   }
 
+  function batterySizingSuggestion() {
+    const energy = state.survey?.energy || {};
+    const daily = num(energy.dailyKwh) || (num(energy.annualKwh) ? num(energy.annualKwh) / 365 : 0);
+    if (!daily) return { available: false, targetKwh: 0, confidence: 'Still to be checked', reason: 'Add annual or daily electricity use to create a battery sizing starting point.' };
+    const overnightText = clean(energy.overnightUse).toLowerCase();
+    const overnightNumber = Number((overnightText.match(/\d+(?:\.\d+)?/) || [])[0] || 0);
+    let target = overnightNumber;
+    const assumptions = [];
+    if (overnightNumber) assumptions.push(`${overnightNumber.toFixed(1)} kWh recorded overnight use`);
+    else {
+      const share = overnightText.includes('high') ? 0.65 : overnightText.includes('low') ? 0.25 : 0.45;
+      target = daily * share;
+      assumptions.push(`${Math.round(share * 100)}% of daily use estimated for evening and overnight demand`);
+    }
+    const strategy = `${clean(energy.exportStrategy)} ${clean(energy.tariffStrategy)}`.toLowerCase();
+    if (energy.arbitrage || /off.?peak|agile|arbitrage|time.?of.?use/.test(strategy)) {
+      target = Math.max(target, daily * 0.65);
+      assumptions.push('off-peak or flexible tariff charging considered');
+    }
+    if (energy.backup) { target += 2.5; assumptions.push('backup requirement considered'); }
+    if (energy.ev) { target += 2; assumptions.push('future EV demand allowance'); }
+    if (energy.heatPump) { target += 3; assumptions.push('heat pump or major load allowance'); }
+    if (clean(energy.futureChanges)) { target += 1.5; assumptions.push('future demand noted'); }
+    const usableTarget = Math.max(3, Math.min(54, target));
+    const confidence = overnightNumber ? 'Based on confirmed usage inputs' : 'Estimated starting point';
+    return { available: true, targetKwh: usableTarget, confidence, reason: assumptions.join('; ') };
+  }
+
+  function sigenergyStartingPoint(targetKwh) {
+    const options = [];
+    for (let tens = 0; tens <= 4; tens++) {
+      for (let sixes = 0; sixes <= 4; sixes++) {
+        if (!tens && !sixes) continue;
+        const usable = (tens * Catalog.batteries.sigenergy.bat10.usableKwh) + (sixes * Catalog.batteries.sigenergy.bat6.usableKwh);
+        options.push({ tens, sixes, usable });
+      }
+    }
+    return options.sort((a, b) => {
+      const aShort = a.usable < targetKwh ? 1 : 0;
+      const bShort = b.usable < targetKwh ? 1 : 0;
+      return aShort - bShort || Math.abs(a.usable - targetKwh) - Math.abs(b.usable - targetKwh) || (a.tens + a.sixes) - (b.tens + b.sixes);
+    })[0];
+  }
+
+  function batteryConfigurationSuggestion() {
+    const sizing = batterySizingSuggestion();
+    const brand = state.survey?.design?.batteryBrand;
+    if (!sizing.available || brand === 'None') return { ...sizing, brand, configuration: null };
+    if (brand === 'Tesla') {
+      const expansions = Math.max(0, Math.min(3, Math.ceil((sizing.targetKwh - Catalog.batteries.tesla.powerwall3.usableKwh) / Catalog.batteries.tesla.dcExpansion.usableKwh)));
+      return { ...sizing, brand, configuration: { powerwalls: 1, expansions, usable: Catalog.batteries.tesla.powerwall3.usableKwh + (expansions * Catalog.batteries.tesla.dcExpansion.usableKwh) } };
+    }
+    return { ...sizing, brand, configuration: sigenergyStartingPoint(sizing.targetKwh) };
+  }
+
+  function applyBatterySuggestion() {
+    const suggestion = batteryConfigurationSuggestion();
+    if (!suggestion.available || !suggestion.configuration) return;
+    const d = state.survey.design;
+    if (suggestion.brand === 'Tesla') {
+      d.teslaPw3Qty = suggestion.configuration.powerwalls;
+      d.teslaDcQty = suggestion.configuration.expansions;
+      d.teslaGateway = true;
+    } else {
+      d.sig10Qty = suggestion.configuration.tens;
+      d.sig6Qty = suggestion.configuration.sixes;
+      d.sigGateway = true;
+    }
+    d.batteryReason = `Starting size based on ${suggestion.reason}. Final capacity remains subject to the confirmed load profile, tariff strategy and backup requirement.`;
+    fillForm();
+    renderDesign();
+    scheduleSave();
+  }
+
   function priceState() {
     if (!state.survey) return { ready: false, reason: 'No visit is open', total: 0 };
     const s = state.survey, d = s.design;
@@ -859,6 +998,22 @@
     $('teslaConfig').hidden = d.batteryBrand !== 'Tesla';
     const battery = batterySummary();
     $('batteryCapacity').textContent = battery.usableKwh ? `${battery.usableKwh.toFixed(1)} kWh usable` : 'No storage';
+    const sizing = batteryConfigurationSuggestion();
+    const guide = $('batterySizingGuide');
+    const useGuide = $('useBatterySuggestion');
+    if (!sizing.available) {
+      guide.innerHTML = `<b>Battery sizing needs more information.</b><br>${esc(sizing.reason)}`;
+      useGuide.disabled = true;
+    } else if (!sizing.configuration) {
+      guide.innerHTML = `<b>Usable-capacity starting point: ${sizing.targetKwh.toFixed(1)} kWh.</b><br>${esc(sizing.reason)}. Select a battery route to translate this into products.`;
+      useGuide.disabled = true;
+    } else {
+      const configuration = sizing.brand === 'Tesla'
+        ? `${sizing.configuration.powerwalls} × Powerwall 3${sizing.configuration.expansions ? ` + ${sizing.configuration.expansions} × DC Expansion` : ''} (${sizing.configuration.usable.toFixed(1)} kWh usable)`
+        : `${sizing.configuration.tens} × BAT 10.0${sizing.configuration.sixes ? ` + ${sizing.configuration.sixes} × BAT 6.0` : ''} (${sizing.configuration.usable.toFixed(1)} kWh usable)`;
+      guide.innerHTML = `<b>${esc(sizing.confidence)}: ${sizing.targetKwh.toFixed(1)} kWh usable target.</b><br>${esc(sizing.reason)}.<br><b>Selected-brand starting point:</b> ${esc(configuration)}.`;
+      useGuide.disabled = false;
+    }
     const validation = state.survey.site.validation;
     $('roofFitPill').textContent = validation.status === 'validated' ? 'Validated' : validation.status === 'validated-with-warnings' ? 'Validated with notes' : validation.status === 'not-required' ? 'Not required' : 'Not validated';
     $('roofFitPill').className = `sourceBadge ${['validated', 'validated-with-warnings', 'not-required'].includes(validation.status) ? 'confirmed' : 'warning'}`;
@@ -910,9 +1065,9 @@
   }
 
   function customerStageGroup(index) {
-    if (index <= 2) return 0;
-    if (index === 3) return 1;
-    if (index <= 5) return 2;
+    if (index <= 3) return 0;
+    if (index === 4) return 1;
+    if (index <= 6) return 2;
     return 3;
   }
 
@@ -931,6 +1086,17 @@
       <div class="customerChoices">${PRIORITIES.map(item => `<button class="customerChoice ${s.priorities.selected.includes(item) ? 'selected' : ''}" data-priority="${esc(item)}">${esc(item)}</button>`).join('')}</div>
       ${s.priorities.selected.length ? `<div class="customerInput"><label>Which one matters most?<select data-bind="priorities.primary"><option value="">Choose the main priority</option>${s.priorities.selected.map(item => `<option ${s.priorities.primary === item ? 'selected' : ''}>${esc(item)}</option>`).join('')}</select></label></div>` : ''}
       <div class="customerInput"><label>In your own words, what would a good result look like?<textarea data-bind="priorities.goodResult" placeholder="A short note is enough.">${esc(s.priorities.goodResult)}</textarea></label></div>`;
+    if (stage === 'context') return `
+      <span class="eyebrow">Planning the right next step</span>
+      <h2>What should we take into account?</h2>
+      <p class="lead">A few practical details help us make the recommendation and next step realistic for you.</p>
+      <div class="customerRecap">
+        <div class="recapCard"><small>What is your main concern about going ahead?</small><div class="quickChoices">${quickChoiceButtons('priorities.mainConcern', CONCERNS.slice(0, 8))}</div></div>
+        <div class="recapCard"><small>Is anyone else involved in the final decision?</small><div class="quickChoices">${quickChoiceButtons('priorities.decisionMakers', DECISION_MAKERS)}</div></div>
+        <div class="recapCard"><small>Is there a preferred timescale?</small><div class="quickChoices">${quickChoiceButtons('priorities.timing', TIMESCALES)}</div></div>
+        <div class="recapCard"><small>How are you considering funding the system?</small><div class="customerFundingChoices">${FUNDING.map(item => `<button class="customerChoice ${s.priorities.financePlan === item ? 'selected' : ''}" data-funding="${esc(item)}">${esc(item)}</button>`).join('')}</div></div>
+      </div>
+      <div class="customerInput"><label>Anything else about funding, timing or who is involved?<input data-bind="priorities.financeNote" value="${esc(s.priorities.financeNote)}"></label></div>`;
     if (stage === 'energy') return `
       <span class="eyebrow">Your home energy</span>
       <h2>How does your home use electricity?</h2>
@@ -945,7 +1111,7 @@
         <button class="customerChoice ${s.energy.backup ? 'selected' : ''}" data-toggle-check="energy.backup">Backup or resilience matters</button>
         <button class="customerChoice ${s.energy.existingSolar ? 'selected' : ''}" data-toggle-check="energy.existingSolar">There is an existing solar system</button>
       </div>
-      <div class="customerInput"><label>Anything likely to change in future?<textarea data-bind="energy.futureChanges" placeholder="For example, an EV, heat pump, extension or different working pattern.">${esc(s.energy.futureChanges)}</textarea></label></div>`;
+      <div class="customerInput"><label>Anything else likely to change in future?<input data-bind="energy.futureChanges" value="${esc(s.energy.futureChanges)}" placeholder="Only add something not covered above"></label></div>`;
     if (stage === 'home') {
       const validation = s.site.validation;
       return `<span class="eyebrow">Your home</span><h2>We are checking the practical details.</h2><p class="lead">The technical survey stays in the background. Here is the progress that matters to your recommendation.</p>
@@ -979,7 +1145,7 @@
         <button class="customerChoice ${s.decision.status === 'Concern raised' ? 'selected' : ''}" data-decision="Concern raised">I have one concern</button>
         <button class="customerChoice ${s.decision.status === 'Changes requested' ? 'selected' : ''}" data-decision="Changes requested">Something needs changing</button>
       </div>
-      ${s.decision.status === 'Concern raised' ? `<h3>What is the main concern?</h3><div class="customerChoices">${CONCERNS.map(item => `<button class="customerChoice ${s.decision.concernCategory === item ? 'selected' : ''}" data-concern="${esc(item)}">${esc(item)}</button>`).join('')}</div><div class="customerInput"><label>Anything to add?<textarea data-bind="decision.concernDetail">${esc(s.decision.concernDetail)}</textarea></label></div>` : ''}
+      ${s.decision.status === 'Concern raised' ? `<h3>What is the main concern?</h3><div class="customerChoices">${CONCERNS.map(item => `<button class="customerChoice ${s.decision.concernCategory === item ? 'selected' : ''}" data-concern="${esc(item)}">${esc(item)}</button>`).join('')}</div><div class="customerInput"><label>Anything to add?<input data-bind="decision.concernDetail" value="${esc(s.decision.concernDetail)}"></label></div>` : ''}
       ${s.decision.status === 'Changes requested' ? `<div class="customerInput"><label>What should we change?<textarea data-bind="design.customerRequestedChanges">${esc(s.design.customerRequestedChanges)}</textarea></label></div>` : ''}`;
     if (stage === 'confirmation') return `
       <span class="eyebrow">Recommendation confirmation</span><h2>Confirm the recommendation can move to a formal quote.</h2>
@@ -1028,6 +1194,7 @@
         <div><small>Customer total</small><b>${money(summary.price.total)}</b></div>
         <div><small>Designed around</small><b>${esc(s.priorities.primary || 'the priorities discussed')}</b></div>
         <div><small>Roof fit</small><b>${esc(roofValidationCustomerLabel())}</b></div>
+        ${summary.solar ? `<div><small>Proposed layout</small><b>${esc(roofLayoutSummary())}</b></div>` : ''}
       </div>
       <div class="recommendBody">
         <h3>Why this suits your home</h3><p>${esc(reason)}</p>
@@ -1056,6 +1223,26 @@
     if (status === 'validated-with-warnings') return 'Validated with recorded notes';
     if (status === 'not-required') return 'Not required for battery-only';
     return 'Still to be checked';
+  }
+
+  function roofLayoutSummary() {
+    const roofs = state.survey?.site?.roofPlanes || [];
+    const lines = roofs.filter(roof => effectiveRoofCount(roof) > 0).map(roof => `${effectiveRoofCount(roof)} on ${roof.name || 'roof area'} in ${roof.bestOrientation || 'the selected orientation'}`);
+    return lines.join('; ') || 'Layout still to be confirmed';
+  }
+
+  function roofLayoutHtml() {
+    const roofs = state.survey?.site?.roofPlanes || [];
+    if (!roofs.length) return '<p>No roof areas recorded.</p>';
+    return `<div class="layoutTable">${roofs.map(roof => `<div><b>${esc(roof.name || 'Roof area')}</b><span>${esc(roof.shape || 'Rectangular')} · ${esc(roof.width || '?')} m × ${esc(roof.slope || '?')} m · ${esc(roof.pitch || '?')}° · ${esc(roof.azimuth || 'orientation to confirm')}</span><strong>${effectiveRoofCount(roof)} proposed panels · ${esc(roof.bestOrientation || 'orientation to confirm')}</strong>${clean(roof.shading) || clean(roof.obstructions) ? `<em>${esc([roof.shading && `Shading: ${roof.shading}`, roof.obstructions && `Obstructions: ${roof.obstructions}`].filter(Boolean).join(' · '))}</em>` : ''}</div>`).join('')}</div>`;
+  }
+
+  function roofLayoutText() {
+    return (state.survey?.site?.roofPlanes || []).map(roof => [
+      `${roof.name || 'Roof area'}: ${roof.shape || 'Rectangular'}, ${roof.width || '?'} m × ${roof.slope || '?'} m, pitch ${roof.pitch || '?'}°, orientation ${roof.azimuth || 'to confirm'}`,
+      `  Fit checks: portrait ${roof.portraitPanels || 0}, landscape ${roof.landscapePanels || 0}, mixed ${roof.mixedPanels || 0}; proposed ${effectiveRoofCount(roof)} (${roof.bestOrientation || 'to confirm'})`,
+      clean(roof.shading) ? `  Shading: ${roof.shading}` : '', clean(roof.obstructions) ? `  Obstructions: ${roof.obstructions}` : ''
+    ].filter(Boolean).join('\n')).join('\n');
   }
 
   function customerInclusions() {
@@ -1239,6 +1426,7 @@
       <section class="intro"><h2>Your priorities</h2><p><b>Main priority:</b> ${esc(s.priorities.primary || 'To be confirmed')}</p><p>${esc(s.priorities.goodResult || s.priorities.ownWords || 'The recommendation reflects the discussion during the visit.')}</p></section>
       <section class="recommend"><span>Our recommendation</span><h2>${esc(systemLine(summary))}</h2>${summary.price.ready ? `<div class="price">${money(summary.price.total)}</div>` : '<div class="warning">Customer price is still to be confirmed.</div>'}<p>${esc(clean(s.design.reasonForRecommendation) || defaultRecommendationReason())}</p></section>
       <section class="grid"><div><small>Roof and property</small><b>${esc(roofValidationCustomerLabel())}</b><p>${esc(propertyFindingLine())}</p></div><div><small>Included</small><b>Complete proposed system</b><p>${esc(customerInclusions())}</p></div><div><small>Important assumptions</small><b>Subject to final checks</b><p>${esc(clean(s.design.limitations) || 'Final technical checks, access and the DNO process remain to be confirmed.')}</p></div>${performance.available ? `<div><small>Illustrative performance</small><b>${performance.generation.toLocaleString('en-GB')} kWh/year</b><p>Estimated annual benefit ${money(performance.annualBenefit)}, using the recorded tariff and self-use assumptions.</p></div>` : ''}</section>
+      ${summary.solar ? `<section><h2>Proposed panel layout</h2>${roofLayoutHtml()}<p>The layout remains subject to the recorded technical checks and final design confirmation.</p></section>` : ''}
       ${clean(s.design.warrantyInfo) ? `<section><h2>Warranty and support</h2><p>${esc(s.design.warrantyInfo)}</p></section>` : ''}
       <section><h2>Questions and changes</h2><p>${esc(concerns)}</p>${clean(s.design.customerRequestedChanges) ? `<p><b>Requested change:</b> ${esc(s.design.customerRequestedChanges)}</p>` : ''}</section>
       <section><h2>What happens next</h2><p>${esc(Catalog.formalQuoteParagraph)}</p><p><b>Formal quote status:</b> ${esc(s.confirmation.formalQuoteStatus)}</p></section>
@@ -1257,19 +1445,20 @@
   }
 
   function documentCss() {
-    return 'body{margin:0;padding:24px;background:#eef5ef;color:#10281d;font:16px/1.55 Arial,sans-serif}.doc{max-width:960px;margin:auto;background:#fff;border-radius:28px;overflow:hidden;box-shadow:0 20px 60px rgba(8,44,28,.14)}header{padding:38px;background:linear-gradient(135deg,#082c1c,#137a49);color:#fff}header small,.recommend>span,.grid small{text-transform:uppercase;letter-spacing:.12em;font-weight:800}header small,.recommend>span{color:#dff897}h1{font-size:46px;line-height:1;margin:10px 0}header p{color:#e5f5ea}.doc>section{padding:24px 30px;border-bottom:1px solid #d8e4db}.recommend{background:#f4faef}.recommend h2{font-size:32px}.price{font-size:55px;font-weight:900;color:#082c1c}.warning{padding:14px;border-radius:14px;background:#fff5de;color:#8a5a00}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.grid div{padding:16px;border:1px solid #d8e4db;border-radius:18px}.grid small{color:#137a49}.grid b{display:block;margin:7px 0;font-size:20px}footer{padding:22px 30px;color:#6b7e76;font-size:13px}@media(max-width:700px){body{padding:0}.doc{border-radius:0}.grid{grid-template-columns:1fr}h1{font-size:36px}}';
+    return 'body{margin:0;padding:24px;background:#eef5ef;color:#10281d;font:16px/1.55 Arial,sans-serif}.doc{max-width:960px;margin:auto;background:#fff;border-radius:28px;overflow:hidden;box-shadow:0 20px 60px rgba(8,44,28,.14)}header{padding:38px;background:linear-gradient(135deg,#082c1c,#137a49);color:#fff}header small,.recommend>span,.grid small{text-transform:uppercase;letter-spacing:.12em;font-weight:800}header small,.recommend>span{color:#dff897}h1{font-size:46px;line-height:1;margin:10px 0}header p{color:#e5f5ea}.doc>section{padding:24px 30px;border-bottom:1px solid #d8e4db}.recommend{background:#f4faef}.recommend h2{font-size:32px}.price{font-size:55px;font-weight:900;color:#082c1c}.warning{padding:14px;border-radius:14px;background:#fff5de;color:#8a5a00}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.grid div,.layoutTable div{padding:16px;border:1px solid #d8e4db;border-radius:18px}.grid small{color:#137a49}.grid b{display:block;margin:7px 0;font-size:20px}.layoutTable{display:grid;gap:10px}.layoutTable b,.layoutTable span,.layoutTable strong,.layoutTable em{display:block}.layoutTable span,.layoutTable em{margin-top:4px;color:#52685e}.layoutTable strong{margin-top:7px;color:#137a49}.layoutTable em{font-size:14px}footer{padding:22px 30px;color:#6b7e76;font-size:13px}@media(max-width:700px){body{padding:0}.doc{border-radius:0}.grid{grid-template-columns:1fr}h1{font-size:36px}}';
   }
 
   function internalSummaryText() {
     const s = state.survey, summary = recommendationSummary();
     const validation = s.site.validation;
+    const batterySizing = batterySizingSuggestion();
     return [
       'LG SURVEY PRO V3 - INTERNAL SURVEY SUMMARY', '',
       `Customer: ${s.customer.name}`, `Address: ${s.customer.address}`, `Phone: ${s.customer.phone}`, `Email: ${s.customer.email}`, `Monday item: ${s.customer.mondayId}`, '',
       `Primary priority: ${s.priorities.primary}`, `Secondary priorities: ${s.priorities.secondary.join(', ')}`, `Customer wording: ${s.priorities.ownWords}`, `Good result: ${s.priorities.goodResult}`, `Main concern: ${s.priorities.mainConcern}`, `Decision makers: ${s.priorities.decisionMakers}`, `Funding: ${s.priorities.financePlan} ${s.priorities.financeNote}`, '',
       `Annual use: ${s.energy.annualKwh} kWh`, `Tariff: ${s.energy.tariff}`, `Daytime use: ${s.energy.daytimeUse}`, `Overnight use: ${s.energy.overnightUse}`, `Future changes: ${s.energy.futureChanges}`, '',
-      `Recommendation: ${systemLine(summary)}`, `Reason: ${s.design.reasonForRecommendation || defaultRecommendationReason()}`, `Customer price: ${summary.price.ready ? money(summary.price.total) : 'NOT READY'}`, `Price state: ${summary.price.reason}`, `Pricing authority: ${Catalog.pricingAuthority.name}`, '',
-      `Roof validation: ${validation.status}`, `Roof capacity: ${validation.capacity}`, `Validation method: ${validation.method}`, `Warnings: ${(validation.warnings || []).join(' | ') || 'None'}`, `Supply: ${s.site.supplyPhase}`, `Battery/inverter location: ${s.site.batteryLocation}`, `Cable route: ${s.site.cableRoute}`, `Access: ${s.site.access}`, `Outstanding checks: ${s.site.outstandingChecks}`, `Survey notes: ${s.site.generalNotes}`, '',
+      `Recommendation: ${systemLine(summary)}`, `Reason: ${s.design.reasonForRecommendation || defaultRecommendationReason()}`, `Battery sizing guide: ${batterySizing.available ? `${batterySizing.targetKwh.toFixed(1)} kWh usable (${batterySizing.confidence}; ${batterySizing.reason})` : batterySizing.reason}`, `Battery override reason: ${s.design.batteryReason}`, `Customer price: ${summary.price.ready ? money(summary.price.total) : 'NOT READY'}`, `Price state: ${summary.price.reason}`, `Pricing authority: ${Catalog.pricingAuthority.name}`, '',
+      `Roof validation: ${validation.status}`, `Roof capacity: ${validation.capacity}`, `Validation method: ${validation.method}`, `Warnings: ${(validation.warnings || []).join(' | ') || 'None'}`, '', 'ROOF LAYOUT', roofLayoutText(), '', `Supply: ${s.site.supplyPhase}`, `Battery/inverter location: ${s.site.batteryLocation}`, `Cable route: ${s.site.cableRoute}`, `Access: ${s.site.access}`, `Outstanding checks: ${s.site.outstandingChecks}`, `Survey notes: ${s.site.generalNotes}`, '',
       `Decision: ${s.decision.status}`, `Concern: ${s.decision.concernCategory} ${s.decision.concernDetail}`, `Concern status: ${s.decision.concernStatus}`, `Next action: ${s.decision.nextAction}`, `Owner: ${s.decision.owner}`, `Expected timing: ${s.decision.expectedTiming}`, `Formal quote: ${s.confirmation.formalQuoteStatus}`, '',
       `Media files: ${state.media.length}`, `Last saved: ${s.updatedAt}`
     ].join('\n');
@@ -1395,7 +1584,7 @@
       downloadBlob(buildZip(entries), `${root}.zip`);
       state.survey.outputs.internalPackAt = new Date().toISOString();
       await saveSurvey();
-      if (!state.survey.meta.visitCompletedAt) await track('visit_completed', { mediaCount: state.media.length });
+      if (!state.survey.meta.visitCompletedAt) await track('visit_completed', { mediaCount: state.media.length, online: state.online });
       state.survey.meta.visitCompletedAt = new Date().toISOString();
       state.survey.status = 'completed';
       await saveSurvey();
@@ -1598,10 +1787,17 @@
     const events = await Store.getEvents();
     const count = type => events.filter(event => event.type === type).length;
     const stageSeconds = events.filter(event => event.type === 'stage_time').reduce((total, event) => total + num(event.data?.seconds), 0);
+    const concernCounts = events.filter(event => event.type === 'concern_selected').reduce((counts, event) => {
+      const category = clean(event.data?.category) || 'Uncategorised';
+      counts[category] = (counts[category] || 0) + 1;
+      return counts;
+    }, {});
+    const commonConcern = Object.entries(concernCounts).sort((a, b) => b[1] - a[1])[0];
     const metrics = [
       ['Visits started', count('visit_started')], ['Visits completed', count('visit_completed')],
       ['Recommendations presented', count('recommendation_presented')], ['Concerns selected', count('concern_selected')],
-      ['Recommendations confirmed', count('recommendation_confirmed')], ['Formal quotes prepared', count('formal_quote_prepared')],
+      ['Most common concern', commonConcern ? `${commonConcern[0]} (${commonConcern[1]})` : 'None yet'], ['Recommendations changed', count('recommendation_changed_after_presentation')],
+      ['Recommendations confirmed', count('recommendation_confirmed')], ['Formal quotes prepared', count('formal_quote_prepared')], ['Quotes signed', count('quote_signed')],
       ['Recovered surveys', count('survey_recovered')], ['Recorded journey time', `${Math.round(stageSeconds / 60)} min`],
       ['Import failures', count('import_failure')], ['Export failures', count('export_failure')]
     ];
@@ -1642,6 +1838,16 @@
   function setupEvents() {
     bindForms();
     $$('.navBtn').forEach(button => button.addEventListener('click', () => go(button.dataset.panel)));
+    $('pageShortcuts').addEventListener('click', event => {
+      const button = event.target.closest('[data-page-shortcut]');
+      const target = button && document.getElementById(button.dataset.pageShortcut);
+      if (!target) return;
+      const panel = document.querySelector('.screen.active')?.id;
+      if (!panel) return;
+      state.pageFocus[panel] = target.id;
+      renderPageShortcuts(panel);
+      document.querySelector('.surveyorMain')?.scrollIntoView({ behavior: 'auto', block: 'start' });
+    });
     $$('.viewBtn').forEach(button => button.addEventListener('click', () => switchView(button.dataset.view)));
     $$('[data-next-panel]').forEach(button => button.addEventListener('click', () => go(button.dataset.nextPanel)));
     $$('[data-open-customer-stage]').forEach(button => button.addEventListener('click', () => switchView('customer', button.dataset.openCustomerStage)));
@@ -1697,12 +1903,20 @@
       const toggle = event.target.closest('[data-toggle-check]');
       const decision = event.target.closest('[data-decision]');
       const concern = event.target.closest('[data-concern]');
+      const fieldChoice = event.target.closest('[data-field-choice]');
       if (priority) togglePriority(priority.dataset.priority);
       if (primary) choosePrimaryPriority(primary.dataset.primaryPriority);
-      if (funding && state.survey) { state.survey.priorities.financePlan = funding.dataset.funding; renderPriorityControls(); scheduleSave(); }
+      if (funding && state.survey) { state.survey.priorities.financePlan = funding.dataset.funding; renderPriorityControls(); if (state.currentView === 'customer') renderCustomerStage(); scheduleSave(); }
       if (toggle && state.survey) toggleBooleanPath(toggle.dataset.toggleCheck);
       if (decision && state.survey) chooseDecision(decision.dataset.decision);
       if (concern && state.survey) chooseConcern(concern.dataset.concern);
+      if (fieldChoice && state.survey) {
+        setPath(state.survey, fieldChoice.dataset.fieldChoice, fieldChoice.dataset.fieldValue);
+        markInformation(fieldChoice.dataset.fieldChoice, 'Confirmed today', 'confirmed');
+        renderPriorityControls();
+        if (state.currentView === 'customer') renderCustomerStage(); else fillForm();
+        scheduleSave();
+      }
     });
 
     $('addRoof').addEventListener('click', () => {
@@ -1751,6 +1965,7 @@
       updateRoofCalculations(); state.survey.design.panelCount = roofSuggestionTotal(); state.survey.design.panelCountMode = 'suggested';
       $('panelCount').value = state.survey.design.panelCount; await validateRoof();
     });
+    $('useBatterySuggestion').addEventListener('click', applyBatterySuggestion);
     $('presentRecommendation').addEventListener('click', () => switchView('customer', 'recap'));
 
     $('recordConfirmation').addEventListener('click', recordConfirmation);
@@ -1825,7 +2040,7 @@
 
   window.LGV3 = {
     APP_VERSION, Catalog, defaultSurvey, migrateSurvey, parseCSV, extractCSV, normalizeImportRows, guessImportField,
-    calculateRoofPlane, validateRoof, priceState, recommendationSummary, recommendationEmailPlainText, recommendationMailto,
+    calculateRoofPlane, batterySizingSuggestion, batteryConfigurationSuggestion, validateRoof, priceState, recommendationSummary, recommendationEmailPlainText, recommendationMailto,
     customerSummaryHtml, crmSummaryText, sidekickPromptText, exportPack, startSurvey, loadSurvey, Store
   };
 

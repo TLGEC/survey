@@ -16,7 +16,7 @@ page.on('console', message => {
 
 async function openApp() {
   await page.goto(appUrl, { waitUntil: 'networkidle' });
-  await page.waitForFunction(() => window.LGV3?.APP_VERSION === 'v3.0.0');
+  await page.waitForFunction(() => window.LGV3?.APP_VERSION === 'v3.1.0');
 }
 
 async function buildSolarBatteryVisit() {
@@ -25,26 +25,42 @@ async function buildSolarBatteryVisit() {
   await page.click('#previewMonday');
   await page.waitForSelector('#importPreview:not([hidden])');
   assert.match(await page.textContent('#importSummary'), /8 columns and 1 appointment/);
+  assert.equal(await page.locator('.mappingDetails').evaluate(element => element.open), false);
+  const cardTop = await page.locator('.recordCard').boundingBox();
+  const startTop = await page.locator('[data-import-record="0"]').boundingBox();
+  assert.ok(cardTop && startTop && startTop.y - cardTop.y < 40, 'Start this visit should be at the top of the imported-customer card');
   const unknownMapping = await page.locator('[data-map-column="7"]').inputValue();
   assert.equal(unknownMapping, 'ignore');
   await page.click('[data-import-record="0"]');
   await page.waitForSelector('#discover.active');
+  assert.equal(await page.locator('#pageShortcuts').isVisible(), true);
+  assert.match(await page.textContent('#pageShortcuts'), /Summary.*Details.*Priorities.*Energy & funding/);
   assert.equal(await page.locator('[data-bind="customer.name"]').first().inputValue(), 'Alex Morgan');
   assert.match(await page.locator('[data-bind="customer.address"]').first().inputValue(), /AB1 2CD/);
 
+  await page.click('[data-field-choice="priorities.mainConcern"][data-field-value="Total price"]');
+  await page.fill('[data-bind="priorities.decisionMakers"]', 'Alex and Sam');
+  await page.click('[data-page-shortcut="customerPriorities"]');
   await page.click('[data-priority="Reduce electricity bills"]');
   await page.click('[data-priority="Gain more control over energy costs"]');
   await page.click('[data-primary-priority="Reduce electricity bills"]');
-  await page.fill('[data-bind="priorities.goodResult"]', 'Lower bills with a system that is simple to understand.');
-  await page.fill('[data-bind="priorities.mainConcern"]', 'Total price');
-  await page.fill('[data-bind="priorities.decisionMakers"]', 'Alex and Sam');
+  await page.fill('[data-bind="priorities.ownWords"]', 'Lower bills with a system that is simple to understand.');
+  await page.click('[data-page-shortcut="customerEnergy"]');
   await page.click('[data-funding="Own savings / cash"]');
+
+  await page.click('[data-open-customer-stage="welcome"]');
+  await page.click('#customerContinue');
+  await page.click('#customerContinue');
+  assert.match(await page.textContent('#customerStage'), /main concern.*anyone else involved.*preferred timescale.*funding/is);
+  assert.match(await page.textContent('#customerStage'), /Own savings \/ cash/);
+  await page.click('#returnSurveyor');
 
   await page.click('[data-next-panel="property"]');
   await page.fill('[data-roof-field="width"]', '8');
   await page.fill('[data-roof-field="slope"]', '5');
   await page.fill('[data-roof-field="pitch"]', '35');
   await page.fill('[data-roof-field="azimuth"]', '180');
+  await page.click('[data-page-shortcut="propertyDetails"]');
   await page.fill('[data-bind="site.batteryLocation"]', 'Garage wall');
   await page.fill('[data-bind="site.cableRoute"]', 'External route to garage');
   await page.check('[data-check="site.routeAgreed"]');
@@ -53,8 +69,9 @@ async function buildSolarBatteryVisit() {
   await page.click('[data-next-panel="design"]');
   const suggestedPanels = Number(await page.locator('#panelCount').inputValue());
   assert.ok(suggestedPanels > 0, 'roof validation should set a starting panel count');
-  await page.fill('[data-bind="design.reasonForRecommendation"]', 'This design matches the recorded energy use and the customer priority of reducing electricity bills.');
   await page.fill('[data-bind="design.batteryReason"]', 'Sized against annual use and evening consumption.');
+  await page.click('[data-page-shortcut="recommendationPricing"]');
+  await page.fill('[data-bind="design.reasonForRecommendation"]', 'This design matches the recorded energy use and the customer priority of reducing electricity bills.');
   await page.fill('[data-bind="design.limitations"]', 'Final electrical checks and DNO approval remain outstanding.');
   await page.fill('[data-bind="design.warrantyInfo"]', 'Warranty details will be confirmed in the formal quote.');
   await page.fill('[data-bind="design.finalPriceOverride"]', '15000');
@@ -63,6 +80,7 @@ async function buildSolarBatteryVisit() {
   await page.waitForFunction(() => window.LGV3.priceState().ready === true);
   assert.match(await page.textContent('#quoteLive'), /£15,000/);
   assert.doesNotMatch(await page.textContent('#design'), /margin|profit|supplier cost/i);
+  assert.match(await page.evaluate(() => window.LGV3.customerSummaryHtml()), /Proposed panel layout/);
 }
 
 async function runAdditionalScenarios() {
@@ -73,20 +91,40 @@ async function runAdditionalScenarios() {
   try {
     await extraPage.goto(appUrl, { waitUntil: 'networkidle' });
     await extraPage.click('#startBlank');
+    await extraPage.click('[data-page-shortcut="customerEnergy"]');
+    await extraPage.fill('[data-bind="energy.annualKwh"]', '6500');
+    await extraPage.click('[data-field-choice="energy.overnightUse"][data-field-value="High"]');
+    await extraPage.check('[data-check="energy.backup"]');
     await extraPage.click('[data-panel="design"]');
     assert.match(await extraPage.textContent('#quoteLive'), /Customer price hidden/);
 
     await extraPage.click('[data-system-type="battery-only"]');
     await extraPage.waitForFunction(() => document.querySelector('#roofFitPill')?.textContent === 'Not required');
+    await extraPage.click('[data-battery-select="Tesla"]');
+    assert.match(await extraPage.textContent('#batterySizingGuide'), /usable target.*backup requirement considered/is);
+    await extraPage.click('#useBatterySuggestion');
+    assert.match(await extraPage.locator('[data-bind="design.batteryReason"]').inputValue(), /Starting size based on/);
+    await extraPage.click('[data-page-shortcut="recommendationPricing"]');
     await extraPage.fill('[data-bind="design.finalPriceOverride"]', '7850');
     await extraPage.fill('[data-bind="design.priceAuthorityNote"]', 'Authorised Powerwall customer total');
     await extraPage.check('[data-check="design.priceAuthorised"]');
-    await extraPage.click('[data-battery-select="Tesla"]');
     const powerwall = await extraPage.evaluate(() => window.LGV3.recommendationSummary());
     assert.equal(powerwall.battery.referencePrice, 7850);
     assert.equal(powerwall.price.ready, true);
     assert.doesNotMatch(JSON.stringify(powerwall), /rebate/i);
 
+    const mixedFit = await extraPage.evaluate(() => {
+      for (let width = 2; width <= 12; width += 0.1) {
+        for (let slope = 2; slope <= 8; slope += 0.1) {
+          const result = window.LGV3.calculateRoofPlane({ width, slope, shape: 'Rectangular' });
+          if (result.mixed > result.portrait && result.mixed > result.landscape) return result;
+        }
+      }
+      return null;
+    });
+    assert.ok(mixedFit && mixedFit.orientation === 'mixed orientation', 'mixed panel orientation should be genuinely calculated');
+
+    await extraPage.click('[data-page-shortcut="systemDesign"]');
     await extraPage.click('[data-battery-select="Sigenergy"]');
     const sigenergy = await extraPage.evaluate(() => window.LGV3.recommendationSummary().battery.text);
     assert.match(sigenergy, /SigenStor/);
@@ -109,9 +147,11 @@ async function runAdditionalScenarios() {
     await extraPage.waitForSelector('#discover.active');
     assert.match(await extraPage.textContent('#missingInfo'), /address, email, electricity use/);
     await extraPage.fill('[data-bind="priorities.decisionMakers"]', 'Partner will join the final decision');
+    await extraPage.click('[data-page-shortcut="customerEnergy"]');
     await extraPage.check('[data-check="energy.existingSolar"]');
 
     await extraPage.click('[data-panel="property"]');
+    await extraPage.click('[data-page-shortcut="propertyDetails"]');
     const files = Array.from({ length: 12 }, (_, index) => ({ name: `roof_${index + 1}.jpg`, mimeType: 'image/jpeg', buffer: Buffer.from(`test-image-${index + 1}`) }));
     await extraPage.locator('#mediaInput').setInputFiles(files);
     await extraPage.waitForFunction(() => Number(document.querySelector('#mediaCount')?.textContent) === 12);
@@ -154,6 +194,7 @@ try {
   assert.match(email, /Please confirm that you are happy with the proposed panel layout and battery size/);
   assert.doesNotMatch(email, /If you.d like|Let me know if|Feel free to|—/i);
 
+  await page.click('[data-page-shortcut="visitOutputs"]');
   const downloadPromise = page.waitForEvent('download');
   await page.click('#downloadPack');
   const download = await downloadPromise;
@@ -161,7 +202,7 @@ try {
 
   const recoveredBefore = await page.evaluate(() => window.LGV3.Store.getSurvey(localStorage.getItem('lg-v2-active-survey-id')).then(s => s.meta.recoveredCount));
   await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForFunction(() => window.LGV3?.APP_VERSION === 'v3.0.0');
+  await page.waitForFunction(() => window.LGV3?.APP_VERSION === 'v3.1.0');
   const recoveredAfter = await page.evaluate(() => window.LGV3.Store.getSurvey(localStorage.getItem('lg-v2-active-survey-id')).then(s => s.meta.recoveredCount));
   assert.ok(recoveredAfter > recoveredBefore, 'reload should recover the active visit');
   assert.equal(await page.textContent('#surveyTitle'), 'Alex Morgan');
@@ -170,10 +211,11 @@ try {
   await page.reload({ waitUntil: 'networkidle' });
   await context.setOffline(true);
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.LGV3?.APP_VERSION === 'v3.0.0');
+  await page.waitForFunction(() => window.LGV3?.APP_VERSION === 'v3.1.0');
   await page.evaluate(() => window.dispatchEvent(new Event('offline')));
   assert.equal(await page.textContent('#connectionStatus'), 'Offline ready');
   await page.click('[data-panel="complete"]');
+  await page.click('[data-page-shortcut="formalQuoteHandoff"]');
   await page.click('#prepareFormalQuote');
   await page.waitForFunction(async () => (await window.LGV3.Store.getQueueItems()).some(item => item.type === 'formal-quote-handoff'));
   const queued = await page.evaluate(() => window.LGV3.Store.getQueueItems());
@@ -183,7 +225,7 @@ try {
   await runAdditionalScenarios();
 
   assert.deepEqual(errors, []);
-  console.log(JSON.stringify({ status: 'passed', scenarios: ['AI-wrapped CSV and unknown column', 'solar and battery', 'solar only', 'battery only', 'Powerwall current price and no rebate', 'roof-fit price gate', 'roof that cannot fit', 'existing solar', 'battery preference change', 'another decision maker', 'incomplete Monday data', 'customer view privacy', 'price concern', 'media-heavy isolation', 'pack export', 'interruption recovery', 'offline boot', 'offline formal quote queue'] }, null, 2));
+  console.log(JSON.stringify({ status: 'passed', scenarios: ['AI-wrapped CSV and unknown column', 'start action position', 'compact page shortcuts', 'customer-led discovery', 'solar and battery', 'battery sizing guide', 'solar only', 'battery only', 'Powerwall current price and no rebate', 'roof-fit price gate', 'mixed-orientation roof fit', 'roof that cannot fit', 'existing solar', 'battery preference change', 'another decision maker', 'incomplete Monday data', 'customer view privacy', 'customer panel layout output', 'price concern', 'media-heavy isolation', 'pack export', 'interruption recovery', 'offline boot', 'offline formal quote queue'] }, null, 2));
 } finally {
   await browser.close();
 }
