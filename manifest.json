@@ -1,6 +1,6 @@
 {
-  "name": "LG Survey Pro V3",
-  "short_name": "Survey Pro V3",
+  "name": "LG Survey Pro",
+  "short_name": "LG Survey",
   "start_url": "./",
   "display": "standalone",
   "scope": "./",

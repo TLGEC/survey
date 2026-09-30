@@ -3,430 +3,343 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#082c1c">
-  <meta name="lg-survey-version" content="v3.1.0">
-  <title>LG Survey Pro V3</title>
+  <meta name="theme-color" content="#073b2a">
+  <meta name="lg-survey-version" content="v4.0.0-preview">
+  <title>LG Survey Pro</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="brand.css">
+  <script src="vendor/pdf-lib.min.js" defer></script>
+  <script type="module" src="app.js"></script>
 </head>
 <body>
   <header class="appHeader">
-    <div class="brand">
-      <img src="tlgec-logo.png" alt="The Little Green Energy Company logo">
-      <div>
-        <small>The Little Green Energy Company</small>
-        <h1 id="surveyTitle">LG Survey Pro</h1>
-        <p id="surveyMeta">Start or continue a customer visit</p>
-      </div>
+    <button class="brand" id="homeButton" aria-label="Return to visits">
+      <img src="tlgec-logo.png" alt="The Little Green Energy Company">
+      <span><small>THE LITTLE GREEN ENERGY COMPANY</small><strong>LG Survey Pro</strong></span>
+    </button>
+    <div class="visitIdentity">
+      <strong id="activeCustomer">No visit selected</strong>
+      <span id="activeAddress">Start a new visit or import Monday appointments</span>
     </div>
-    <div class="headerControls">
-      <div class="viewSwitch" aria-label="Choose app view">
-        <button class="viewBtn active" data-view="surveyor" aria-pressed="true">Surveyor view</button>
-        <button class="viewBtn" data-view="customer" aria-pressed="false">Customer view</button>
-      </div>
-      <div class="statusStrip">
-        <span class="pill" id="connectionStatus">Checking</span>
-        <span class="pill saved" id="saveState">Ready</span>
-        <span class="pill">V3</span>
-      </div>
+    <div class="saveCluster" aria-live="polite">
+      <span id="connectionBadge" class="statusPill">Checking</span>
+      <span id="saveBadge" class="statusPill saved">Ready</span>
     </div>
   </header>
 
-  <div id="surveyorApp">
-    <nav class="surveyorNav" aria-label="Surveyor journey">
-      <button class="navBtn active" data-panel="prepare"><span>1</span>Prepare</button>
-      <button class="navBtn" data-panel="discover"><span>2</span>Customer</button>
-      <button class="navBtn" data-panel="property"><span>3</span>Property</button>
-      <button class="navBtn" data-panel="design"><span>4</span>Design</button>
-      <button class="navBtn" data-panel="complete"><span>5</span>Complete</button>
-      <button class="navBtn" data-panel="tools"><span>6</span>Tools</button>
-    </nav>
-    <nav class="pageShortcuts" id="pageShortcuts" aria-label="Shortcuts within this page"></nav>
+  <nav class="journeyNav" id="journeyNav" aria-label="Customer journey">
+    <button data-screen="visits" class="active"><span>1</span>Visits</button>
+    <button data-screen="conversation"><span>2</span>Conversation</button>
+    <button data-screen="home"><span>3</span>Home</button>
+    <button data-screen="solution"><span>4</span>Solution</button>
+    <button data-screen="review"><span>5</span>Review</button>
+    <button data-screen="close"><span>6</span>Close</button>
+  </nav>
 
-    <main class="surveyorMain">
-      <section class="screen active" id="prepare">
-        <div class="hero">
-          <div>
-            <span class="kicker">Visit workspace</span>
-            <h2>Arrive prepared. Leave with a clear next step.</h2>
-            <p>Bring in the appointment, understand the customer, validate the home and present one confident recommendation.</p>
-          </div>
-          <div class="heroActions">
-            <button class="primary" id="continueLast">Continue last visit</button>
-            <button class="secondaryOnDark" id="startBlank">Start without an import</button>
-          </div>
+  <main>
+    <section class="screen active" id="screen-visits">
+      <div class="startHero">
+        <div>
+          <span class="eyebrow">Visit workspace</span>
+          <h1>Start the right customer. Keep every detail safe.</h1>
+          <p>Import today's appointments, check bill readiness and begin the conversation.</p>
         </div>
+        <button class="primary large" id="newVisitTop">Start a new visit</button>
+      </div>
 
+      <div class="workspaceGrid">
         <article class="card importCard">
-          <div class="cardHead">
-            <div><span class="step">Usual first action</span><h3>Bring in appointment details</h3></div>
-            <span class="sourceBadge imported">Monday.com CSV</span>
+          <div class="cardHeading">
+            <div><span class="eyebrow">Usual first action</span><h2>Import from Monday</h2></div>
+            <span class="tag">CSV or pasted reply</span>
           </div>
-          <p>Paste what Sidekick gives you, including any introduction or code fences, or choose the original CSV file.</p>
-          <div class="importActions">
-            <label class="fileButton">Choose CSV<input id="mondayFile" type="file" accept=".csv,text/csv" hidden></label>
-            <span class="muted">or paste below</span>
+          <p>Paste the whole Sidekick answer. Introductions, code fences and extra text are removed automatically.</p>
+          <div class="buttonRow">
+            <label class="secondary fileButton">Choose CSV<input id="mondayFile" type="file" accept=".csv,text/csv" hidden></label>
+            <button class="quiet" id="clearImport">Clear</button>
           </div>
-          <textarea id="mondayPaste" placeholder="Paste the complete Sidekick response here. V3 will find the CSV inside it."></textarea>
-          <div class="actionRow">
-            <button class="primary" id="previewMonday">Check appointment details</button>
-            <span id="mondayStatus" class="hint" role="status">Nothing checked yet.</span>
-          </div>
-          <div id="importPreview" class="importPreview" hidden>
-            <div class="splitHead">
-              <div><h3>What V3 found</h3><p id="importSummary">Review the detected information.</p></div>
-              <button class="ghost" id="cancelImport">Clear preview</button>
-            </div>
-            <p class="shortcutPrompt">Choose the customer and start immediately.</p>
-            <div id="importRecords" class="recordGrid"></div>
-            <details class="mappingDetails">
-              <summary>Check or change detected columns</summary>
-              <div id="columnMapping" class="mappingGrid"></div>
-            </details>
-          </div>
+          <textarea id="mondayPaste" rows="7" placeholder="Paste the complete Monday Sidekick response here..."></textarea>
+          <button class="primary" id="previewMonday">Find appointments</button>
+          <p class="fieldHelp" id="importStatus" role="status">Ready for an export.</p>
+          <div id="importPreview" class="appointmentList"></div>
         </article>
 
-        <div class="grid twoCol">
-          <article class="card">
-            <div class="cardHead"><div><span class="kicker">On this tablet</span><h3>Saved visits</h3></div><span id="savedCount" class="countBadge">0</span></div>
-            <p>Each customer has a separate record and separate media library.</p>
-            <div id="savedSurveys" class="savedList"></div>
-          </article>
-          <article class="card journeyCard">
-            <span class="kicker">The customer journey</span>
-            <ol class="journeyList">
-              <li><b>Understand</b><span>Goals, concerns and energy use</span></li>
-              <li><b>Validate</b><span>Property, layout and installation route</span></li>
-              <li><b>Recommend</b><span>One suitable system and a clear price</span></li>
-              <li><b>Confirm</b><span>Decision readiness and next action</span></li>
-            </ol>
-            <p class="tiny" id="activeSurveyId">No active visit</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="screen" id="discover">
-        <div class="sectionHead">
-          <div><span class="kicker">Customer and discovery</span><h2>Start with what matters</h2><p>Confirm imported details, then understand the outcome the customer wants.</p></div>
-          <button class="customerLaunch" data-open-customer-stage="welcome">Present to customer</button>
-        </div>
-
-        <article class="card" id="previsitCard" data-shortcut-label="Summary">
-          <div class="cardHead"><div><span class="kicker">Pre-visit summary</span><h3 id="previsitName">No customer selected</h3></div><span class="sourceBadge" id="previsitSource">Not imported</span></div>
-          <div id="previsitSummary" class="summaryGrid"></div>
-          <div id="missingInfo" class="notice soft">Start or import a visit to see what still needs collecting.</div>
+        <article class="card savedCard">
+          <div class="cardHeading"><div><span class="eyebrow">On this tablet</span><h2>Saved visits</h2></div><span class="count" id="savedCount">0</span></div>
+          <p>Active visits autosave locally and remain available without a signal.</p>
+          <div id="savedVisits" class="savedList"></div>
+          <details class="legacyPanel">
+            <summary>Older read-only records</summary>
+            <p>Previous-version records are kept separate so old journey logic cannot affect new visits.</p>
+            <div id="legacyVisits" class="savedList compact"></div>
+          </details>
         </article>
-
-        <div class="grid twoCol" id="customerDetails" data-shortcut-label="Details" data-shortcut-default>
-          <article class="card">
-            <h3>Customer and appointment</h3>
-            <div class="formGrid compactFields">
-              <label>Name<input data-bind="customer.name" autocomplete="name"></label>
-              <label>Email<input data-bind="customer.email" type="email" autocomplete="email"></label>
-              <label>Phone<input data-bind="customer.phone" inputmode="tel" autocomplete="tel"></label>
-              <label>Appointment<input data-bind="customer.appointmentTime"></label>
-              <label class="wide">Address<input data-bind="customer.address" autocomplete="street-address"></label>
-              <label>Opportunity stage<input data-bind="customer.crmStatus"></label>
-              <label>Monday item ID<input data-bind="customer.mondayId"></label>
-              <label class="wide">Imported notes<input data-bind="customer.notes"></label>
-            </div>
-          </article>
-
-          <article class="card">
-            <h3>Decision context</h3>
-            <span class="fieldLabel">Who else is involved?</span><div id="decisionMakerChoices" class="quickChoices"></div>
-            <label>Names or details, when useful<input data-bind="priorities.decisionMakers"></label>
-            <span class="fieldLabel">Preferred timescale</span><div id="timescaleChoices" class="quickChoices"></div>
-            <span class="fieldLabel">Main concern</span><div id="initialConcernChoices" class="quickChoices"></div>
-          </article>
-        </div>
-
-        <article class="card" id="customerPriorities" data-shortcut-label="Priorities">
-          <div class="cardHead"><div><span class="kicker">Priorities</span><h3>What prompted the customer to look now?</h3></div><span class="hint">Choose more than one, then select the main priority.</span></div>
-          <div id="priorityChoices" class="tileChoices"></div>
-          <div id="primaryPriorityChoices" class="primaryPicker"></div>
-          <label>Discovery notes<textarea data-bind="priorities.ownWords" placeholder="Capture only what is specific to this customer: their words, what a good result looks like, or anything not covered above."></textarea></label>
-        </article>
-
-        <div class="grid twoCol" id="customerEnergy" data-shortcut-label="Energy & funding">
-          <article class="card">
-            <h3>Energy use</h3>
-            <div class="formGrid compactFields">
-              <label>Annual use (kWh)<input id="annualKwh" data-bind="energy.annualKwh" type="number" inputmode="decimal"></label>
-              <label>Daily use (kWh)<input id="dailyKwh" data-bind="energy.dailyKwh" type="number" inputmode="decimal"></label>
-              <label>Current tariff<input data-bind="energy.tariff"></label>
-              <label>Annual electricity spend (£)<input data-bind="energy.annualSpend" type="number" inputmode="decimal"></label>
-              <label>Import rate (p/kWh)<input data-bind="energy.importRate" type="number" inputmode="decimal"></label>
-              <label>Export rate (p/kWh)<input data-bind="energy.exportRate" type="number" inputmode="decimal"></label>
-              <div><span class="fieldLabel">Daytime use</span><div id="daytimeUseChoices" class="quickChoices"></div></div>
-              <div><span class="fieldLabel">Evening / overnight use</span><div id="overnightUseChoices" class="quickChoices"></div></div>
-              <div class="wide"><span class="fieldLabel">Tariff goal</span><div id="tariffStrategyChoices" class="quickChoices"></div></div>
-              <label>Battery tariff use<select data-bind="energy.arbitrage"><option value="false">No planned tariff charging</option><option value="true">Use off-peak / flexible tariff charging</option></select></label>
-            </div>
-            <div class="toggleGrid">
-              <label><input type="checkbox" data-check="energy.ev">EV now or planned</label>
-              <label><input type="checkbox" data-check="energy.heatPump">Heat pump or major load</label>
-              <label><input type="checkbox" data-check="energy.backup">Backup matters</label>
-              <label><input type="checkbox" data-check="energy.existingSolar">Existing solar</label>
-            </div>
-            <label>Other future changes<input data-bind="energy.futureChanges" placeholder="Only add something not covered above"></label>
-          </article>
-
-          <article class="card">
-            <h3>Project funding</h3>
-            <p>Position this as planning the right next step, not as a finance pitch.</p>
-            <div id="fundingChoices" class="stackChoices"></div>
-            <label>Funding detail, if needed<input data-bind="priorities.financeNote"></label>
-          </article>
-        </div>
-        <div class="pageActions"><button class="primary" data-next-panel="property">Continue to property survey</button></div>
-      </section>
-
-      <section class="screen" id="property">
-        <div class="sectionHead">
-          <div><span class="kicker">Property validation</span><h2>Confirm the practical design</h2><p>Capture enough detail for a reliable recommendation and installation handover.</p></div>
-          <button class="customerLaunch" data-open-customer-stage="home">Show progress to customer</button>
-        </div>
-
-        <div class="validationBanner" id="roofValidationBanner">
-          <div><span class="statusDot"></span><b>Roof fit not checked</b><p>Add roof measurements before presenting a solar price.</p></div>
-          <button class="primary" id="validateRoof">Validate roof fit</button>
-        </div>
-
-        <article class="card" id="roofAreas" data-shortcut-label="Roof" data-shortcut-default>
-          <div class="splitHead"><div><span class="kicker">Roof areas</span><h3>Panel-fit measurements</h3><p>V3 compares portrait, landscape and mixed layouts using the selected panel dimensions and preferred edge margins.</p></div><button class="secondary" id="addRoof">Add roof area</button></div>
-          <div id="roofPlaneList" class="roofList"></div>
-        </article>
-
-        <div class="grid twoCol" id="propertyDetails" data-shortcut-label="Install & media">
-          <article class="card">
-            <h3>Installation details</h3>
-            <div class="formGrid compactFields">
-              <label>Electrical supply<select data-bind="site.supplyPhase"><option value="Estimated single phase">Estimated single phase</option><option value="Confirmed single phase">Confirmed single phase</option><option value="Confirmed three phase">Confirmed three phase</option><option value="Still to be checked">Still to be checked</option></select></label>
-              <label>Roof covering<input data-bind="site.roofCovering" placeholder="Tile, slate, metal..."></label>
-              <label>Cable distance (approx. m)<input data-bind="site.cableDistance" type="number" inputmode="decimal"></label>
-              <label>Scaffold requirement<select data-bind="site.scaffoldRequirement"><option value="Auto from roof width">Auto from roof width</option><option value="One lift">One lift</option><option value="Two lifts">Two lifts</option><option value="Survey dependent">Survey dependent</option><option value="Not required">Not required</option></select></label>
-              <label>Battery / inverter location<input data-bind="site.batteryLocation"></label>
-              <label>Cable route<input data-bind="site.cableRoute"></label>
-              <label>Access and scaffold<input data-bind="site.access"></label>
-              <label>Checks outstanding<input data-bind="site.outstandingChecks"></label>
-            </div>
-            <label class="checkLine"><input type="checkbox" data-check="site.routeAgreed">Proposed route and equipment locations discussed, subject to final checks</label>
-            <label>General survey notes<textarea class="largeNotes" data-bind="site.generalNotes"></textarea></label>
-          </article>
-
-          <article class="card mediaCaptureCard">
-            <div class="cardHead"><div><span class="kicker">Saved to this visit</span><h3>Photos and videos</h3></div><span id="mediaCount" class="countBadge">0</span></div>
-            <p>Choose a category, then capture or select files. Every file is stored against this customer only.</p>
-            <div id="mediaCategories" class="mediaToolbar"></div>
-            <input id="mediaInput" type="file" accept="image/*,video/*,.pdf,application/pdf" multiple hidden>
-            <div id="mediaGrid" class="mediaGrid"></div>
-          </article>
-        </div>
-        <div class="pageActions"><button class="secondary" id="downloadFieldPack">Download field safety copy</button><button class="primary" data-next-panel="design">Continue to design</button></div>
-      </section>
-
-      <section class="screen" id="design">
-        <div class="sectionHead">
-          <div><span class="kicker">Recommendation builder</span><h2>Choose the system, then explain why</h2><p>V3 starts with a sensible recommendation. Every product, panel count and customer price remains under surveyor control.</p></div>
-          <button class="customerLaunch" data-open-customer-stage="recap">Start customer recap</button>
-        </div>
-
-        <div id="designGate" class="notice warning">A customer price will remain hidden until roof fit is validated.</div>
-        <div class="segmented" id="systemTypeChoices">
-          <button data-system-type="solar-battery">Solar + battery</button>
-          <button data-system-type="solar-only">Solar only</button>
-          <button data-system-type="battery-only">Battery only</button>
-        </div>
-
-        <div class="grid twoCol" id="systemDesign" data-shortcut-label="System" data-shortcut-default>
-          <article class="card" id="solarDesignCard">
-            <div class="cardHead"><div><span class="kicker">Solar design</span><h3>Panel layout</h3></div><span id="roofFitPill" class="sourceBadge">Not validated</span></div>
-            <label>Panel model<select id="panelModel" data-bind="design.panelKey"></select></label>
-            <p id="selectedPanelMeta" class="hint"></p>
-            <div id="panelOffer" class="notice warning" hidden>This warehouse offer is only active because it has been selected.</div>
-            <div class="numberControl">
-              <button data-step-panel="-1" aria-label="Remove one panel">−</button>
-              <label>Recommended panel count<input id="panelCount" data-bind="design.panelCount" type="number" min="0" inputmode="numeric"></label>
-              <button data-step-panel="1" aria-label="Add one panel">+</button>
-            </div>
-            <div class="suggestionBar"><span id="roofSuggestion">No roof suggestion yet</span><button id="useRoofSuggestion" class="secondary small">Use fit result</button></div>
-            <label>Reason for manual count<input data-bind="design.panelOverrideReason" placeholder="Required when the selected count differs from the validated fit."></label>
-            <div class="formGrid compactFields">
-              <label>Mounting / roof type<select id="mounting" data-bind="design.mounting"></select></label>
-              <label>Panel orientation<select data-bind="design.orientation"><option>Best fit</option><option>Portrait</option><option>Landscape</option><option>Mixed</option></select></label>
-            </div>
-            <div class="toggleGrid">
-              <label><input type="checkbox" data-check="design.bird">Bird protection</label>
-              <label><input type="checkbox" data-check="design.tigo">Optimisers where required</label>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="cardHead"><div><span class="kicker">Storage</span><h3>Battery route</h3></div><span id="batteryCapacity" class="sourceBadge">No storage</span></div>
-            <div class="batteryCards">
-              <button data-battery-select="Sigenergy"><img src="sigenergy-battery.webp" alt=""><span>Sigenergy</span></button>
-              <button data-battery-select="Tesla"><img src="tesla-powerwall.webp" alt=""><span>Tesla</span></button>
-              <button data-battery-select="None"><span>No battery</span></button>
-            </div>
-            <div id="sigConfig" class="productConfig">
-              <div class="formGrid compactFields">
-                <label>BAT 10 quantity<input data-bind="design.sig10Qty" type="number" min="0" inputmode="numeric"></label>
-                <label>BAT 6 quantity<input data-bind="design.sig6Qty" type="number" min="0" inputmode="numeric"></label>
-                <label>Energy controller<select data-bind="design.sigController"><option>Auto-size from design</option><option>3 kW</option><option>5 kW</option><option>8 kW</option><option>10 kW</option><option>12 kW</option><option>15 kW</option><option>20 kW</option></select></label>
-                <label>Gateway<select data-bind="design.sigGateway"><option value="true">Included</option><option value="false">Not included</option></select></label>
-              </div>
-            </div>
-            <div id="teslaConfig" class="productConfig" hidden>
-              <div class="formGrid compactFields">
-                <label>Powerwall 3 quantity<input data-bind="design.teslaPw3Qty" type="number" min="0" max="4" inputmode="numeric"></label>
-                <label>DC Expansion quantity<input data-bind="design.teslaDcQty" type="number" min="0" max="3" inputmode="numeric"></label>
-              </div>
-              <label class="checkLine"><input type="checkbox" data-check="design.teslaGateway">Gateway included</label>
-              <p class="hint">Current Powerwall prices are configured with no rebate.</p>
-            </div>
-            <div id="batterySizingGuide" class="notice soft"></div>
-            <button id="useBatterySuggestion" class="secondary full">Use battery sizing starting point</button>
-            <label>Why this battery size?<input data-bind="design.batteryReason"></label>
-          </article>
-        </div>
-
-        <div class="grid twoCol" id="recommendationPricing" data-shortcut-label="Reason & price">
-          <article class="card">
-            <h3>Recommendation reasoning</h3>
-            <label>Why this suits the customer<textarea data-bind="design.reasonForRecommendation"></textarea></label>
-            <label>Important limitations or assumptions<input data-bind="design.limitations" placeholder="Final checks, access, DNO or another specific limitation"></label>
-            <label>Warranty and support information<input data-bind="design.warrantyInfo"></label>
-            <label>Alternative genuinely considered<input data-bind="design.alternativeConsidered" placeholder="Leave blank unless there is a meaningful trade-off."></label>
-          </article>
-
-          <article class="card pricingCard">
-            <div class="cardHead"><div><span class="kicker">Customer price</span><h3>Commercial position</h3></div><span id="pricingStatus" class="sourceBadge warning">Source required</span></div>
-            <div id="pricingAuthorityNotice" class="notice warning"></div>
-            <label>Authorised total customer price (£)<input data-bind="design.finalPriceOverride" type="number" min="0" inputmode="decimal" placeholder="Required while V8.6 is unavailable"></label>
-            <label>Price authority / reference<input data-bind="design.priceAuthorityNote" placeholder="Who supplied or approved this customer total?"></label>
-            <label class="checkLine"><input type="checkbox" data-check="design.priceAuthorised">I confirm this customer total is authorised for this quote</label>
-            <details class="advancedSettings">
-              <summary>Additional works and approved adjustments</summary>
-              <label>Scaffold lifts<input data-bind="design.scaffoldLifts" type="number" min="0" inputmode="numeric"></label>
-              <label>Included works<input data-bind="design.inclusions"></label>
-              <label>Customer-requested changes<input data-bind="design.customerRequestedChanges"></label>
-              <label>Explicitly authorised discount (£)<input data-bind="design.manualDiscount" type="number" min="0" inputmode="decimal"></label>
-              <label>Discount authorisation<input data-bind="design.discountAuthorisation" placeholder="Leave blank when no discount applies"></label>
-            </details>
-            <div id="quoteLive" class="quoteBox"></div>
-          </article>
-        </div>
-        <div class="pageActions"><button class="primary" id="presentRecommendation">Present recap and recommendation</button></div>
-      </section>
-
-      <section class="screen" id="complete">
-        <div class="sectionHead">
-          <div><span class="kicker">Complete the visit</span><h2>Record the outcome once</h2><p>Keep customer communication, the technical survey and CRM handover separate and clear.</p></div>
-          <button class="customerLaunch" data-open-customer-stage="decision">Return to customer decision</button>
-        </div>
-
-        <div class="grid twoCol" id="decisionOutcome" data-shortcut-label="Decision" data-shortcut-default>
-          <article class="card">
-            <h3>Decision and next action</h3>
-            <div class="formGrid compactFields">
-              <label>Decision status<select data-bind="decision.status"><option value="Not discussed">Not discussed</option><option value="Feels right">Feels right</option><option value="Concern raised">Concern raised</option><option value="Changes requested">Changes requested</option><option value="Needs another decision maker">Needs another decision maker</option><option value="Not proceeding">Not proceeding</option></select></label>
-              <label>Concern category<select data-bind="decision.concernCategory" id="concernCategory"></select></label>
-              <label class="wide">Concern detail<input data-bind="decision.concernDetail"></label>
-              <label>Concern status<select data-bind="decision.concernStatus"><option>Not raised</option><option>Open</option><option>Clarified</option><option>Resolved</option></select></label>
-              <label>Next action<input data-bind="decision.nextAction"></label>
-              <label>Owner<input data-bind="decision.owner" placeholder="James"></label>
-              <label>Expected timing<input data-bind="decision.expectedTiming"></label>
-              <label>Formal quote status<select data-bind="confirmation.formalQuoteStatus"><option>Not prepared</option><option>Ready to prepare</option><option>Prepared for review</option><option>Sent for e-signing</option><option>Signed</option></select></label>
-            </div>
-          </article>
-
-          <article class="card">
-            <h3>Recommendation confirmation</h3>
-            <p class="notice soft">This records the customer's understanding of the recommendation. It is not contract acceptance.</p>
-            <label class="checkLine"><input type="checkbox" data-check="confirmation.prioritiesUnderstood">Priorities have been understood</label>
-            <label class="checkLine"><input type="checkbox" data-check="confirmation.layoutConfirmed">Proposed panel layout is acceptable</label>
-            <label class="checkLine"><input type="checkbox" data-check="confirmation.batteryConfirmed">Proposed battery size is acceptable</label>
-            <label class="checkLine"><input type="checkbox" data-check="confirmation.recommendationConfirmed">Recommendation can be used to prepare the formal quote</label>
-            <button class="primary full" id="recordConfirmation">Record recommendation confirmation</button>
-            <p id="confirmationStatus" class="hint">Not yet recorded.</p>
-          </article>
-        </div>
-
-        <article class="card formalQuoteCard" id="formalQuoteHandoff" data-shortcut-label="Formal quote">
-          <span class="kicker">Formal quote handoff</span>
-          <h3>What happens next</h3>
-          <p id="formalQuoteParagraph"></p>
-          <div class="actionRow">
-            <button class="primary" id="prepareFormalQuote">Prepare formal quote handoff</button>
-            <span id="quoteOnlineStatus" class="hint">Internet is required for e-signing.</span>
-          </div>
-        </article>
-
-        <div class="outputGrid" id="visitOutputs" data-shortcut-label="Outputs">
-          <article class="outputCard"><span>Customer</span><h3>Customer summary</h3><p>Priorities, recommendation, price, assumptions and next steps.</p><button id="downloadCustomer" class="primary">Download customer summary</button></article>
-          <article class="outputCard"><span>Operations</span><h3>Technical survey pack</h3><p>Complete survey data, media, calculations, warnings and checks.</p><button id="downloadPack" class="primary">Download full survey pack</button></article>
-          <article class="outputCard"><span>CRM</span><h3>CRM handover</h3><p>Job value, decision status, concern, owner and next action.</p><button id="copyCrm" class="secondary">Copy CRM summary</button><button id="copySidekick" class="ghost">Create Sidekick AI Prompt</button></article>
-        </div>
-
-        <article class="card emailCard" id="customerEmail" data-shortcut-label="Email">
-          <div class="splitHead"><div><span class="kicker">Customer communication</span><h3>Email the recommendation</h3></div><span class="sourceBadge">Outlook-ready plain text</span></div>
-          <textarea id="emailDraft" aria-label="Customer email draft"></textarea>
-          <div class="actionRow">
-            <button class="primary" id="sendRecommendationEmail">Open email to customer</button>
-            <button class="secondary" id="copyEmail">Copy email text</button>
-          </div>
-          <div id="finishNotice" class="notice soft">Everything remains saved locally until you choose an output.</div>
-        </article>
-      </section>
-
-      <section class="screen" id="tools">
-        <div class="sectionHead"><div><span class="kicker">App tools</span><h2>Status, recovery and updates</h2><p>Tools stay out of the customer journey but remain available when needed.</p></div></div>
-        <div class="grid twoCol">
-          <article class="card"><h3>App status</h3><div id="appDiagnostics" class="diagnosticList"></div></article>
-          <article class="card"><h3>Local performance</h3><div id="analyticsSummary" class="metricGrid"></div><button id="downloadAnalytics" class="secondary">Download local visit metrics</button></article>
-          <article class="card"><h3>Backups</h3><p>Export all survey records as a recovery file. Individual survey packs include their own media.</p><button id="downloadBackup" class="primary">Download survey backup</button></article>
-          <article class="card"><h3>Pending online actions</h3><div id="queueList" class="savedList"></div></article>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <div id="customerApp" hidden>
-    <main class="customerMain">
-      <div class="customerProgress">
-        <div class="progressTrack"><span id="customerProgressBar"></span></div>
-        <ol id="customerJourneySteps"><li>1. Your priorities</li><li>2. Your home</li><li>3. Your recommendation</li><li>4. Your decision</li></ol>
       </div>
-      <section id="customerStage" class="customerStage" aria-live="polite"></section>
-      <div class="customerControls">
-        <button class="ghost" id="customerBack">Back</button>
-        <button class="secondary" id="returnSurveyor">Return to surveyor</button>
-        <button class="primary" id="customerContinue">Continue</button>
-      </div>
-    </main>
-  </div>
+    </section>
 
-  <div class="markupModal" id="markupModal" hidden>
-    <div class="markupPanel">
-      <div class="splitHead"><div><h3>Mark up photo</h3><p>Add clear installation labels, boxes and routes.</p></div><button class="ghost" id="closeMarkup">Close</button></div>
-      <div class="markupToolbar">
-        <button data-markup-label="Battery location">Battery location</button>
-        <button data-markup-label="Inverter location">Inverter location</button>
-        <button data-markup-label="Gateway location">Gateway location</button>
-        <button data-markup-label="Cable route">Cable route</button>
-        <button data-markup-label="Earth rod location">Earth rod location</button>
-        <button data-markup-tool="box">Box</button>
-        <button data-markup-tool="line">Line</button>
+    <section class="screen" id="screen-conversation">
+      <div class="sectionIntro">
+        <div><span class="eyebrow">A relaxed first conversation</span><h1>What would make this worthwhile?</h1><p>Use the prompts as a guide, not a script. The customer can comfortably follow along.</p></div>
+        <span class="stageCue">Understand</span>
       </div>
-      <canvas id="markupCanvas"></canvas>
-      <div class="actionRow"><button class="secondary" id="undoMarkup">Undo</button><button class="primary" id="saveMarkup">Save marked-up copy</button></div>
-    </div>
-  </div>
 
-  <script src="catalog.js"></script>
-  <script src="storage.js"></script>
-  <script src="app.js"></script>
+      <article class="card compactCard">
+        <div class="cardHeading"><div><h2>Customer and readiness</h2><p>Confirm the essentials before moving on.</p></div><span class="tag" id="importSource">Manual visit</span></div>
+        <div class="formGrid three">
+          <label>First name<input data-bind="customer.firstName" autocomplete="given-name"></label>
+          <label>Surname<input data-bind="customer.lastName" autocomplete="family-name"></label>
+          <label>Email<input data-bind="customer.email" type="email" autocomplete="email"></label>
+          <label>Phone<input data-bind="customer.phone" autocomplete="tel"></label>
+          <label class="span2">Address<input data-bind="customer.address" autocomplete="street-address"></label>
+        </div>
+        <div class="promptBlock">
+          <span class="prompt">Energy bill or usage information</span>
+          <div class="choiceRow" data-choice="readiness.billStatus">
+            <button data-value="received">Received</button><button data-value="requested">Requested</button><button data-value="unavailable">Not available</button>
+          </div>
+          <div class="formGrid three slim">
+            <label>Annual use (kWh)<input data-bind="energy.annualKwh" type="number" inputmode="decimal"></label>
+            <label>Annual spend (£)<input data-bind="energy.annualSpend" type="number" inputmode="decimal"></label>
+            <label>Import rate (p/kWh)<input data-bind="energy.importRate" type="number" inputmode="decimal"></label>
+          </div>
+        </div>
+      </article>
+
+      <article class="card conversationCard">
+        <div class="promptBlock">
+          <span class="prompt">Who will be involved in the decision?</span>
+          <div class="choiceRow" data-choice="discovery.decisionMakers">
+            <button data-value="Everyone is here">Everyone is here</button><button data-value="Someone else is involved">Someone else is involved</button><button data-value="Customer deciding alone">Customer deciding alone</button>
+          </div>
+        </div>
+        <div class="promptBlock">
+          <span class="prompt">What matters most?</span>
+          <div class="choiceGrid" data-multi-choice="discovery.goals">
+            <button data-value="Lower bills">Lower bills</button><button data-value="Energy independence">Energy independence</button><button data-value="Backup protection">Backup protection</button><button data-value="Lower carbon">Lower carbon</button><button data-value="Future-proof the home">Future-proof the home</button><button data-value="Make better use of existing solar">Use existing solar better</button>
+          </div>
+        </div>
+        <div class="promptBlock">
+          <span class="prompt">How are you thinking of funding the project?</span>
+          <div class="choiceGrid" data-choice="discovery.financeRoute">
+            <button data-value="Own savings / cash">Own savings / cash</button><button data-value="Company finance">Company finance</button><button data-value="Green mortgage or incentive">Green mortgage or incentive</button><button data-value="Unsure">Unsure for now</button>
+          </div>
+        </div>
+        <div class="promptBlock">
+          <span class="prompt">What is changing at home?</span>
+          <div class="choiceGrid" data-multi-choice="discovery.futureLoads">
+            <button data-value="Electric vehicle">Electric vehicle</button><button data-value="Heat pump">Heat pump</button><button data-value="Home working">More home working</button><button data-value="Growing household">Growing household</button><button data-value="Nothing planned">Nothing planned</button>
+          </div>
+        </div>
+        <div class="promptBlock twoPrompt">
+          <div><span class="prompt">How important is backup power?</span><div class="choiceRow" data-choice="discovery.backupNeed"><button data-value="Important">Important</button><button data-value="Nice to have">Nice to have</button><button data-value="Not a priority">Not a priority</button></div></div>
+          <div><span class="prompt">Preferred timing</span><div class="choiceRow" data-choice="discovery.timeline"><button data-value="As soon as practical">Soon</button><button data-value="Within 3 months">Within 3 months</button><button data-value="Exploring for later">Exploring</button></div></div>
+        </div>
+        <div class="commitmentPrompt">
+          <span class="eyebrow">A natural temperature check</span>
+          <h2>If we can make this work for you, would you be up for going ahead?</h2>
+          <div class="choiceRow light" data-choice="discovery.openingCommitment"><button data-value="Yes, if it works">Yes, if it works</button><button data-value="Possibly">Possibly</button><button data-value="I need to understand more">I need to understand more</button></div>
+        </div>
+        <label>Conversation notes<textarea data-bind="discovery.notes" rows="4" placeholder="Their own words, concerns or anything important not covered above"></textarea></label>
+      </article>
+      <div class="pageActions"><button class="primary" data-next="home">Continue to the home</button></div>
+    </section>
+
+    <section class="screen" id="screen-home">
+      <div class="sectionIntro">
+        <div><span class="eyebrow">Property and evidence</span><h1>Capture the home once.</h1><p>Take the photos, record the proposed route and give the installation team a clear brief.</p></div>
+        <span class="stageCue">Validate</span>
+      </div>
+
+      <div class="workspaceGrid homeGrid">
+        <article class="card">
+          <h2>Solar area</h2>
+          <div class="formGrid two">
+            <label>Panel count you recommend<input data-bind="site.panelCount" type="number" min="0" inputmode="numeric"></label>
+            <label>Roof or mounting context<select data-bind="site.mounting"><option value="Pantile">Pitched tile roof</option><option value="Plain Tile">Plain tile roof</option><option value="Slate">Slate roof</option><option value="Trapezoidal">Metal / trapezoidal</option><option value="Flat Roof">Flat roof</option><option value="In-Roof">In-roof</option><option value="Ground Screws">Ground mount</option><option value="Other">Other / confirm later</option></select></label>
+            <label>Electrical supply<select data-bind="site.supplyPhase"><option value="Single Phase">Single phase</option><option value="Three Phase">Three phase</option><option value="Needs confirmation">Needs confirmation</option></select></label>
+            <label>Panel area / aspect<input data-bind="site.panelAreas" placeholder="For example: rear roof, south-west"></label>
+          </div>
+          <label>Roof notes<textarea data-bind="site.roofNotes" rows="5" placeholder="Use tablet dictation: shading, obstructions, condition and anything the designer should know"></textarea></label>
+        </article>
+
+        <article class="card">
+          <h2>Proposed installation</h2>
+          <div class="formGrid two">
+            <label>Battery location<input data-bind="site.locations.battery" placeholder="Garage wall"></label>
+            <label>Inverter location<input data-bind="site.locations.inverter" placeholder="With battery / loft / utility"></label>
+            <label>Gateway location<input data-bind="site.locations.gateway" placeholder="Near incoming supply"></label>
+            <label>Meter box / supply<input data-bind="site.locations.meterBox" placeholder="External front wall"></label>
+          </div>
+          <div class="routeGrid">
+            <div class="routeCard"><strong>AC cable route</strong><label>Run length (m)<input data-bind="site.cables.acMeters" type="number" min="0" inputmode="decimal"></label><label>Route<input data-bind="site.cables.acRoute"></label></div>
+            <div class="routeCard"><strong>DC cable route</strong><label>Run length (m)<input data-bind="site.cables.dcMeters" type="number" min="0" inputmode="decimal"></label><label>Route<input data-bind="site.cables.dcRoute"></label></div>
+          </div>
+          <div class="reviewNotice" id="cableReview" hidden><strong>Long cable route: review required</strong><p>One or more runs exceed 10m. Confirm the route and deliberately include an approved allowance in the solution if needed.</p></div>
+          <div class="formGrid two">
+            <label>Scaffolding<select data-bind="site.scaffold.required"><option value="unknown">To confirm</option><option value="yes">Required</option><option value="no">Not required</option></select></label>
+            <label>Number of lifts<input data-bind="site.scaffold.lifts" type="number" min="0" inputmode="numeric"></label>
+          </div>
+          <label>Installation notes<textarea data-bind="site.technicalNotes" rows="4" placeholder="Access, constraints, special requirements and anything the installation team needs"></textarea></label>
+        </article>
+      </div>
+
+      <article class="card mediaCard">
+        <div class="cardHeading"><div><span class="eyebrow">Saved against this customer only</span><h2>Photos and video</h2></div><span class="count" id="mediaCount">0</span></div>
+        <div class="mediaActions">
+          <select id="mediaCategory"><option>Roof</option><option>Meter box</option><option>Battery / inverter location</option><option>Cable route</option><option>Access</option><option>Other</option></select>
+          <label class="primary fileButton">Add photos or video<input id="mediaInput" type="file" accept="image/*,video/*" capture="environment" multiple hidden></label>
+        </div>
+        <div id="mediaGrid" class="mediaGrid"></div>
+      </article>
+      <div class="pageActions"><button class="secondary" id="fieldBackup">Download safety copy</button><button class="primary" data-next="solution">Build the recommendation</button></div>
+    </section>
+
+    <section class="screen" id="screen-solution">
+      <div class="sectionIntro">
+        <div><span class="eyebrow">Recommendation builder</span><h1>One clear recommendation.</h1><p>Start with the right fit and override any product, quantity or price when the visit calls for it.</p></div>
+        <span class="stageCue">Recommend</span>
+      </div>
+
+      <article class="card compactCard">
+        <span class="prompt">What are we recommending?</span>
+        <div class="choiceRow largeChoices" data-choice="solution.systemType">
+          <button data-value="solar-battery">Solar + battery</button><button data-value="solar-only">Solar only</button><button data-value="battery-only">Battery only</button>
+        </div>
+      </article>
+
+      <div class="workspaceGrid solutionGrid">
+        <article class="card" id="solarBuilder">
+          <div class="cardHeading"><div><span class="eyebrow">Solar</span><h2>Panels and inverter</h2></div><span class="tag" id="solarSize">0 kWp</span></div>
+          <div class="formGrid two">
+            <label>Panel model<select data-bind="solution.panelKey" id="panelSelect"></select></label>
+            <label>Panel count<input data-bind="solution.panelCount" type="number" min="0" inputmode="numeric"></label>
+          </div>
+          <span class="prompt smallPrompt">Inverter route</span>
+          <div class="choiceRow" data-choice="solution.inverterBrand"><button data-value="SigEnergy">Sigenergy</button><button data-value="SolarEdge">SolarEdge</button><button data-value="Powerwall3">Tesla Powerwall</button></div>
+        </article>
+
+        <article class="card" id="batteryBuilder">
+          <div class="cardHeading"><div><span class="eyebrow">Storage</span><h2>Battery choice</h2></div><span class="tag" id="batteryCapacity">No battery</span></div>
+          <div class="batterySuggestion" id="batterySuggestion"></div>
+          <div class="productChoices" data-choice="solution.batteryBrand">
+            <button data-value="Sigenergy"><img src="sigenergy-battery.webp" alt=""><span>Sigenergy</span></button>
+            <button data-value="Tesla"><img src="tesla-powerwall.webp" alt=""><span>Tesla</span></button>
+            <button data-value="None"><span>No battery</span></button>
+          </div>
+          <div id="sigBatteryFields" class="formGrid two">
+            <label>Battery module<select data-bind="solution.sigModule"><option value="6">BAT 6</option><option value="10">BAT 10</option></select></label>
+            <label>Quantity<input data-bind="solution.batteryQty" type="number" min="0" max="6" inputmode="numeric"></label>
+            <label>Controller<select data-bind="solution.sigController"><option value="auto">Auto-size</option><option value="3">3.6 kW</option><option value="5">5 kW</option><option value="8">8 kW</option><option value="10">10 kW</option><option value="12">12 kW</option></select></label>
+            <label>Gateway<select data-bind="solution.gateway"><option value="yes">Included</option><option value="no">Not included</option></select></label>
+          </div>
+          <div id="teslaBatteryFields" class="formGrid two">
+            <label>Powerwall 3 quantity<input data-bind="solution.batteryQty" type="number" min="0" max="6" inputmode="numeric"></label>
+            <label>DC expansions<input data-bind="solution.expansionQty" type="number" min="0" max="5" inputmode="numeric"></label>
+            <label>Gateway<select data-bind="solution.gateway"><option value="yes">Included</option><option value="no">Not included</option></select></label>
+          </div>
+        </article>
+      </div>
+
+      <article class="card priceCard">
+        <div class="priceLead">
+          <span class="eyebrow">Indicative installed price</span>
+          <strong id="primaryPrice">Price unavailable</strong>
+          <p id="pricingStatus">Complete the mapped product choices to calculate.</p>
+        </div>
+        <details class="internalDetails">
+          <summary>Internal options and authorised adjustments</summary>
+          <div class="internalGrid">
+            <label><input type="checkbox" data-check="solution.extras.birdProtection"> Bird protection</label>
+            <label><input type="checkbox" data-check="solution.extras.evCharger"> EV charger allowance</label>
+            <label><input type="checkbox" data-check="solution.extras.cableApproved"> Approved extra-cable allowance</label>
+            <label>Extra-cable cost allowance (£)<input data-bind="solution.extras.cableCost" type="number" min="0" inputmode="decimal"></label>
+            <label>Groundworks / unusual cost (£)<input data-bind="solution.extras.unusualCost" type="number" min="0" inputmode="decimal"></label>
+            <label>Allowance description<input data-bind="solution.extras.unusualLabel"></label>
+            <label><input type="checkbox" data-check="solution.adjustment.enabled"> Authorised final adjustment</label>
+            <label>Adjustment (+/- £)<input data-bind="solution.adjustment.amount" type="number" inputmode="decimal"></label>
+            <label>Reason<input data-bind="solution.adjustment.reason"></label>
+            <label>Authorised by<input data-bind="solution.adjustment.authorisedBy"></label>
+          </div>
+        </details>
+      </article>
+
+      <article class="card secondaryOptionCard">
+        <label class="switchLine"><input type="checkbox" data-check="solution.secondary.enabled"><span><strong>Add an optional second route</strong><small>Keep this off unless a genuine comparison helps the customer.</small></span></label>
+        <div id="secondaryFields" hidden>
+          <div class="formGrid three">
+            <label>Option name<input data-bind="solution.secondary.name" placeholder="More storage"></label>
+            <label>Panel count<input data-bind="solution.secondary.panelCount" type="number" min="0"></label>
+            <label>Battery brand<select data-bind="solution.secondary.batteryBrand"><option>Sigenergy</option><option>Tesla</option><option>None</option></select></label>
+            <label>Battery quantity<input data-bind="solution.secondary.batteryQty" type="number" min="0"></label>
+            <label>DC expansions<input data-bind="solution.secondary.expansionQty" type="number" min="0"></label>
+            <label>Customer-facing difference<input data-bind="solution.secondary.note" placeholder="More overnight cover"></label>
+          </div>
+          <p class="secondaryPrice" id="secondaryPrice"></p>
+        </div>
+      </article>
+      <div class="pageActions"><button class="primary" data-next="review">Review with the customer</button></div>
+    </section>
+
+    <section class="screen customerScreen" id="screen-review">
+      <div class="customerToolbar internalOnly">
+        <div><strong>Customer presentation</strong><span>Private notes and pricing logic are hidden below.</span></div>
+        <button class="secondary" id="togglePresentation">Enter presentation mode</button>
+      </div>
+      <div id="customerRecommendation" class="customerRecommendation"></div>
+      <details class="card financePanel internalOnly">
+        <summary>Optional indicative finance view</summary>
+        <label class="switchLine"><input type="checkbox" data-check="finance.enabled"><span><strong>Show an illustration for this customer</strong><small>Off by default. Enter the current illustrative terms manually.</small></span></label>
+        <div id="financeFields" class="formGrid four" hidden>
+          <label>Total system price (£)<input data-bind="finance.totalPrice" type="number" inputmode="decimal"></label>
+          <label>Illustrative annual rate (%)<input data-bind="finance.annualRate" type="number" min="0" step="0.01" inputmode="decimal"></label>
+          <label>Term (years)<input data-bind="finance.termYears" type="number" min="1" max="30" inputmode="numeric"></label>
+          <div class="financeResult" id="financeResult"></div>
+        </div>
+        <p class="fieldHelp">Illustration only. Subject to the final scheme terms, eligibility and approval. This is not a finance offer.</p>
+      </details>
+      <div class="pageActions internalOnly"><button class="primary" data-next="close">Continue to next steps</button></div>
+    </section>
+
+    <section class="screen" id="screen-close">
+      <div class="sectionIntro">
+        <div><span class="eyebrow">Close and leave-behind</span><h1>Finish clearly, without pressure.</h1><p>Return to what mattered at the start, record the position and leave the customer with a polished summary.</p></div>
+        <span class="stageCue">Confirm</span>
+      </div>
+      <article class="card closeCard">
+        <span class="eyebrow">Bring the conversation together</span>
+        <h2 id="closeQuestion">Based on what matters to you and the recommendation, does this work for you?</h2>
+        <div class="choiceGrid" data-choice="close.position"><button data-value="Yes - ready for the formal next step">Yes, ready for the next step</button><button data-value="Positive - needs time to consider">Positive, needs time</button><button data-value="Needs another person involved">Another person needs to be involved</button><button data-value="Not the right fit today">Not the right fit today</button></div>
+        <label>Anything holding the customer back?<textarea data-bind="close.concerns" rows="4" placeholder="Capture their concern naturally, or leave blank"></textarea></label>
+      </article>
+
+      <article class="card outputCard">
+        <div class="cardHeading"><div><span class="eyebrow">Customer leave-behind</span><h2>One polished summary</h2></div><span class="tag">Not a formal quote</span></div>
+        <p>Download the branded Indicative Solution Summary, then open a ready-addressed email. Attach the named PDF in Outlook before sending.</p>
+        <div class="outputActions">
+          <button class="primary" id="downloadPdf">1. Download customer PDF</button>
+          <button class="primary" id="openEmail">2. Open customer email</button>
+        </div>
+        <p class="fileInstruction" id="pdfInstruction">The PDF filename will appear here.</p>
+      </article>
+
+      <div class="workspaceGrid">
+        <article class="card">
+          <h2>Internal handover</h2>
+          <p>Structured installation locations, cable routes, scaffolding, constraints and media references for OpenSolar and the technical team.</p>
+          <button class="secondary" id="downloadTechnical">Download technical brief</button>
+        </article>
+        <article class="card">
+          <h2>CRM / Monday update</h2>
+          <p>A concise single-row CSV with the outcome, recommendation and next step.</p>
+          <button class="secondary" id="downloadCrm">Download CRM summary</button>
+        </article>
+      </div>
+      <div class="pageActions"><button class="quiet" data-next="visits">Back to saved visits</button><button class="primary" id="completeVisit">Mark visit complete</button></div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>
