@@ -1,16 +1,24 @@
-const CACHE = 'lg-survey-pro-v3-2026-08-20-1';
+const CACHE = 'lg-survey-pro-v4-preview-2026-09-30-2';
 const APP_SHELL = [
   './',
   './index.html',
   './styles.css',
-  './catalog.js',
+  './brand.css',
   './storage.js',
   './app.js',
+  './src/schema.js',
+  './src/import.js',
+  './src/pricing-data.js',
+  './src/pricing.js',
+  './src/outputs.js',
+  './vendor/pdf-lib.min.js',
   './manifest.json',
   './icon.svg',
   './app-icon-192.png',
   './app-icon-512.png',
   './tlgec-logo.png',
+  './tlgec-home-hero.webp',
+  './vendor/Montserrat-VariableFont_wght.woff2',
   './tesla-powerwall.webp',
   './sigenergy-battery.webp',
   './reset.html'
@@ -18,9 +26,7 @@ const APP_SHELL = [
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE).then(cache =>
-      Promise.all(APP_SHELL.map(url => cache.add(url).catch(() => null)))
-    )
+    caches.open(CACHE).then(cache => cache.addAll(APP_SHELL))
   );
   self.skipWaiting();
 });
