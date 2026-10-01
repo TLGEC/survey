@@ -22,7 +22,8 @@ export function createSurvey(seed = {}) {
       openingCommitment: '', notes: ''
     },
     site: {
-      panelCount: 0, mounting: 'Pantile', supplyPhase: 'Single Phase', panelAreas: '', roofNotes: '',
+      panelCount: 0, mounting: 'Pantile', roofCovering: 'Concrete pantile', framingKey: 'Pantile',
+      framingOverride: { enabled: false, description: '' }, supplyPhase: 'Single Phase', panelAreas: '', roofNotes: '',
       distanceMiles: 25,
       locations: { battery: '', inverter: '', gateway: '', meterBox: '' },
       cables: { acMeters: '', acRoute: '', dcMeters: '', dcRoute: '' },
@@ -30,7 +31,9 @@ export function createSurvey(seed = {}) {
       technicalNotes: ''
     },
     solution: {
-      systemType: 'solar-battery', panelKey: 'sunpower-p7-440', panelCount: 0, inverterBrand: 'SigEnergy',
+      systemType: 'solar-battery', panelKey: 'sunpower-p7-500',
+      panelOverride: { enabled: false, manufacturer: '', model: '', watts: '', widthMm: '', heightMm: '', depthMm: '' },
+      panelCount: 0, inverterBrand: 'SigEnergy',
       batteryBrand: 'Sigenergy', sigModule: '10', batteryQty: 1, expansionQty: 0, sigController: 'auto', gateway: 'yes',
       extras: { birdProtection: false, evCharger: false, cableApproved: false, cableCost: 0, unusualCost: 0, unusualLabel: '' },
       adjustment: { enabled: false, amount: 0, reason: '', authorisedBy: '' },
@@ -69,7 +72,18 @@ export function folderName(survey) {
 export function normaliseSurvey(input) {
   if (!input || Number(input.schemaVersion) !== SCHEMA_VERSION) return null;
   const base = createSurvey({ id: input.id, createdAt: input.createdAt });
-  return deepMerge(base, input);
+  const survey = deepMerge(base, input);
+  if (!input.site?.framingKey) survey.site.framingKey = input.site?.mounting || base.site.framingKey;
+  if (!input.site?.roofCovering) survey.site.roofCovering = roofCoveringFromLegacy(survey.site.framingKey);
+  if (!input.solution?.panelKey || !['sunpower-p7-500','aiko-495','trina-440','sunpower-m-475'].includes(input.solution.panelKey)) {
+    const legacy = input.solution?.panelKey;
+    survey.solution.panelKey = legacy === 'trina-440' ? 'trina-440' : legacy === 'sunpower-m-475' ? 'sunpower-m-475' : 'sunpower-p7-500';
+  }
+  return survey;
+}
+
+function roofCoveringFromLegacy(value) {
+  return ({ Pantile:'Concrete pantile', 'Plain Tile':'Plain tile', Slate:'Slate', Trapezoidal:'Metal sheet', 'Standing Seam':'Standing seam', 'Flat Roof':'Flat roof', 'In-Roof':'In-roof', 'Ground Screws':'Ground mount' })[value] || 'Other';
 }
 
 function deepMerge(target, source) {
@@ -95,7 +109,8 @@ export function publicSurvey(survey) {
     },
     home: {
       panelCount: survey.solution.panelCount,
-      mounting: survey.site.mounting,
+      roofCovering: survey.site.roofCovering,
+      mounting: survey.site.framingOverride.enabled ? survey.site.framingOverride.description : survey.site.framingKey,
       panelAreas: survey.site.panelAreas,
       roofObservations: survey.site.roofNotes
     },
