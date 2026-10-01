@@ -1,6 +1,6 @@
 import { createSurvey, normaliseSurvey, getPath, setPath, customerName, folderName, uid, SCHEMA_VERSION } from './src/schema.js';
 import { parseMondayText } from './src/import.js';
-import { panelOptions, priceOption, formatMoney, recommendedBatteryKwh, financeIllustration } from './src/pricing.js';
+import { panelOptions, controllerOptions, priceOption, formatMoney, recommendedBatteryKwh, financeIllustration } from './src/pricing.js';
 import { openStore, putSurvey, getSurvey, getSurveys, getActiveId, clearActiveId, putMedia, getMedia, updateMedia, deleteMedia, requestPersistentStorage } from './storage.js';
 import { downloadJsonBackup, openCustomerEmail, downloadCustomerPdf, downloadTechnicalBrief, downloadCrmCsv } from './src/outputs.js';
 
@@ -20,7 +20,6 @@ init().catch(error=>fatal(error));
 async function init(){
   await openStore();
   requestPersistentStorage();
-  populatePanels();
   bindEvents();
   updateConnection();
   addEventListener('online',updateConnection);
@@ -41,10 +40,10 @@ function bindEvents(){
   $('#mediaInput').addEventListener('change',event=>addMedia(event.target.files));
   $('#fieldBackup').addEventListener('click',()=>requireSurvey(()=>downloadJsonBackup(survey,media)));
   $('#downloadPdf').addEventListener('click',createPdf);
-  $('#openEmail').addEventListener('click',()=>withPricing((primary,secondary)=>{openCustomerEmail(survey,primary,secondary);toast('Email draft opened. Attach the downloaded PDF before sending.');}));
-  $('#downloadTechnical').addEventListener('click',()=>withPricing(primary=>downloadTechnicalBrief(survey,primary,media)));
-  $('#downloadCrm').addEventListener('click',()=>withPricing(primary=>downloadCrmCsv(survey,primary)));
-  $('#completeVisit').addEventListener('click',async()=>{if(!survey)return;survey.status='complete';await saveNow(true);toast('Visit marked complete and saved locally.');go('visits');});
+  $('#openEmail').addEventListener('click',()=>withPricing((primary,secondary)=>{openCustomerEmail(survey,primary,secondary);toast('Email draft opened. Attach the downloaded PDF before sending.');},false));
+  $('#downloadTechnical').addEventListener('click',()=>withPricing(primary=>downloadTechnicalBrief(survey,primary,media),false));
+  $('#downloadCrm').addEventListener('click',()=>withPricing(primary=>downloadCrmCsv(survey,primary),false));
+  $('#completeVisit').addEventListener('click',async()=>{if(!survey)return;survey.status='complete';await saveNow(true);toast('Visit saved.');go('visits');});
   $('#togglePresentation').addEventListener('click',enterPresentation);
   $('#journeyNav').addEventListener('click',event=>{const button=event.target.closest('[data-screen]');if(button)go(button.dataset.screen);});
   document.addEventListener('click',handleClick);
@@ -57,10 +56,11 @@ function bindEvents(){
 async function handleClick(event){
   const next=event.target.closest('[data-next]');if(next){go(next.dataset.next);return;}
   const choice=event.target.closest('[data-choice] button[data-value]');if(choice){
-    if(!survey)return toast('Start or continue a visit first.');
+    if(!survey)return toast('Open a visit first.');
     const path=choice.parentElement.dataset.choice;setPath(survey,path,choice.dataset.value);
     if(path==='solution.batteryBrand')applyBatteryBrandDefaults(choice.dataset.value);
     if(path==='solution.systemType')applySystemDefaults(choice.dataset.value);
+    if(path==='site.roofCovering')applyRoofDefault(choice.dataset.value);
     queueSave();renderDerived();return;
   }
   const multi=event.target.closest('[data-multi-choice] button[data-value]');if(multi){
@@ -92,7 +92,7 @@ function handleInput(event){
 async function startNew(){
   if(survey)await saveNow(true);
   survey=createSurvey();media=[];clearObjectUrls();
-  await saveNow(true);go('conversation');toast('New visit started. It is already saving on this tablet.');
+  await saveNow(true);go('conversation');toast('Visit started.');
 }
 
 async function startImported(record){
@@ -103,7 +103,7 @@ async function startImported(record){
   Object.assign(survey.readiness,record.readiness);
   Object.assign(survey.energy,record.energy);
   media=[];clearObjectUrls();
-  await saveNow(true);go('conversation');toast(`${customerName(survey)} is ready.`);
+  await saveNow(true);go('conversation');toast('Appointment opened.');
 }
 
 async function loadVisit(id){
@@ -114,23 +114,23 @@ async function loadVisit(id){
 }
 
 function previewImport(){
-  try{const parsed=parseMondayText($('#mondayPaste').value);importRecords=parsed.records;$('#importStatus').textContent=`Found ${importRecords.length} appointment${importRecords.length===1?'':'s'}. Choose one to start.`;renderImport();}
+  try{const parsed=parseMondayText($('#mondayPaste').value);importRecords=parsed.records;$('#importStatus').textContent=`Found ${importRecords.length} appointment${importRecords.length===1?'':'s'}.`;renderImport();}
   catch(error){importRecords=[];$('#importStatus').textContent=error.message;renderImport();}
 }
 
 async function addMedia(files){
-  if(!survey)return toast('Start a visit before adding media.');
+  if(!survey)return toast('Open a visit before adding media.');
   const fileCount=files.length;
   const category=$('#mediaCategory').value;
   for(const file of [...files]){
     const item={id:uid('media'),surveyId:survey.id,createdAt:new Date().toISOString(),name:file.name||`${category}.${file.type.split('/')[1]||'file'}`,type:file.type||'application/octet-stream',size:file.size,category,customerSelected:file.type.startsWith('image/'),blob:file};
     await putMedia(item);
   }
-  $('#mediaInput').value='';media=await getMedia(survey.id);await saveNow(true);renderMedia();toast(`${fileCount} file${fileCount===1?'':'s'} saved to ${customerName(survey)} only.`);
+  $('#mediaInput').value='';media=await getMedia(survey.id);await saveNow(true);renderMedia();toast(`${fileCount} file${fileCount===1?'':'s'} saved.`);
 }
 
 async function go(name){
-  if(name!=='visits'&&!survey)return toast('Start or continue a visit first.');
+  if(name!=='visits'&&!survey)return toast('Open a visit first.');
   if(survey)await saveNow(true);
   screen=name;
   $$('.screen').forEach(section=>section.classList.toggle('active',section.id===`screen-${name}`));
@@ -167,13 +167,20 @@ function renderDerived(){
   $('#cableReview').hidden=!longCable;
   const solar=survey.solution.systemType!=='battery-only',battery=survey.solution.systemType!=='solar-only';
   $('#solarBuilder').classList.toggle('hidden',!solar);$('#batteryBuilder').classList.toggle('hidden',!battery);
+  $('#framingOverrideFields').hidden=!survey.site.framingOverride.enabled;
+  $('#panelOverrideFields').hidden=!survey.solution.panelOverride.enabled;
+  $('#panelChoices').classList.toggle('hidden',survey.solution.panelOverride.enabled);
   $('#sigBatteryFields').classList.toggle('hidden',!battery||survey.solution.batteryBrand!=='Sigenergy');
   $('#teslaBatteryFields').classList.toggle('hidden',!battery||survey.solution.batteryBrand!=='Tesla');
+  $('#sigControllerSolar').hidden=!solar||survey.solution.inverterBrand!=='SigEnergy';
+  $('#sigControllerBattery').hidden=solar||!battery||survey.solution.batteryBrand!=='Sigenergy';
   $('#secondaryFields').hidden=!survey.solution.secondary.enabled;
   $('#financeFields').hidden=!survey.finance.enabled;
+  renderControllerOptions();
   const panel=panelOptions()[survey.solution.panelKey];
   $('#solarSize').textContent=solar&&panel?`${(panel.watts*Number(survey.solution.panelCount||0)/1000).toFixed(2)} kWp`:'No solar';
-  const target=recommendedBatteryKwh(survey);$('#batterySuggestion').innerHTML=`<strong>Starting point: around ${target.toFixed(1)} kWh</strong><br><span>Based on usage, future loads and backup preference. You remain in control of the final choice.</span>`;
+  $('#panelDimensions').innerHTML=panel?`<span>Panel dimensions</span><strong>${panel.dimensions.heightMm} × ${panel.dimensions.widthMm} × ${panel.dimensions.depthMm} mm</strong>`:'<span>Panel dimensions</span><strong>To confirm</strong>';
+  const target=recommendedBatteryKwh(survey);$('#batterySuggestion').innerHTML=`<strong>Indicative capacity: ${target.toFixed(1)} kWh</strong><br><span>Based on annual use, planned changes and backup preference.</span>`;
   const primary=priceOption(survey);renderPrice(primary);
   const secondary=secondaryPrice();
   $('#secondaryPrice').textContent=secondary?.available?`Indicative installed price: ${formatMoney(secondary.price)}`:secondary?secondary.errors.join(' '):'';
@@ -184,31 +191,32 @@ function renderDerived(){
 
 function renderPrice(primary){
   $('#primaryPrice').textContent=primary.available?formatMoney(primary.price):'Price needs review';
-  $('#pricingStatus').textContent=primary.available?`One overall indicative installed price using Residential Pricing V${primary.authority.version}.`:primary.errors.join(' ');
+  $('#pricingStatus').textContent=primary.available?'Includes the proposed system and selected site allowances.':primary.errors.join(' ');
   $('#batteryCapacity').textContent=primary.available&&primary.capacityKwh?`${primary.capacityKwh.toFixed(1)} kWh`:'No storage';
 }
 
 function renderCustomer(primary,secondary){
-  const name=survey.customer.firstName||'your home';
+  const name=survey.customer.firstName||'Your';
   const hasPrice=primary.available;
-  const goals=survey.discovery.goals.length?survey.discovery.goals:['A solution shaped around your priorities'];
+  const goals=survey.discovery.goals.length?survey.discovery.goals:['Priorities to be confirmed'];
   const product=survey.solution.batteryBrand==='Tesla'?'tesla-powerwall.webp':'sigenergy-battery.webp';
   const customerImage=media.find(item=>item.customerSelected&&item.type?.startsWith('image/'));
   const homeImage=customerImage?objectUrl(customerImage):'tlgec-home-hero.webp';
-  const systemTitle={'solar-battery':'Solar working with intelligent storage','solar-only':'High-quality solar for lower bills','battery-only':'Intelligent storage for greater control'}[survey.solution.systemType];
-  const observations=[survey.site.panelAreas&&`Panels proposed for ${survey.site.panelAreas}`,survey.site.roofNotes||'Final roof details will be confirmed during detailed design',survey.site.locations.battery&&`Battery proposed at ${survey.site.locations.battery}`].filter(Boolean);
-  $('#customerRecommendation').innerHTML=`<header class="recommendMasthead"><img src="tlgec-logo.png" alt="The Little Green Energy Company"><div><strong>Indicative solution summary</strong><span>Premium renewable energy installations since 2010</span></div></header><div class="recommendHero"><div class="recommendCopy"><span class="eyebrow">Prepared for ${h(name)}</span><h1>A considered energy solution for your home.</h1><p>${h(systemTitle)}. Shaped around your priorities, then confirmed through detailed OpenSolar design.</p><div class="recommendSignature"><span>The Little Green Energy Company</span><small>Kent, Surrey &amp; Sussex</small></div></div><figure class="recommendHome"><img src="${homeImage}" alt="Domestic solar installation"><figcaption>Your home. Your priorities. One clear route.</figcaption></figure></div><div class="recommendBody"><section class="recommendOverview"><div><span class="eyebrow">Our recommendation</span><h2>${h(systemTitle)}</h2><p>High-quality equipment, thoughtfully specified for the way you use energy today and the plans you have for your home.</p></div>${survey.solution.systemType==='solar-only'?'':`<div class="recommendProduct"><img src="${product}" alt="${h(survey.solution.batteryBrand)} battery"><span>${h(survey.solution.batteryBrand)} storage</span></div>`}</section><div class="recommendMetrics"><div class="metric"><span>Solar</span><strong>${primary.sizeKw?`${primary.sizeKw.toFixed(2)} kWp`:'Not included'}</strong></div><div class="metric"><span>Storage</span><strong>${primary.capacityKwh?`${primary.capacityKwh.toFixed(1)} kWh`:'Not included'}</strong></div><div class="metric"><span>Illustrative saving</span><strong>${primary.assumptions?.annualSaving?`${formatMoney(primary.assumptions.annualSaving)} a year`:'Detailed design'}</strong></div><div class="metric"><span>Simple payback</span><strong>${primary.assumptions?.paybackYears?`${primary.assumptions.paybackYears.toFixed(1)} years`:'To confirm'}</strong></div></div><div class="recommendSections"><div><span class="eyebrow">What matters most</span><h2>Built around your priorities</h2><ul class="plainList">${goals.map(goal=>`<li>${h(goal)}</li>`).join('')}</ul></div><div><span class="eyebrow">Your property</span><h2>What we observed</h2><ul class="plainList">${observations.map(item=>`<li>${h(item)}</li>`).join('')}</ul></div></div><div class="priceStatement"><div><span>Overall indicative installed price</span><small>One clear price for the recommended system</small></div><strong>${hasPrice?formatMoney(primary.price):'Needs pricing review'}</strong><p>Indicative only and subject to detailed design. This summary is not a formal quotation.</p></div>${secondary?.available?`<div class="secondCustomerOption"><span class="eyebrow">Optional alternative</span><h2>${h(survey.solution.secondary.name||'Alternative route')}</h2><p>${h(survey.solution.secondary.note||'An alternative configuration for comparison.')}</p><strong>${formatMoney(secondary.price)} indicative installed price</strong></div>`:''}<details class="customerAssumptions"><summary>How these figures were estimated</summary><ul>${(primary.assumptions?.labels||[]).map(label=>`<li>${h(label)}</li>`).join('')}</ul></details><footer class="recommendFooter"><strong>Next step</strong><span>We will confirm the detailed design in OpenSolar before preparing any formal quotation.</span></footer></div>`;
+  const systemTitle={'solar-battery':'Solar and battery storage','solar-only':'Solar for your home','battery-only':'Battery storage for your home'}[survey.solution.systemType];
+  const mounting=survey.site.framingOverride.enabled?survey.site.framingOverride.description:survey.site.framingKey;
+  const observations=[survey.solution.systemType!=='battery-only'&&survey.site.panelAreas&&`${survey.solution.panelCount||survey.site.panelCount} panels on ${survey.site.panelAreas}`,survey.site.roofCovering&&`${survey.site.roofCovering} roof with ${mounting} mounting`,survey.site.roofNotes||'Property details will be confirmed during detailed design',survey.site.locations.battery&&`Battery location: ${survey.site.locations.battery}`].filter(Boolean);
+  $('#customerRecommendation').innerHTML=`<header class="recommendMasthead"><img src="tlgec-logo.png" alt="The Little Green Energy Company"><div><strong>Indicative solution summary</strong><span>Renewable energy installations since 2010</span></div></header><div class="recommendHero"><div class="recommendCopy"><span class="eyebrow">${h(survey.customer.address||'Home energy proposal')}</span><h1>${h(name)}${name==='Your'?'':'\'s'} home energy proposal</h1><p>${h(systemTitle)}</p><div class="recommendSignature"><span>The Little Green Energy Company</span><small>Kent, Surrey &amp; Sussex</small></div></div><figure class="recommendHome"><img src="${homeImage}" alt="Home energy installation"><figcaption>${h(survey.customer.address||'Your home')}</figcaption></figure></div><div class="recommendBody"><section class="recommendOverview"><div><span class="eyebrow">Proposed system</span><h2>${h(systemTitle)}</h2><p>${primary.panelName?`${h(survey.solution.panelCount)} × ${h(primary.panelName)}. `:''}${primary.capacityKwh?`${h(survey.solution.batteryBrand)} storage, ${primary.capacityKwh.toFixed(1)} kWh.`:''}</p></div>${survey.solution.systemType==='solar-only'?'':`<div class="recommendProduct"><img src="${product}" alt="${h(survey.solution.batteryBrand)} battery"><span>${h(survey.solution.batteryBrand)} storage</span></div>`}</section><div class="recommendMetrics"><div class="metric"><span>Solar</span><strong>${primary.sizeKw?`${primary.sizeKw.toFixed(2)} kWp`:'Not included'}</strong></div><div class="metric"><span>Storage</span><strong>${primary.capacityKwh?`${primary.capacityKwh.toFixed(1)} kWh`:'Not included'}</strong></div><div class="metric"><span>Illustrative saving</span><strong>${primary.assumptions?.annualSaving?`${formatMoney(primary.assumptions.annualSaving)} a year`:'To confirm'}</strong></div><div class="metric"><span>Simple payback</span><strong>${primary.assumptions?.paybackYears?`${primary.assumptions.paybackYears.toFixed(1)} years`:'To confirm'}</strong></div></div><div class="recommendSections"><div><span class="eyebrow">Priorities</span><h2>What matters to you</h2><ul class="plainList">${goals.map(goal=>`<li>${h(goal)}</li>`).join('')}</ul></div><div><span class="eyebrow">Your home</span><h2>Property details</h2><ul class="plainList">${observations.map(item=>`<li>${h(item)}</li>`).join('')}</ul></div></div><div class="priceStatement"><div><span>Overall indicative installed price</span><small>Subject to detailed design</small></div><strong>${hasPrice?formatMoney(primary.price):'Price to be confirmed'}</strong><p>This is an indicative summary, not a formal quotation.</p></div>${secondary?`<div class="secondCustomerOption"><span class="eyebrow">Options</span><h2>${h(survey.solution.secondary.name||'Alternative system')}</h2><p>${h(survey.solution.secondary.note||'Alternative system configuration.')}</p><strong>${secondary.available?`${formatMoney(secondary.price)} indicative installed price`:'Price to be confirmed'}</strong></div>`:''}<details class="customerAssumptions"><summary>About these figures</summary><ul>${(primary.assumptions?.labels||[]).map(label=>`<li>${h(label)}</li>`).join('')}</ul></details><footer class="recommendFooter"><strong>Next steps</strong><span>Detailed design in OpenSolar will confirm the final system before a formal quotation is prepared.</span></footer></div>`;
 }
 
 function renderFinance(){
-  const result=financeIllustration(survey.finance);$('#financeResult').innerHTML=result?`<span>Estimated monthly payment</span><strong>${formatMoney(result.monthly)}</strong><small>Total repayable ${formatMoney(result.total)}</small>`:'<span>Enter a price, illustrative rate and term.</span>';
+  const result=financeIllustration(survey.finance);$('#financeResult').innerHTML=result?`<span>Estimated monthly payment</span><strong>${formatMoney(result.monthly)}</strong><small>Total repayable ${formatMoney(result.total)}</small>`:'<span>Price and terms not entered.</span>';
 }
 
 async function renderVisits(){
   const records=await getSurveys();const current=records.filter(item=>Number(item.schemaVersion)===SCHEMA_VERSION);const legacy=records.filter(item=>Number(item.schemaVersion)!==SCHEMA_VERSION);
   $('#savedCount').textContent=current.length;
-  $('#savedVisits').innerHTML=current.length?current.map(item=>`<div class="savedItem"><div><strong>${h(customerName(item))}</strong><span>${h(item.customer?.address||'Address not entered')} · ${h(item.status||'active')}</span></div><button data-resume-id="${a(item.id)}">Continue</button></div>`).join(''):'<p>No new-version visits saved yet.</p>';
-  $('#legacyVisits').innerHTML=legacy.length?legacy.map(item=>`<div class="savedItem"><div><strong>${h(item.customer?.name||item.customer?.firstName||'Legacy visit')}</strong><span>Read-only previous version</span></div><button data-legacy-id="${a(item.id)}">Download</button></div>`).join(''):'<p>No older records found.</p>';
+  $('#savedVisits').innerHTML=current.length?current.map(item=>`<div class="savedItem"><div><strong>${h(customerName(item))}</strong><span>${h(item.customer?.address||'Address not entered')} · ${h(item.status||'active')}</span></div><button data-resume-id="${a(item.id)}">Open</button></div>`).join(''):'<p>No saved visits.</p>';
+  $('#legacyVisits').innerHTML=legacy.length?legacy.map(item=>`<div class="savedItem"><div><strong>${h(item.customer?.name||item.customer?.firstName||'Earlier visit')}</strong><span>Earlier app version</span></div><button data-legacy-id="${a(item.id)}">Download</button></div>`).join(''):'<p>No earlier records.</p>';
 }
 
 function renderImport(){
@@ -217,24 +225,30 @@ function renderImport(){
 
 function renderMedia(){
   $('#mediaCount').textContent=media.length;
-  $('#mediaGrid').innerHTML=media.map(item=>{let preview='';if(item.type.startsWith('image/'))preview=`<img src="${objectUrl(item)}" alt="${a(item.category)}">`;else if(item.type.startsWith('video/'))preview=`<video src="${objectUrl(item)}" controls preload="metadata"></video>`;return `<article class="mediaItem">${preview}<div class="mediaMeta"><strong>${h(item.category)}</strong><span>${h(item.name)}</span>${item.type.startsWith('image/')?`<label><input type="checkbox" data-media-customer="${a(item.id)}" ${item.customerSelected?'checked':''}> Include in customer PDF</label>`:''}<button data-media-delete="${a(item.id)}">Remove</button></div></article>`;}).join('');
+  $('#mediaGrid').innerHTML=media.map(item=>{let preview='';if(item.type.startsWith('image/'))preview=`<img src="${objectUrl(item)}" alt="${a(item.category)}">`;else if(item.type.startsWith('video/'))preview=`<video src="${objectUrl(item)}" controls preload="metadata"></video>`;return `<article class="mediaItem">${preview}<div class="mediaMeta"><strong>${h(item.category)}</strong><span>${h(item.name)}</span>${item.type.startsWith('image/')?`<label><input type="checkbox" data-media-customer="${a(item.id)}" ${item.customerSelected?'checked':''}> Include in summary</label>`:''}<button data-media-delete="${a(item.id)}">Remove</button></div></article>`;}).join('');
 }
 
 function renderHeader(){
-  $('#activeCustomer').textContent=survey?customerName(survey):'No visit selected';$('#activeAddress').textContent=survey?(survey.customer.address||'Address not entered'):'Start a new visit or import Monday appointments';$('#importSource').textContent=survey?.source.type==='monday-csv'?'Imported from Monday':'Manual visit';
+  $('#activeCustomer').textContent=survey?customerName(survey):'No visit open';$('#activeAddress').textContent=survey?(survey.customer.address||'Address not entered'):'Choose an appointment or start a new visit';$('#importSource').textContent=survey?.source.type==='monday-csv'?'Monday appointment':'New visit';
 }
 
-function populatePanels(){const select=$('#panelSelect');select.innerHTML=Object.entries(panelOptions()).map(([key,panel])=>`<option value="${key}">${h(panel.name)}${panel.offer?' - warehouse offer':''}</option>`).join('');}
+function renderControllerOptions(){
+  const options=controllerOptions(survey.site.supplyPhase), current=survey.solution.sigController;
+  if(current!=='auto'&&!options[current])survey.solution.sigController='auto';
+  const html=`<option value="auto">Sized to suit</option>${Object.entries(options).map(([key,item])=>`<option value="${key}">${h(item.name)}</option>`).join('')}`;
+  $$('[data-controller-select]').forEach(select=>{select.innerHTML=html;select.value=survey.solution.sigController;});
+}
 function applyBatteryBrandDefaults(brand){if(brand==='None'){survey.solution.batteryQty=0;if(survey.solution.systemType!=='solar-only')survey.solution.systemType='solar-only';}else{survey.solution.batteryQty=Math.max(1,Number(survey.solution.batteryQty)||1);if(survey.solution.systemType==='solar-only')survey.solution.systemType='solar-battery';survey.solution.inverterBrand=brand==='Tesla'?'Powerwall3':'SigEnergy';}}
 function applySystemDefaults(type){if(type==='solar-only'){survey.solution.batteryBrand='None';survey.solution.batteryQty=0;if(survey.solution.inverterBrand==='Powerwall3')survey.solution.inverterBrand='SolarEdge';}else{if(survey.solution.batteryBrand==='None')survey.solution.batteryBrand='Sigenergy';survey.solution.batteryQty=Math.max(1,Number(survey.solution.batteryQty)||1);}}
+function applyRoofDefault(covering){const defaults={'Concrete pantile':'Pantile','Plain tile':'Plain Tile','Slate':'Slate','Fibre cement':'Fibre Cement','Flat roof':'Flat Roof','In-roof':'In-Roof','Ground mount':'Ground Screws'};if(defaults[covering])survey.site.framingKey=defaults[covering];}
 function secondaryPrice(){if(!survey?.solution.secondary.enabled)return null;const secondary=survey.solution.secondary;return priceOption(survey,{secondary:true,panelCount:secondary.panelCount||survey.solution.panelCount,batteryBrand:secondary.batteryBrand,batteryQty:secondary.batteryQty,expansionQty:secondary.expansionQty,inverterBrand:secondary.batteryBrand==='Tesla'?'Powerwall3':survey.solution.inverterBrand,systemType:secondary.batteryBrand==='None'?'solar-only':survey.solution.systemType});}
-function withPricing(action){requireSurvey(()=>{const primary=priceOption(survey),secondary=secondaryPrice();if(!primary.available)throw new Error(primary.errors.join(' '));return action(primary,secondary);});}
-async function createPdf(){withPricing(async(primary,secondary)=>{const name=await downloadCustomerPdf(survey,primary,secondary,media);survey.output.lastPdfName=name;survey.output.lastPdfAt=new Date().toISOString();$('#pdfInstruction').textContent=`Downloaded ${name}. Attach this file in Outlook before sending.`;await saveNow(true);toast('Customer PDF downloaded.');});}
-function enterPresentation(){document.body.classList.add('presentation');const button=document.createElement('button');button.className='presentationExit';button.textContent='Exit presentation';button.addEventListener('click',()=>{document.body.classList.remove('presentation');button.remove();});document.body.appendChild(button);scrollTo(0,0);}
-function requireSurvey(action){if(!survey)return toast('Start or continue a visit first.');try{const result=action();if(result?.catch)result.catch(error=>toast(error.message));}catch(error){toast(error.message);}}
+function withPricing(action,requirePrice=true){requireSurvey(()=>{const primary=priceOption(survey),secondary=secondaryPrice();if(requirePrice&&!primary.available)throw new Error(primary.errors.join(' '));return action(primary,secondary);});}
+async function createPdf(){withPricing(async(primary,secondary)=>{const name=await downloadCustomerPdf(survey,primary,secondary,media);survey.output.lastPdfName=name;survey.output.lastPdfAt=new Date().toISOString();$('#pdfInstruction').textContent=`Downloaded ${name}. Attach it to the email before sending.`;await saveNow(true);toast('PDF downloaded.');},false);}
+function enterPresentation(){document.body.classList.add('presentation');const button=document.createElement('button');button.className='presentationExit';button.textContent='Exit full screen';button.addEventListener('click',()=>{document.body.classList.remove('presentation');button.remove();});document.body.appendChild(button);scrollTo(0,0);}
+function requireSurvey(action){if(!survey)return toast('Open a visit first.');try{const result=action();if(result?.catch)result.catch(error=>toast(error.message));}catch(error){toast(error.message);}}
 function syncBound(path,source){$$(`[data-bind="${CSS.escape(path)}"]`).forEach(input=>{if(input!==source)input.value=source.value;});}
 function setSaveState(text,className){const badge=$('#saveBadge');badge.textContent=text;badge.className=`statusPill ${className}`;}
-function updateConnection(){$('#connectionBadge').textContent=navigator.onLine?'Online':'Offline ready';}
+function updateConnection(){$('#connectionBadge').textContent=navigator.onLine?'Online':'Offline';}
 function objectUrl(item){if(!objectUrls.has(item.id))objectUrls.set(item.id,URL.createObjectURL(item.blob));return objectUrls.get(item.id);}
 function clearObjectUrls(){for(const url of objectUrls.values())URL.revokeObjectURL(url);objectUrls.clear();}
 function toast(message){const element=$('#toast');element.textContent=message;element.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>element.classList.remove('show'),3800);}

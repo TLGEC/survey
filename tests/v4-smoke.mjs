@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import { PRICING_V87 } from '../src/pricing-data.js';
 
 const appUrl=process.env.APP_URL||'http://127.0.0.1:4177/';
 const playwrightPath=process.env.PLAYWRIGHT_MODULE||'/Users/Cooling/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
@@ -13,12 +14,18 @@ page.on('console',message=>{if(message.type()==='error'&&!message.text().include
 
 async function open(){await page.goto(appUrl,{waitUntil:'networkidle'});await page.waitForFunction(()=>Boolean(window.LGSurveyTest));}
 async function set(path,value){const input=page.locator(`[data-bind="${path}"]:visible`).first();await input.fill(String(value));await input.blur();}
+async function select(path,value){const input=page.locator(`[data-bind="${path}"]:visible`).first();await input.selectOption(String(value));}
 async function choose(path,value){await page.locator(`[data-choice="${path}"] [data-value="${value}"]`).click();}
 async function next(name){await page.locator(`[data-next="${name}"]`).click();await page.locator(`#screen-${name}.active`).waitFor();}
 async function price(){return page.evaluate(()=>window.LGSurveyTest.price());}
 
 await open();
 assert.equal(await page.locator('#newVisitTop').isVisible(),true,'start action is visible without scrolling');
+const approvedPanels=Object.values(PRICING_V87.panels);
+assert.equal(approvedPanels.length,4,'only the four approved panel models are available');
+assert.deepEqual([...new Set(approvedPanels.map(panel=>panel.unit))],[84],'approved panels share the P7 510W price baseline');
+assert.deepEqual([...new Set(approvedPanels.map(panel=>panel.priceBaseline))],['SPR-P7-495/510/-BLK']);
+assert.ok(approvedPanels.every(panel=>panel.dimensions.heightMm&&panel.dimensions.widthMm&&panel.dimensions.depthMm),'panel dimensions remain available offline');
 
 const wrapped=`Here is everything for today's appointment.\n\nSome notes first.\n\n\`\`\`csv\nCustomer Name,Address,Email,Phone,Annual kWh,Annual Spend,Bill Status,Monday ID\nAlex Morgan,1 Test Road,alex@example.com,07123456789,5200,1680,Received,MON-101\n\`\`\`\nHope that helps.`;
 await page.fill('#mondayPaste',wrapped);
@@ -40,6 +47,8 @@ await choose('discovery.openingCommitment','Yes, if it works');
 await set('discovery.notes','Customer is keen but wants a calm explanation. PRIVATE DISCOVERY NOTE');
 await next('home');
 await set('site.panelCount',12);
+await choose('site.roofCovering','Concrete pantile');
+await choose('site.framingKey','Pantile');
 await set('site.panelAreas','rear south-west roof');
 await set('site.roofNotes','Good condition with light morning shading from one tree.');
 await set('site.locations.battery','garage side wall');
@@ -59,13 +68,17 @@ await page.setInputFiles('#mediaInput',{name:'alex-roof.png',mimeType:'image/png
 await page.waitForFunction(()=>document.querySelector('#mediaCount')?.textContent==='1');
 await next('solution');
 await choose('solution.systemType','solar-battery');
-await page.selectOption('[data-bind="solution.panelKey"]','sunpower-p7-440');
+await choose('solution.panelKey','sunpower-p7-500');
 await set('solution.panelCount',12);
 await choose('solution.batteryBrand','Sigenergy');
 await set('solution.batteryQty',1);
 let primary=await price();
 assert.equal(primary.available,true,primary.errors?.join(' '));
 assert.ok(primary.price>5000&&primary.price<50000,'mapped price is credible');
+assert.equal(primary.panelPriceBaseline,'SPR-P7-495/510/-BLK');
+assert.deepEqual(primary.panelDimensions,{heightMm:1996,widthMm:1134,depthMm:30});
+assert.equal(primary.supplyPhase,'Single Phase');
+assert.match(primary.controllerName,/6 kW/);
 await page.locator('.internalDetails summary').click();
 await page.check('[data-check="solution.extras.cableApproved"]');
 await set('solution.extras.cableCost',180);
@@ -80,7 +93,7 @@ assert.match(await page.textContent('#secondaryPrice'),/Indicative installed pri
 await next('review');
 const customerText=await page.textContent('#customerRecommendation');
 assert.match(customerText,/Overall indicative installed price/);
-assert.match(customerText,/Optional alternative/);
+assert.match(customerText,/Options/);
 for(const forbidden of ['INTERNAL ONLY','PRIVATE DISCOVERY NOTE','cost allowance','Authorised by','commission','margin'])assert.ok(!customerText.includes(forbidden),`customer view leaked ${forbidden}`);
 await page.click('#togglePresentation');
 await page.locator('body.presentation').waitFor();
@@ -107,10 +120,12 @@ assert.ok(pdfStat.size>5000,'customer PDF is non-empty');
 await page.click('#openEmail');
 await page.waitForFunction(()=>Boolean(window.__lastMailto));
 const mailto=decodeURIComponent(await page.evaluate(()=>window.__lastMailto));
-assert.match(mailto,/alex@example.com/);assert.match(mailto,/Indicative Solution Summary/);assert.match(mailto,/rather than a formal quote/i);
+assert.match(mailto,/alex@example.com/);assert.match(mailto,/Indicative Solution Summary/);assert.match(mailto,/not a formal quotation/i);
+assert.match(mailto,/home energy proposal/i);
+await page.locator('.visitRecords summary').click();
 const technicalDownload=page.waitForEvent('download');await page.click('#downloadTechnical');const technical=await technicalDownload;await technical.saveAs('/private/tmp/lg-v4-technical.html');
 const technicalText=await fs.readFile('/private/tmp/lg-v4-technical.html','utf8');
-for(const required of ['14m','12m','2 lift','garage side wall','narrow access'])assert.match(technicalText,new RegExp(required,'i'),`technical brief missing ${required}`);
+for(const required of ['14m','12m','2 lift','garage side wall','narrow access','Single Phase','Concrete pantile','Pantile','SPR-P7-495/510'])assert.match(technicalText,new RegExp(required,'i'),`technical brief missing ${required}`);
 const crmDownload=page.waitForEvent('download');await page.click('#downloadCrm');const crm=await crmDownload;await crm.saveAs('/private/tmp/lg-v4-crm.csv');
 
 const firstId=await page.evaluate(()=>window.LGSurveyTest.getSurvey().id);
@@ -128,8 +143,19 @@ const batteryOnly=await price();assert.equal(batteryOnly.available,true);assert.
 await page.click('#homeButton');await page.locator('#screen-visits.active').waitFor();await page.click(`[data-resume-id="${firstId}"]`);await page.locator('#screen-conversation.active').waitFor();await page.locator('[data-next="home"]').click();await page.locator('#screen-home.active').waitFor();
 assert.match(await page.textContent('#mediaGrid'),/alex-roof.png/);assert.doesNotMatch(await page.textContent('#mediaGrid'),/jamie-meter.png/);
 
-await page.click('#homeButton');await page.locator('#screen-visits.active').waitFor();await page.click('#newVisitTop');await set('customer.firstName','Sam');await set('customer.lastName','Solar');await set('energy.annualKwh',4200);await next('home');await set('site.panelCount',8);await next('solution');await choose('solution.systemType','solar-only');await set('solution.panelCount',8);await choose('solution.inverterBrand','SolarEdge');
+await page.click('#homeButton');await page.locator('#screen-visits.active').waitFor();await page.click('#newVisitTop');await set('customer.firstName','Sam');await set('customer.lastName','Solar');await set('energy.annualKwh',4200);await next('home');await set('site.panelCount',8);await choose('site.roofCovering','Plain tile');await next('solution');await choose('solution.systemType','solar-only');await choose('solution.panelKey','trina-440');await set('solution.panelCount',8);await choose('solution.inverterBrand','SolarEdge');
 const solarOnly=await price();assert.equal(solarOnly.available,true);assert.equal(solarOnly.capacityKwh,0);assert.ok(solarOnly.sizeKw>3);
+assert.equal(solarOnly.panelPriceBaseline,'SPR-P7-495/510/-BLK');
+
+await page.check('[data-check="solution.panelOverride.enabled"]');
+let manualReview=await price();assert.equal(manualReview.available,false);assert.match(manualReview.errors.join(' '),/product and price confirmation/i);
+await page.uncheck('[data-check="solution.panelOverride.enabled"]');
+await page.click('[data-screen="home"]');await page.locator('#screen-home.active').waitFor();
+await select('site.supplyPhase','Three Phase');
+await next('solution');await choose('solution.inverterBrand','SigEnergy');
+const threePhase=await price();assert.equal(threePhase.available,false);assert.match(threePhase.errors.join(' '),/approved price/i);assert.equal(threePhase.supplyPhase,'Three Phase');
+assert.ok(await page.locator('[data-controller-select]:visible option[value="sig-tp-15"]').count(),'three-phase controller choices are available');
+await page.click('[data-screen="home"]');await page.locator('#screen-home.active').waitFor();await select('site.supplyPhase','Single Phase');await next('solution');
 
 await page.setViewportSize({width:800,height:1100});await page.screenshot({path:'/private/tmp/lg-v4-solution-tablet.png',fullPage:true});
 const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);assert.ok(overflow<=1,`tablet layout overflows by ${overflow}px`);

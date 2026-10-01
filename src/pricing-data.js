@@ -9,12 +9,25 @@ export const PRICING_V87 = Object.freeze({
     vatRate: 0
   },
   panels: {
-    'sunpower-max3-425': { name: 'SunPower MAX3 425W', workbookModel: 'SPR-MAX3-425/430', watts: 425, unit: 110 },
-    'sunpower-p7-440': { name: 'SunPower P7 440W', workbookModel: 'SPR-P7-440/455-BLK', watts: 440, unit: 82.5 },
-    'sunpower-p7-495': { name: 'SunPower P7 495W', workbookModel: 'SPR-P7-495/510/-BLK', watts: 495, unit: 84 },
-    'sunpower-p6-405': { name: 'SunPower P6 405W', workbookModel: 'SPR-P6-405-BLK', watts: 405, unit: 48.6, offer: true },
-    'trina-440': { name: 'Trina Vertex S+ 440W', workbookModel: 'Trina Vertex S+ 440 BLK', watts: 440, unit: 60 },
-    'sunpower-m-475': { name: 'SunPower M-Class 475W', workbookModel: 'SPR-M-Class-475W BLK', watts: 475, unit: 137.75 }
+    // The four approved choices use the V8.7 SPR-P7-495/510/-BLK cost as their common pricing baseline.
+    'sunpower-p7-500': { name:'SunPower P7 500W', model:'SPR-P7-500-BLK-P', watts:500, unit:84, priceBaseline:'SPR-P7-495/510/-BLK', dimensions:{ heightMm:1996, widthMm:1134, depthMm:30 } },
+    'aiko-495': { name:'Aiko Neostar 495W', model:'AIKO-A495-MCE54Mb', watts:495, unit:84, priceBaseline:'SPR-P7-495/510/-BLK', dimensions:{ heightMm:1762, widthMm:1134, depthMm:30 } },
+    'trina-440': { name:'Trina Vertex S+ 440W', model:'TSM-440 NEG9R.28', watts:440, unit:84, priceBaseline:'SPR-P7-495/510/-BLK', dimensions:{ heightMm:1762, widthMm:1134, depthMm:30 } },
+    'sunpower-m-475': { name:'SunPower M Class 475W', model:'SPR-MAX6-475-COM', watts:475, unit:84, priceBaseline:'SPR-P7-495/510/-BLK', dimensions:{ heightMm:2047, widthMm:1039, depthMm:35 } }
+  },
+  controllers: {
+    // V8.7 identifies its inverter table as single phase. Three-phase models are selectable from verified product data but deliberately unpriced here.
+    'sig-sp-3.6': { name:'Sigen Energy Controller 3.6 kW', brand:'SigEnergy', phase:'Single Phase', kw:3.6, cost:780 },
+    'sig-sp-4': { name:'Sigen Energy Controller 4 kW', brand:'SigEnergy', phase:'Single Phase', kw:4, cost:850 },
+    'sig-sp-5': { name:'Sigen Energy Controller 5 kW', brand:'SigEnergy', phase:'Single Phase', kw:5, cost:835 },
+    'sig-sp-6': { name:'Sigen Energy Controller 6 kW', brand:'SigEnergy', phase:'Single Phase', kw:6, cost:866 },
+    'sig-tp-5': { name:'Sigen Energy Controller 5 kW TP', brand:'SigEnergy', phase:'Three Phase', kw:5, cost:null },
+    'sig-tp-6': { name:'Sigen Energy Controller 6 kW TP', brand:'SigEnergy', phase:'Three Phase', kw:6, cost:null },
+    'sig-tp-8': { name:'Sigen Energy Controller 8 kW TP', brand:'SigEnergy', phase:'Three Phase', kw:8, cost:null },
+    'sig-tp-10': { name:'Sigen Energy Controller 10 kW TP', brand:'SigEnergy', phase:'Three Phase', kw:10, cost:null },
+    'sig-tp-12': { name:'Sigen Energy Controller 12 kW TP', brand:'SigEnergy', phase:'Three Phase', kw:12, cost:null },
+    'sig-tp-15': { name:'Sigen Energy Controller 15 kW TP', brand:'SigEnergy', phase:'Three Phase', kw:15, cost:null },
+    'sig-tp-20': { name:'Sigen Energy Controller 20 kW TP', brand:'SigEnergy', phase:'Three Phase', kw:20, cost:null }
   },
   framing: {
     'Pantile': { unit: 30, days: [0.5,1,1.5,2,2.5,3,3.5,4] },
@@ -27,6 +40,17 @@ export const PRICING_V87 = Object.freeze({
     'Ground Screws': { unit: 97.5, days: [1,1.5,2,3,3.75,4.5,5.25,6] },
     'Fibre Cement': { unit: 50, days: [1,1,1.5,2,2.5,3,3.5,4] },
     'Other': null
+  },
+  roofMappings: {
+    'Concrete pantile': ['Pantile'],
+    'Plain tile': ['Plain Tile'],
+    'Slate': ['Slate'],
+    'Metal sheet': ['Trapezoidal','Standing Seam'],
+    'Fibre cement': ['Fibre Cement'],
+    'Flat roof': ['Flat Roof'],
+    'In-roof': ['In-Roof'],
+    'Ground mount': ['Ground Screws'],
+    'Other': []
   },
   inverters: {
     SigEnergy: { 3:780,4:850,5:835,6:866,8:1287,10:1402.5,12:1520,14:1662,16:1862,18:1976,20:2081 },

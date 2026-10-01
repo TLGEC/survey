@@ -3,6 +3,9 @@ import { PRICING_V87 } from './pricing-data.js';
 const money = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 });
 
 export function panelOptions() { return PRICING_V87.panels; }
+export function controllerOptions(phase = 'Single Phase') {
+  return Object.fromEntries(Object.entries(PRICING_V87.controllers).filter(([,controller]) => controller.phase === phase));
+}
 export function formatMoney(value) { return Number.isFinite(value) ? money.format(value) : 'Unavailable'; }
 
 export function priceOption(survey, overrides = {}) {
@@ -10,24 +13,47 @@ export function priceOption(survey, overrides = {}) {
   const errors = [];
   const hasSolar = option.systemType !== 'battery-only';
   const hasBattery = option.systemType !== 'solar-only' && option.batteryBrand !== 'None';
-  const panel = PRICING_V87.panels[option.panelKey];
-  const framing = PRICING_V87.framing[survey.site.mounting];
-  if (hasSolar && !panel) errors.push('Panel model is not mapped in V8.7.');
-  if (hasSolar && !framing) errors.push('Mounting type needs pricing review.');
-  if (hasSolar && option.panelCount < 1) errors.push('Enter the surveyor-selected panel count.');
-  if (hasBattery && option.batteryQty < 1) errors.push('Enter a battery quantity.');
-  if (errors.length) return { available:false, errors, authority:PRICING_V87.authority };
+  const manualPanel = Boolean(survey.solution.panelOverride?.enabled);
+  const panel = manualPanel ? null : PRICING_V87.panels[option.panelKey];
+  const framingKey = survey.site.framingKey || survey.site.mounting;
+  const framing = survey.site.framingOverride?.enabled ? null : PRICING_V87.framing[framingKey];
+  if (hasSolar && manualPanel) errors.push('The selected panel needs product and price confirmation.');
+  if (hasSolar && !manualPanel && !panel) errors.push('The selected panel needs product and price confirmation.');
+  if (hasSolar && survey.site.framingOverride?.enabled) errors.push('The roof mounting system needs price confirmation.');
+  if (hasSolar && !survey.site.framingOverride?.enabled && !framing) errors.push('The roof mounting system needs price confirmation.');
+  const compatibleFraming = PRICING_V87.roofMappings[survey.site.roofCovering] || [];
+  if (hasSolar && !survey.site.framingOverride?.enabled && !compatibleFraming.includes(framingKey)) errors.push('The roof covering and mounting system need review.');
+  if (hasSolar && option.panelCount < 1) errors.push('Enter the proposed panel count.');
+  if (hasBattery && option.batteryQty < 1) errors.push('Enter the battery quantity.');
+  if (survey.site.supplyPhase === 'Needs confirmation') errors.push('Confirm whether the electrical supply is single phase or three phase.');
+  const panelName = manualPanel ? [survey.solution.panelOverride.manufacturer,survey.solution.panelOverride.model].filter(Boolean).join(' ') || 'Manual panel' : panel?.name || '';
+  const panelModel = manualPanel ? survey.solution.panelOverride.model : panel?.model || '';
+  const panelDimensions = manualPanel ? { heightMm:number(survey.solution.panelOverride.heightMm), widthMm:number(survey.solution.panelOverride.widthMm), depthMm:number(survey.solution.panelOverride.depthMm) } : panel?.dimensions || null;
+  const panelWatts = manualPanel ? number(survey.solution.panelOverride.watts) : panel?.watts || 0;
+  const sizeKw = hasSolar ? panelWatts * option.panelCount / 1000 : 0;
+  const batteryPreview = hasBattery ? batteryCost(option) : { capacity:0 };
+  const baseMeta = { sizeKw, capacityKwh:batteryPreview.capacity || 0, panelName, panelModel, panelDimensions, panelPriceBaseline:manualPanel?'':panel?.priceBaseline || '', supplyPhase:survey.site.supplyPhase, framingKey, roofCovering:survey.site.roofCovering };
+  if (errors.length) return unavailable(errors, baseMeta);
 
-  const sizeKw = hasSolar ? panel.watts * option.panelCount / 1000 : 0;
   const inverterBrand = inverterRoute(option);
-  const inverter = hasSolar ? inverterCost(inverterBrand, sizeKw) : batteryOnlyControllerCost(option, sizeKw);
-  if (inverter == null) errors.push('The selected inverter size is outside the mapped V8.7 range.');
-  if (errors.length) return { available:false, errors, authority:PRICING_V87.authority };
+  const controller = inverterBrand === 'SigEnergy' ? resolveSigController(survey.site.supplyPhase, option, sizeKw) : null;
+  let inverter;
+  if (inverterBrand === 'SigEnergy') {
+    inverter = controller?.cost;
+    if (!controller) errors.push('Choose a Sigenergy controller that matches the electrical supply.');
+    else if (controller.cost == null) errors.push(`${controller.name} needs an approved price before quotation.`);
+  } else if (survey.site.supplyPhase === 'Three Phase') {
+    errors.push(`${inverterBrand === 'Powerwall3' ? 'Tesla Powerwall' : inverterBrand} three-phase configuration needs product and price confirmation.`);
+  } else {
+    inverter = hasSolar ? inverterCost(inverterBrand, sizeKw) : batteryOnlyControllerCost(option, sizeKw);
+    if (inverter == null) errors.push('The selected inverter size needs product and price confirmation.');
+  }
+  if (errors.length) return unavailable(errors, { ...baseMeta, inverterBrand, controllerName:controller?.name || '' });
 
   const panelCost = hasSolar ? panel.unit * option.panelCount : 0;
   const framingCost = hasSolar ? framing.unit * option.panelCount : 0;
   const battery = hasBattery ? batteryCost(option) : { cost:0, sundries:0, capacity:0, labourUnits:0 };
-  if (battery.error) return { available:false, errors:[battery.error], authority:PRICING_V87.authority };
+  if (battery.error) return unavailable([battery.error]);
 
   const pvDays = hasSolar ? framing.days[Math.min(7, Math.max(0, Math.ceil(option.panelCount / 5) - 1))] : 0;
   const birdDays = hasSolar && survey.solution.extras.birdProtection ? (option.panelCount < 20 ? .1 : 1) : 0;
@@ -56,7 +82,9 @@ export function priceOption(survey, overrides = {}) {
   const final = Math.round((calculated + adjustment) / 10) * 10;
   return {
     available:true, price:final, unrounded:calculated + adjustment, sizeKw, capacityKwh:battery.capacity,
-    panelName:hasSolar ? panel.name : '', inverterBrand, systemType:option.systemType,
+    panelName:hasSolar ? panelName : '', panelModel:hasSolar ? panelModel : '', panelDimensions:hasSolar ? panelDimensions : null,
+    panelPriceBaseline:hasSolar ? panel.priceBaseline : '', inverterBrand, controllerName:controller?.name || '',
+    supplyPhase:survey.site.supplyPhase, framingKey, roofCovering:survey.site.roofCovering, systemType:option.systemType,
     assumptions:estimateBenefits(survey, { hasSolar, hasBattery, sizeKw, capacityKwh:battery.capacity, price:final }),
     authority:PRICING_V87.authority
   };
@@ -90,11 +118,28 @@ function inverterCost(brand, sizeKw) {
   return band == null ? null : values[band];
 }
 
+function resolveSigController(phase, option, sizeKw) {
+  const choices = Object.entries(controllerOptions(phase));
+  if (!choices.length) return null;
+  let key = option.sigController;
+  if (key !== 'auto' && PRICING_V87.controllers[key]?.phase !== phase) key = 'auto';
+  if (key === 'auto') {
+    const desired = sizeKw || Math.max(3, number(option.sigModule) * option.batteryQty / 2.5);
+    const match = choices.sort((a,b)=>a[1].kw-b[1].kw).find(([,controller])=>controller.kw>=desired) || choices.at(-1);
+    return match?.[1] || null;
+  }
+  return PRICING_V87.controllers[key] || null;
+}
+
 function batteryOnlyControllerCost(option) {
   if (option.batteryBrand === 'Tesla') return 0;
   if (option.batteryBrand !== 'Sigenergy') return null;
   const desired = option.sigController === 'auto' ? Math.max(3, option.sigModule * option.batteryQty / 2.5) : Number(option.sigController);
   return inverterCost('SigEnergy', desired);
+}
+
+function unavailable(errors, values={}) {
+  return { available:false, reviewRequired:true, errors, authority:PRICING_V87.authority, ...values };
 }
 
 function batteryCost(option) {
