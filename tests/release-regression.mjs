@@ -1,0 +1,65 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+
+const {chromium}=await import('/Users/Cooling/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
+const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
+const context=await browser.newContext({viewport:{width:800,height:1100},acceptDownloads:true});
+const page=await context.newPage(),errors=[];
+page.on('pageerror',error=>errors.push(error.message));
+const base=process.env.APP_URL||'http://127.0.0.1:4177/';
+const filePrefix=base.startsWith('https:')?'/private/tmp/lg-oct19-live':'/private/tmp/lg-oct19-local';
+const fill=async(path,value)=>{const element=page.locator(`[data-bind="${path}"]:visible`).first();await element.fill(String(value));await element.blur();};
+const go=async name=>{await page.locator(`[data-screen="${name}"]`).click();await page.locator(`#screen-${name}.active`).waitFor();};
+const price=()=>page.evaluate(()=>window.LGSurveyTest.price());
+const download=async(id,path)=>{const pending=page.waitForEvent('download');await page.click(id);await(await pending).saveAs(path);};
+try{
+  await page.goto(base,{waitUntil:'networkidle'});await page.waitForFunction(()=>window.LGSurveyTest);
+  await page.fill('#mondayPaste','Here is the appointment:\n```csv\nField,Value\nContact Name,Case Example\nContact Email,case@example.invalid\nSite Address,Example property\nAnnual kWh,10000\nImport Rate,30\nOff-peak rate,7\nOff-peak hours,2\nShiftable peak use,12\n```');
+  await page.click('#previewMonday');assert.match(await page.textContent('#importStatus'),/Found 1 appointment/);
+  assert.equal(await page.locator('[data-import-index]').count(),1);
+  await page.click('[data-import-index="0"]');await page.locator('#screen-conversation.active').waitFor();
+  assert.equal(await page.inputValue('[data-bind="energy.importRate"]'),'30');
+  assert.equal(await page.inputValue('[data-bind="energy.offPeakRate"]'),'7');
+  await go('home');await fill('site.panelCount',6);
+  // Use the repository's generic house image so output inspection has real image content.
+  const hero=await fs.readFile(new URL('../tlgec-home-hero.webp',import.meta.url));
+  await page.setInputFiles('#mediaInput',Array.from({length:4},(_,i)=>({name:`example-roof-${i+1}.webp`,mimeType:'image/webp',buffer:hero})));
+  await page.waitForFunction(()=>document.querySelector('#mediaCount').textContent==='4');
+  await go('solution');await fill('solution.panelCount',6);
+  const auto=await price();assert.equal(auto.available,true);assert.ok(auto.assumptions.breakdown.offPeakShiftSaving>0,'combined system includes remaining tariff opportunity');
+  await page.locator('.internalDetails summary').click();
+  await fill('solution.priceControl.discount','-');assert.equal((await price()).price,auto.price);
+  await page.locator('[data-bind="solution.priceControl.discount"]').press('End');
+  await page.locator('[data-bind="solution.priceControl.discount"]').pressSequentially('125.50');
+  assert.equal(await page.inputValue('[data-bind="solution.priceControl.discount"]'),'-125.50');
+  await fill('solution.priceControl.totalOverride','£9,999');assert.equal((await price()).price,9999);
+  await page.check('[data-check="solution.secondary.enabled"]');await fill('solution.secondary.priceControl.totalOverride',12999);
+  assert.match(await page.textContent('#secondaryPrice'),/12,999/);
+  await go('review');await page.locator('.financePanel summary').click();await page.check('[data-check="finance.enabled"]');
+  assert.match(await page.textContent('#financeResult'),/Enter an illustrative rate/,'blank rate is not a zero-interest offer');
+  await fill('finance.annualRate',4);await fill('finance.termYears',10);
+  assert.equal(await page.inputValue('#financePrice'),'9999');
+  assert.match(await page.textContent('#financeResult'),/Average bill saving/);
+  const summary=await page.textContent('#customerRecommendation');
+  for(const forbidden of ['costBreakdown','authorisedBy','commission','markup','Price source','Discount (£)'])assert.ok(!summary.includes(forbidden));
+  assert.match(summary,/9,999/);assert.match(summary,/12,999/);
+  await page.screenshot({path:`${filePrefix}-tablet.png`,fullPage:true});
+  await go('close');await download('#downloadPdf',`${filePrefix}-summary.pdf`);
+  await page.click('#openEmail');const mail=decodeURIComponent(await page.evaluate(()=>window.__lastMailto));
+  assert.match(mail,/case@example.invalid/);assert.match(mail,/9,999/);assert.match(mail,/12,999/);assert.match(mail,/additional monthly cost|more than the payment/);
+  await page.locator('.visitRecords summary').click();
+  await download('#downloadTechnical',`${filePrefix}-technical.html`);await download('#downloadCrm',`${filePrefix}-crm.csv`);
+  for(const suffix of ['technical.html','crm.csv']){const text=await fs.readFile(`${filePrefix}-${suffix}`,'utf8');assert.match(text,/9999/);assert.match(text,/12999/);}
+  const id=await page.evaluate(()=>window.LGSurveyTest.getSurvey().id);
+  await page.reload({waitUntil:'networkidle'});await page.waitForFunction(()=>window.LGSurveyTest?.getSurvey());
+  assert.equal(await page.evaluate(()=>window.LGSurveyTest.getSurvey().id),id);assert.equal((await price()).price,9999);
+  await go('solution');await page.click('.internalDetails summary');await page.click('#restoreCalculatedPrice');assert.equal((await price()).price,auto.price);
+  await page.click('#restoreSecondaryPrice');assert.doesNotMatch(await page.textContent('#secondaryPrice'),/12,999/);
+  await page.evaluate(()=>navigator.serviceWorker.ready);await page.reload({waitUntil:'networkidle'});await context.setOffline(true);
+  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.LGSurveyTest?.getSurvey());
+  assert.equal(await page.evaluate(()=>window.LGSurveyTest.getSurvey().id),id);assert.equal((await price()).price,auto.price);
+  assert.equal(await page.evaluate(()=>window.LGSurveyTest.media().length),4);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  assert.deepEqual(errors,[]);
+  console.log(JSON.stringify({ok:true,base,autoPrice:auto.price,annualSaving:auto.assumptions.annualSaving,offPeakSaving:auto.assumptions.breakdown.offPeakShiftSaving,manualPrice:9999,comparisonPrice:12999,offlineRecovery:true,mediaCount:4,artifacts:filePrefix},null,2));
+}finally{await context.close();await browser.close();}

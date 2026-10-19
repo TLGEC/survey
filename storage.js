@@ -1,6 +1,7 @@
 const DB_NAME = 'lg-survey-pro-v2';
 const DB_VERSION = 3;
 const ACTIVE_KEY = 'lg-v4-active-survey-id';
+const DRAFT_PREFIX = 'lg-v4-draft:';
 let databasePromise;
 
 function result(request) {
@@ -51,12 +52,15 @@ async function transaction(names, mode, operation) {
 
 export async function putSurvey(survey, { checkpoint = false } = {}) {
   survey.updatedAt = new Date().toISOString();
+  const snapshot=structuredClone(survey);
+  const draft=persistDraft(snapshot);
   await transaction(checkpoint ? ['surveys', 'snapshots'] : ['surveys'], 'readwrite', tx => {
-    tx.objectStore('surveys').put(structuredClone(survey));
+    tx.objectStore('surveys').put(snapshot);
     if (checkpoint) tx.objectStore('snapshots').put({
-      id: `${survey.id}:${Date.now()}`, surveyId: survey.id, createdAt: survey.updatedAt, survey: structuredClone(survey)
+      id: `${snapshot.id}:${Date.now()}`, surveyId: snapshot.id, createdAt: snapshot.updatedAt, survey: snapshot
     });
   });
+  if(draft&&localStorage.getItem(DRAFT_PREFIX+snapshot.id)===draft)localStorage.removeItem(DRAFT_PREFIX+snapshot.id);
   localStorage.setItem(ACTIVE_KEY, survey.id);
   if (checkpoint) await trimSnapshots(survey.id);
   return survey;
@@ -65,7 +69,18 @@ export async function putSurvey(survey, { checkpoint = false } = {}) {
 export async function getSurvey(id) {
   if (!id) return null;
   const db = await openStore();
-  return result(db.transaction('surveys').objectStore('surveys').get(id));
+  const saved=await result(db.transaction('surveys').objectStore('surveys').get(id));
+  let draft;
+  try{draft=JSON.parse(localStorage.getItem(DRAFT_PREFIX+id)||'null');}catch{}
+  return draft?.id===id&&(!saved||String(draft.updatedAt)>=String(saved.updatedAt))?draft:saved;
+}
+
+export function persistDraft(survey){
+  try{
+    const raw=JSON.stringify(survey);
+    localStorage.setItem(DRAFT_PREFIX+survey.id,raw);
+    return raw;
+  }catch{return '';}
 }
 
 export async function getSurveys() {
@@ -114,6 +129,7 @@ export async function deleteSurvey(id) {
     cursor.onsuccess = () => { const current = cursor.result; if (current) { current.delete(); current.continue(); } };
   });
   if (getActiveId() === id) clearActiveId();
+  localStorage.removeItem(DRAFT_PREFIX+id);
 }
 
 export async function getLatestSnapshot(surveyId) {

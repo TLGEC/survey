@@ -16,7 +16,10 @@ export function createSurvey(seed = {}) {
     source: { type: 'manual', importedAt: '', mondayId: '', raw: '' },
     customer: { firstName: '', lastName: '', email: '', phone: '', address: '', appointment: '', crmStatus: '' },
     readiness: { billStatus: 'requested' },
-    energy: { annualKwh: '', annualSpend: '', importRate: 28, exportRate: 15, offPeakRate: 8 },
+    energy: {
+      annualKwh: '', annualSpend: '', importRate: 28, exportRate: 15,
+      offPeakRate: '', offPeakHours: 4, offPeakChargeKw: 5, eligiblePeakKwhPerDay: ''
+    },
     discovery: {
       decisionMakers: '', goals: [], financeRoute: '', futureLoads: [], backupNeed: '', timeline: '',
       openingCommitment: '', notes: ''
@@ -36,8 +39,8 @@ export function createSurvey(seed = {}) {
       panelCount: 0, inverterBrand: 'SigEnergy',
       batteryBrand: 'Sigenergy', sigModule: '10', batteryQty: 1, expansionQty: 0, sigController: 'auto', gateway: 'yes',
       extras: { birdProtection: false, evCharger: false, cableApproved: false, cableCost: 0, unusualCost: 0, unusualLabel: '' },
-      adjustment: { enabled: false, amount: 0, reason: '', authorisedBy: '' },
-      secondary: { enabled: false, name: 'More storage', panelCount: 0, batteryBrand: 'Sigenergy', batteryQty: 2, expansionQty: 0, note: 'More stored energy for evenings and backup.' }
+      priceControl: { discount: '-', surcharge: '', totalOverride: '' },
+      secondary: { enabled: false, name: 'More storage', panelCount: 0, batteryBrand: 'Sigenergy', batteryQty: 2, expansionQty: 0, priceControl:{discount:'-',surcharge:'',totalOverride:''}, note: 'More stored energy for evenings and backup.' }
     },
     finance: { enabled: false, totalPrice: '', annualRate: '', termYears: 10 },
     close: { position: '', concerns: '' },
@@ -73,6 +76,13 @@ export function normaliseSurvey(input) {
   if (!input || Number(input.schemaVersion) !== SCHEMA_VERSION) return null;
   const base = createSurvey({ id: input.id, createdAt: input.createdAt });
   const survey = deepMerge(base, input);
+  survey.solution.priceControl ||= { ...base.solution.priceControl };
+  if (input.energy?.offPeakRate === 8 && input.energy?.offPeakHours === undefined) survey.energy.offPeakRate = '';
+  if (!input.solution?.priceControl && input.solution?.adjustment?.enabled) {
+    const legacyAmount = Number(input.solution.adjustment.amount);
+    if (Number.isFinite(legacyAmount) && legacyAmount < 0) survey.solution.priceControl.discount = String(legacyAmount);
+    if (Number.isFinite(legacyAmount) && legacyAmount > 0) survey.solution.priceControl.surcharge = String(legacyAmount);
+  }
   if (!input.site?.framingKey) survey.site.framingKey = input.site?.mounting || base.site.framingKey;
   if (!input.site?.roofCovering) survey.site.roofCovering = roofCoveringFromLegacy(survey.site.framingKey);
   if (!input.solution?.panelKey || !['sunpower-p7-500','aiko-495','trina-440','sunpower-m-475'].includes(input.solution.panelKey)) {
