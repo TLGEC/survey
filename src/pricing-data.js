@@ -5,7 +5,7 @@ export const PRICING_V87 = Object.freeze({
     name: 'Residential_Pricing_V8.7.xlsx',
     version: '8.7',
     sha256: '1bb09b4e6c1f76e388a809a63d5c20efefa69fe5ec376c694e2b0cdc81a8f6bc',
-    compiledAt: '2026-09-30',
+    compiledAt: '2026-10-19',
     vatRate: 0
   },
   panels: {
@@ -21,6 +21,9 @@ export const PRICING_V87 = Object.freeze({
     'sig-sp-4': { name:'Sigen Energy Controller 4 kW', brand:'SigEnergy', phase:'Single Phase', kw:4, cost:850 },
     'sig-sp-5': { name:'Sigen Energy Controller 5 kW', brand:'SigEnergy', phase:'Single Phase', kw:5, cost:835 },
     'sig-sp-6': { name:'Sigen Energy Controller 6 kW', brand:'SigEnergy', phase:'Single Phase', kw:6, cost:866 },
+    'sig-sp-8': { name:'Sigen Energy Controller 8 kW', brand:'SigEnergy', phase:'Single Phase', kw:8, cost:1287 },
+    'sig-sp-10': { name:'Sigen Energy Controller 10 kW', brand:'SigEnergy', phase:'Single Phase', kw:10, cost:1402.5 },
+    'sig-sp-12': { name:'Sigen Energy Controller 12 kW', brand:'SigEnergy', phase:'Single Phase', kw:12, cost:1520 },
     'sig-tp-5': { name:'Sigen Energy Controller 5 kW TP', brand:'SigEnergy', phase:'Three Phase', kw:5, cost:null },
     'sig-tp-6': { name:'Sigen Energy Controller 6 kW TP', brand:'SigEnergy', phase:'Three Phase', kw:6, cost:null },
     'sig-tp-8': { name:'Sigen Energy Controller 8 kW TP', brand:'SigEnergy', phase:'Three Phase', kw:8, cost:null },
@@ -58,17 +61,22 @@ export const PRICING_V87 = Object.freeze({
     Powerwall3: { 2:0,3:0,4:0,5:0,6:0,8:0,10:0,12:0,14:0,16:0,18:0,20:0 }
   },
   battery: {
-    sig6: { first:2360, additional:1575, capacity:5.84, sundries:758 },
-    sig10: { first:2835, additional:2050, capacity:8.76, sundries:659 },
-    tesla: { first:4755, additional:4075, capacity:13.5, sundries:861 },
-    teslaNoGateway: { first:4075, additional:4075, capacity:13.5, sundries:565 },
-    teslaExpansion: { unit:3275, capacity:13.5, sundries:365 }
+    // Prices come from V8.7; usable energy and charge power come from the manufacturer datasheet.
+    sig6: { first:2360, additional:1575, capacity:5.84, maxChargeKw:3, specSource:'https://www.sigenergy.com/uploads/en_download/1750078918261785.pdf', sundries:{ single:497.96, three:757.96 }, noGatewaySundries:{single:552,three:942} },
+    sig10: { first:2835, additional:2050, capacity:8.76, maxChargeKw:4.6, specSource:'https://www.sigenergy.com/uploads/en_download/1750078918261785.pdf', sundries:{ single:452.96, three:658.96 }, noGatewaySundries:{single:552,three:942} },
+    tesla: { first:4755, additional:4075, capacity:13.5, maxChargeKw:5, sundries:{ single:436.96, three:860.96 } },
+    teslaNoGateway: { first:4075, additional:4075, capacity:13.5, maxChargeKw:5, sundries:{ single:261, three:565 } },
+    teslaExpansion: { unit:3275, capacity:13.5, sundries:{ single:290, three:365 } }
   },
   constants: {
     pvInstallerDay:150, electricianDay:180, labourerDay:130, projectManagerDay:200,
     designerFixed:50, adminFixed:37.5, mileage:0.45, carriage:55,
     scaffoldFirst:500, scaffoldAdditionalFactor:0.85, customerGift:25, depositInsurance:40, paperwork:40,
-    inverterSundries: { SigEnergy:420, SolarEdge:341, Powerwall3:420 },
+    inverterSundries: {
+      SigEnergy:{ single:306, three:420 },
+      SolarEdge:{ single:252, three:341 },
+      Powerwall3:{ single:306, three:420 }
+    },
     birdPerPanel:17.5, evCharger:900,
     defaultMarkup:0.3793, teslaBatteryMarkup:0.25, sales:0.03, marketing:0.02
   }

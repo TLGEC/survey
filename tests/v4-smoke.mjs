@@ -27,6 +27,13 @@ assert.deepEqual([...new Set(approvedPanels.map(panel=>panel.unit))],[84],'appro
 assert.deepEqual([...new Set(approvedPanels.map(panel=>panel.priceBaseline))],['SPR-P7-495/510/-BLK']);
 assert.ok(approvedPanels.every(panel=>panel.dimensions.heightMm&&panel.dimensions.widthMm&&panel.dimensions.depthMm),'panel dimensions remain available offline');
 
+const verticalWrapped=`Here is the appointment in CSV format.\n\n\`\`\`csv\nField,Value\nName,Michael Example\nLead Status,Survey Booked\nLead Type,Solar PV & Battery\nContact Number,07111222333\nEmail,michael@example.com\nAddress,"7 Example Street, Kent"\nAnnual kWh,5100\n\`\`\``;
+await page.fill('#mondayPaste',verticalWrapped);
+await page.click('#previewMonday');
+assert.match(await page.textContent('#importStatus'),/Found 1 appointment/);
+assert.equal(await page.locator('[data-import-index]').count(),1,'vertical fields are not rendered as separate appointments');
+assert.match(await page.textContent('#importPreview'),/Michael Example/);
+
 const wrapped=`Here is everything for today's appointment.\n\nSome notes first.\n\n\`\`\`csv\nCustomer Name,Address,Email,Phone,Annual kWh,Annual Spend,Bill Status,Monday ID\nAlex Morgan,1 Test Road,alex@example.com,07123456789,5200,1680,Received,MON-101\n\`\`\`\nHope that helps.`;
 await page.fill('#mondayPaste',wrapped);
 await page.click('#previewMonday');
@@ -80,6 +87,13 @@ assert.deepEqual(primary.panelDimensions,{heightMm:1996,widthMm:1134,depthMm:30}
 assert.equal(primary.supplyPhase,'Single Phase');
 assert.match(primary.controllerName,/6 kW/);
 await page.locator('.internalDetails summary').click();
+await set('solution.priceControl.discount',500);
+assert.equal(await page.locator('[data-bind="solution.priceControl.discount"]').inputValue(),'-500','discount paste is normalised to a negative value');
+const discounted=await price();assert.ok(discounted.price<primary.price);assert.equal(discounted.discountAmount,-500);
+await set('solution.priceControl.totalOverride',11999);
+const overridden=await price();assert.equal(overridden.price,11999);assert.equal(overridden.priceSource,'manual-total');
+await page.click('#restoreCalculatedPrice');
+assert.equal((await price()).price,primary.price,'calculated price can be restored with one action');
 await page.check('[data-check="solution.extras.cableApproved"]');
 await set('solution.extras.cableCost',180);
 await page.check('[data-check="solution.extras.birdProtection"]');
@@ -106,6 +120,8 @@ await page.check('[data-check="finance.enabled"]');
 await set('finance.annualRate',4.9);
 await set('finance.termYears',10);
 assert.match(await page.textContent('#financeResult'),/Estimated monthly payment/);
+assert.match(await page.textContent('#financeResult'),/Average bill saving/);
+assert.equal(Number(await page.locator('#financePrice').inputValue()),withExtras.price,'finance follows the final configured price');
 assert.match(await page.textContent('.financePanel'),/Illustration only/);
 await page.screenshot({path:'/private/tmp/lg-v4-customer-tablet.png',fullPage:true});
 await next('close');

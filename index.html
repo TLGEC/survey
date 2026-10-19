@@ -103,7 +103,13 @@
             <label>Annual use (kWh)<input data-bind="energy.annualKwh" type="number" inputmode="decimal"></label>
             <label>Annual spend (£)<input data-bind="energy.annualSpend" type="number" inputmode="decimal"></label>
             <label>Import rate (p/kWh)<input data-bind="energy.importRate" type="number" inputmode="decimal"></label>
+            <label>Export rate (p/kWh)<input data-bind="energy.exportRate" type="number" inputmode="decimal"></label>
+            <label>Off-peak rate (p/kWh)<input data-bind="energy.offPeakRate" type="number" inputmode="decimal" placeholder="Only if applicable"></label>
+            <label>Off-peak window (hours)<input data-bind="energy.offPeakHours" type="number" min="0" step="0.5" inputmode="decimal"></label>
+            <label>Maximum charge power (kW)<input data-bind="energy.offPeakChargeKw" type="number" min="0" step="0.1" inputmode="decimal"></label>
+            <label class="span2">Remaining peak use available to shift (kWh/day)<input data-bind="energy.eligiblePeakKwhPerDay" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Leave blank if unknown"></label>
           </div>
+          <p class="fieldHelp">Off-peak savings are included only when a rate and shiftable peak use are entered.</p>
         </div>
       </article>
 
@@ -261,13 +267,14 @@
             <label><input type="checkbox" data-check="solution.extras.birdProtection"> Bird protection</label>
             <label><input type="checkbox" data-check="solution.extras.evCharger"> EV charger</label>
             <label><input type="checkbox" data-check="solution.extras.cableApproved"> Additional cabling</label>
-            <label>Additional cabling (£)<input data-bind="solution.extras.cableCost" type="number" min="0" inputmode="decimal"></label>
-            <label>Groundworks / other (£)<input data-bind="solution.extras.unusualCost" type="number" min="0" inputmode="decimal"></label>
+            <label>Additional cabling cost allowance (£)<input data-bind="solution.extras.cableCost" type="number" min="0" inputmode="decimal"></label>
+            <label>Groundworks / other cost allowance (£)<input data-bind="solution.extras.unusualCost" type="number" min="0" inputmode="decimal"></label>
             <label>Description<input data-bind="solution.extras.unusualLabel"></label>
-            <label><input type="checkbox" data-check="solution.adjustment.enabled"> Price adjustment</label>
-            <label>Adjustment (+/- £)<input data-bind="solution.adjustment.amount" type="number" inputmode="decimal"></label>
-            <label>Reason<input data-bind="solution.adjustment.reason"></label>
-            <label>Approved by<input data-bind="solution.adjustment.authorisedBy"></label>
+            <label>Discount (£)<input data-bind="solution.priceControl.discount" data-money="discount" inputmode="decimal" placeholder="-500"></label>
+            <label>Additional amount (£)<input data-bind="solution.priceControl.surcharge" data-money="positive" inputmode="decimal" placeholder="0"></label>
+            <label>Final total override (£)<input data-bind="solution.priceControl.totalOverride" data-money="positive" inputmode="decimal" placeholder="Leave blank to calculate"></label>
+            <button type="button" class="quiet" id="restoreCalculatedPrice">Use calculated price</button>
+            <p class="fieldHelp span2" id="priceControlStatus">Using the calculated price.</p>
           </div>
         </details>
       </article>
@@ -282,6 +289,10 @@
             <label>Battery quantity<input data-bind="solution.secondary.batteryQty" type="number" min="0"></label>
             <label>DC expansions<input data-bind="solution.secondary.expansionQty" type="number" min="0"></label>
             <label>Summary<input data-bind="solution.secondary.note" placeholder="More overnight cover"></label>
+            <label>Discount (£)<input data-bind="solution.secondary.priceControl.discount" data-money="discount" inputmode="decimal" placeholder="-500"></label>
+            <label>Additional amount (£)<input data-bind="solution.secondary.priceControl.surcharge" data-money="positive" inputmode="decimal" placeholder="0"></label>
+            <label>Final total override (£)<input data-bind="solution.secondary.priceControl.totalOverride" data-money="positive" inputmode="decimal" placeholder="Leave blank to calculate"></label>
+            <button type="button" class="quiet" id="restoreSecondaryPrice">Use calculated price</button>
           </div>
           <p class="secondaryPrice" id="secondaryPrice"></p>
         </div>
@@ -298,7 +309,7 @@
         <summary>Finance illustration</summary>
         <label class="switchLine"><input type="checkbox" data-check="finance.enabled"><span><strong>Include a finance illustration</strong></span></label>
         <div id="financeFields" class="formGrid four" hidden>
-          <label>Total system price (£)<input data-bind="finance.totalPrice" type="number" inputmode="decimal"></label>
+          <label>System price used (£)<input id="financePrice" readonly></label>
           <label>Illustrative annual rate (%)<input data-bind="finance.annualRate" type="number" min="0" step="0.01" inputmode="decimal"></label>
           <label>Term (years)<input data-bind="finance.termYears" type="number" min="1" max="30" inputmode="numeric"></label>
           <div class="financeResult" id="financeResult"></div>

@@ -1,4 +1,4 @@
-const CACHE = 'lg-survey-pro-v4-review-2026-10-01-1';
+const CACHE = 'lg-survey-pro-v4-pricing-import-2026-10-19-1';
 const APP_SHELL = [
   './',
   './index.html',

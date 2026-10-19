@@ -17,6 +17,7 @@ The app does not create a formal quote. OpenSolar remains the detailed design to
 
 - Each visit uses schema version 4 and a unique customer ID.
 - Every meaningful edit autosaves to IndexedDB.
+- A small synchronous local draft protects the most recent field edit during immediate reloads; it is cleared once the matching IndexedDB write completes.
 - Stage changes create rolling recovery snapshots.
 - Media is stored separately and every read, update and deletion checks the active survey ID.
 - Previous-version records remain read-only and can be downloaded as JSON.
@@ -30,7 +31,10 @@ The app does not create a formal quote. OpenSolar remains the detailed design to
 - The raw workbook is not committed because it contains confidential costs, margins, commission rules and internal comments.
 - Unmapped products or mounting types return **Price needs review**. The app does not silently guess.
 - Customer screens and outputs show only the overall indicative price.
-- Manual final adjustments require an enabled control, reason and authoriser.
+- Discounts use a dedicated negative-value control, additions are separate, and an optional final-total override takes precedence over both. **Use calculated price** clears all three.
+- Battery savings include only entered tariff information and are constrained by usable capacity, charge power, the off-peak window, eligible peak demand and round-trip losses.
+- V8.7 battery labour and phase-specific sundry bands are regression-tested against the source workbook.
+- V8.7 controls monetary inputs; manufacturer usable capacity and charge-power ratings remain separate physical specifications for energy modelling.
 
 When the workbook changes, compare the source hash, review changed source cells, update `src/pricing-data.js`, update its metadata and extend the pricing fixtures before release.
 
@@ -45,7 +49,9 @@ Open `http://127.0.0.1:4177/`.
 ## Test
 
 ```bash
+node tests/pricing-import-unit.mjs
 node tests/v4-smoke.mjs
+node tests/release-regression.mjs
 ```
 
 The end-to-end suite covers Monday import, solar-only, battery-only, solar plus battery, pricing and approved extras, scaffolding, long cable review, optional second option, finance on/off, customer PDF and email, technical and CRM outputs, tablet layout, reload recovery, offline boot and two-customer media isolation.
